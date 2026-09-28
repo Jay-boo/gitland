@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -167,15 +167,28 @@
       },
       {
         "command": "gitland.showGraphView",
-        "title": "Show Commit Graph View",
+        "title": "Show Commit Graph in Sidebar",
         "category": "Gitland",
-        "icon": "$(git-merge)"
+        "icon": "$(layout-sidebar-left)"
+      },
+      {
+        "command": "gitland.showGraphInPanel",
+        "title": "Show Commit Graph in Bottom Panel",
+        "category": "Gitland",
+        "icon": "$(layout-panel)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "gitland",
+          "title": "Gitland",
+          "icon": "media/activity.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "gitlandPanel",
           "title": "Gitland",
           "icon": "media/activity.svg"
         }
@@ -202,6 +215,14 @@
           "name": "Pull Requests",
           "visibility": "visible",
           "initialSize": 2
+        }
+      ],
+      "gitlandPanel": [
+        {
+          "type": "webview",
+          "id": "gitland.graphPanelView",
+          "name": "Commit Graph",
+          "icon": "media/activity.svg"
         }
       ]
     },
@@ -249,8 +270,18 @@
           "group": "9_account@3"
         },
         {
-          "command": "gitland.showGraphInEditor",
+          "command": "gitland.showGraphInPanel",
           "when": "view == gitland.graphView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitland.showGraphInEditor",
+          "when": "view == gitland.graphView || view == gitland.graphPanelView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitland.showGraphView",
+          "when": "view == gitland.graphPanelView",
           "group": "navigation@1"
         }
       ],

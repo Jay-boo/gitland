@@ -50,6 +50,10 @@ exports.run = async function () {
       await sleep(Number(process.env.GITLAND_TEST_HOLD));
     }
   });
+  await step('show commit graph in the bottom panel too', async () => {
+    await vscode.commands.executeCommand('gitland.showGraphInPanel');
+    await sleep(2500);
+  });
   await step('open commit graph in an editor tab', async () => {
     await vscode.commands.executeCommand('gitland.showGraphInEditor');
     await sleep(2500);

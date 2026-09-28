@@ -26,12 +26,18 @@ interface GraphHost {
   readonly onDidDispose: vscode.Event<void>;
 }
 
-/** Opens the graph like GitLens: the "Graph" view of the Gitland sidebar, or an editor tab. */
+export type GraphPlace = 'sidebar' | 'bottom' | 'editor';
+
+/**
+ * Opens the graph like GitLens: the "Graph" view of the Gitland sidebar (default), the
+ * "Commit Graph" view of the bottom panel, or an editor tab.
+ */
 export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposable {
-  static readonly viewId = 'gitland.graphView';
-  private view?: GraphController;
+  static readonly sidebarViewId = 'gitland.graphView';
+  static readonly bottomViewId = 'gitland.graphPanelView';
+  private readonly views = new Map<string, GraphController>();
   private editor?: { panel: vscode.WebviewPanel; controller: GraphController };
-  private pending?: { repo: Repo; sha?: string };
+  private readonly pending = new Map<string, { repo: Repo; sha?: string }>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -39,18 +45,20 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
     private readonly avatars: AvatarService,
   ) {}
 
-  async show(repo: Repo, sha?: string, where?: 'panel' | 'editor'): Promise<void> {
-    where ??= config<'panel' | 'editor'>('graph.layout', 'panel');
+  async show(repo: Repo, sha?: string, where?: GraphPlace): Promise<void> {
+    where ??= config<'panel' | 'editor'>('graph.layout', 'panel') === 'editor' ? 'editor' : 'sidebar';
     if (where === 'editor') {
       this.showInEditor(repo, sha);
       return;
     }
-    if (this.view) {
-      this.view.setRepo(repo, sha);
+    const viewId = where === 'bottom' ? GraphManager.bottomViewId : GraphManager.sidebarViewId;
+    const controller = this.views.get(viewId);
+    if (controller) {
+      controller.setRepo(repo, sha);
     } else {
-      this.pending = { repo, sha };
+      this.pending.set(viewId, { repo, sha });
     }
-    await vscode.commands.executeCommand(`${GraphManager.viewId}.focus`);
+    await vscode.commands.executeCommand(`${viewId}.focus`);
   }
 
   private showInEditor(repo: Repo, sha?: string): void {
@@ -73,7 +81,7 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
       get visible() {
         return panel.visible;
       },
-      setTitle: (t) => (panel.title = t),
+      setTitle: (t) => (panel.title = `Commit Graph · ${t}`),
       onDidBecomeVisible: visible.event,
       onDidDispose: panel.onDidDispose,
     };
@@ -86,7 +94,9 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
     });
   }
 
+  /** Same provider for both views (sidebar and bottom panel); each gets its own controller. */
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
+    const viewId = view.viewType;
     const media = vscode.Uri.joinPath(this.context.extensionUri, 'media');
     view.webview.options = { enableScripts: true, localResourceRoots: [media] };
     const visible = new vscode.EventEmitter<void>();
@@ -100,19 +110,20 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
       onDidBecomeVisible: visible.event,
       onDidDispose: view.onDidDispose,
     };
-    const pending = this.pending;
-    this.pending = undefined;
+    const pending = this.pending.get(viewId);
+    this.pending.delete(viewId);
     const repo = pending?.repo ?? (await this.repos.activeRepo(false));
-    this.view = new GraphController(this.context, this.repos, this.avatars, host, repo, pending?.sha);
+    const controller = new GraphController(this.context, this.repos, this.avatars, host, repo, pending?.sha);
+    this.views.set(viewId, controller);
     view.onDidDispose(() => {
-      this.view?.dispose();
+      controller.dispose();
       visible.dispose();
-      this.view = undefined;
+      this.views.delete(viewId);
     });
   }
 
   dispose(): void {
-    this.view?.dispose();
+    this.views.forEach((c) => c.dispose());
     this.editor?.panel.dispose();
   }
 }

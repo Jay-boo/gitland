@@ -68,7 +68,8 @@ export function activate(context: vscode.ExtensionContext): void {
     repos,
     avatars,
     graph,
-    vscode.window.registerWebviewViewProvider(GraphManager.viewId, graph, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.window.registerWebviewViewProvider(GraphManager.sidebarViewId, graph, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.window.registerWebviewViewProvider(GraphManager.bottomViewId, graph, { webviewOptions: { retainContextWhenHidden: true } }),
     blame,
     tickets,
     prs,
@@ -90,7 +91,13 @@ export function activate(context: vscode.ExtensionContext): void {
     command('gitland.showGraphView', async () => {
       const repo = await repoFor();
       if (repo) {
-        await graph.show(repo, undefined, 'panel');
+        await graph.show(repo, undefined, 'sidebar');
+      }
+    }),
+    command('gitland.showGraphInPanel', async () => {
+      const repo = await repoFor();
+      if (repo) {
+        await graph.show(repo, undefined, 'bottom');
       }
     }),
     command('gitland.clearAvatarCache', () => avatars.clear()),
