@@ -1,0 +1,378 @@
+{
+  "name": "gitland",
+  "displayName": "Gitland",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets → branches and pull requests for Azure DevOps & GitHub.",
+  "version": "0.1.0",
+  "publisher": "jayboo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jayboo/gitland"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "graph",
+    "blame",
+    "azure devops",
+    "pull request",
+    "work items"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitland.showGraph",
+        "title": "Show Git Graph",
+        "category": "Gitland",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "gitland.toggleFileBlame",
+        "title": "Toggle File Blame",
+        "category": "Gitland",
+        "icon": "$(person)"
+      },
+      {
+        "command": "gitland.toggleInlineBlame",
+        "title": "Toggle Inline Blame",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.fileHistory",
+        "title": "Show File History",
+        "category": "Gitland",
+        "icon": "$(history)"
+      },
+      {
+        "command": "gitland.lineHistory",
+        "title": "Show Line History",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.tickets.refresh",
+        "title": "Refresh Tickets",
+        "category": "Gitland",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitland.tickets.startWork",
+        "title": "Start Work (Create Branch)",
+        "category": "Gitland",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "gitland.tickets.startWorkById",
+        "title": "Start Work From Ticket…",
+        "category": "Gitland",
+        "icon": "$(add)"
+      },
+      {
+        "command": "gitland.tickets.open",
+        "title": "Open Ticket in Browser",
+        "category": "Gitland",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "gitland.tickets.copyId",
+        "title": "Copy Ticket ID",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.prs.refresh",
+        "title": "Refresh Pull Requests",
+        "category": "Gitland",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitland.prs.create",
+        "title": "Create Pull Request",
+        "category": "Gitland",
+        "icon": "$(git-pull-request-create)"
+      },
+      {
+        "command": "gitland.prs.open",
+        "title": "Open Pull Request in Browser",
+        "category": "Gitland",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "gitland.prs.checkout",
+        "title": "Checkout Pull Request Branch",
+        "category": "Gitland",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "gitland.setAzurePat",
+        "title": "Set Azure DevOps Personal Access Token",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.clearCredentials",
+        "title": "Clear Stored Credentials",
+        "category": "Gitland"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitland",
+          "title": "Gitland",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitland": [
+        {
+          "id": "gitland.tickets",
+          "name": "My Tickets"
+        },
+        {
+          "id": "gitland.prs",
+          "name": "Pull Requests"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "gitland.tickets",
+        "contents": "Open a folder with an Azure DevOps or GitHub remote to see your tickets.\n[Show Git Graph](command:gitland.showGraph)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitland.tickets.startWorkById",
+          "when": "view == gitland.tickets",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitland.showGraph",
+          "when": "view == gitland.tickets",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitland.tickets.refresh",
+          "when": "view == gitland.tickets",
+          "group": "navigation@3"
+        },
+        {
+          "command": "gitland.prs.create",
+          "when": "view == gitland.prs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitland.prs.refresh",
+          "when": "view == gitland.prs",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitland.tickets.startWork",
+          "when": "view == gitland.tickets && viewItem == ticket",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitland.tickets.open",
+          "when": "view == gitland.tickets && viewItem == ticket",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitland.tickets.startWork",
+          "when": "view == gitland.tickets && viewItem == ticket",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "gitland.tickets.open",
+          "when": "view == gitland.tickets && viewItem == ticket",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "gitland.tickets.copyId",
+          "when": "view == gitland.tickets && viewItem == ticket",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "gitland.prs.checkout",
+          "when": "view == gitland.prs && viewItem == pr",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitland.prs.open",
+          "when": "view == gitland.prs && viewItem == pr",
+          "group": "inline@2"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "gitland.showGraph",
+          "group": "navigation",
+          "when": "scmProvider == git"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "gitland.toggleFileBlame",
+          "group": "navigation@90",
+          "when": "resourceScheme == file && config.gitland.blame.showEditorTitleButton"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "gitland.toggleFileBlame",
+          "group": "gitland@1",
+          "when": "resourceScheme == file"
+        },
+        {
+          "command": "gitland.fileHistory",
+          "group": "gitland@2",
+          "when": "resourceScheme == file"
+        },
+        {
+          "command": "gitland.lineHistory",
+          "group": "gitland@3",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gitland.fileHistory",
+          "group": "gitland@1",
+          "when": "!explorerResourceIsFolder"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gitland.tickets.startWork",
+          "when": "false"
+        },
+        {
+          "command": "gitland.tickets.open",
+          "when": "false"
+        },
+        {
+          "command": "gitland.tickets.copyId",
+          "when": "false"
+        },
+        {
+          "command": "gitland.prs.open",
+          "when": "false"
+        },
+        {
+          "command": "gitland.prs.checkout",
+          "when": "false"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "gitland.showGraph",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g"
+      },
+      {
+        "command": "gitland.toggleFileBlame",
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Gitland",
+      "properties": {
+        "gitland.blame.inline.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show blame of the current line at the end of the line."
+        },
+        "gitland.blame.inline.format": {
+          "type": "string",
+          "default": "${author}, ${ago} • ${message}",
+          "description": "Inline blame format. Placeholders: ${author}, ${ago}, ${date}, ${message}, ${sha}."
+        },
+        "gitland.blame.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show blame of the current line in the status bar."
+        },
+        "gitland.blame.showEditorTitleButton": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the 'Toggle File Blame' button in the editor title bar."
+        },
+        "gitland.graph.maxCommits": {
+          "type": "number",
+          "default": 400,
+          "description": "Number of commits loaded in the graph at once (more can be loaded on demand)."
+        },
+        "gitland.branch.template": {
+          "type": "string",
+          "default": "${prefix}/${id}-${title}",
+          "description": "Branch name template when starting work on a ticket. Placeholders: ${prefix}, ${id}, ${title}, ${user}."
+        },
+        "gitland.branch.prefixByType": {
+          "type": "object",
+          "default": {
+            "Bug": "fix",
+            "Task": "feature",
+            "User Story": "feature",
+            "Product Backlog Item": "feature",
+            "Feature": "feature",
+            "Epic": "feature",
+            "Issue": "feature"
+          },
+          "description": "Branch prefix per ticket type. Unknown types use 'feature'."
+        },
+        "gitland.branch.fetchBeforeCreate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Fetch the remote before creating a branch from a ticket."
+        },
+        "gitland.azureDevOps.wiql": {
+          "type": "string",
+          "default": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved', 'Completed') ORDER BY [System.ChangedDate] DESC",
+          "description": "WIQL query used to list 'My Tickets' in Azure DevOps."
+        },
+        "gitland.azureDevOps.activateOnStartWork": {
+          "type": "boolean",
+          "default": false,
+          "description": "Move the Azure DevOps work item to the 'Active' state when you start work on it."
+        },
+        "gitland.pr.draftByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create pull requests as draft by default."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run typecheck && npx -y node@20 node_modules/@vscode/vsce/vsce package --no-dependencies",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "~1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,40 @@
+# Gitland
+
+A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHub).
+
+## Features
+
+| | |
+|---|---|
+| **Git Graph** | `Ctrl+Alt+G` or the button in the Source Control title bar. Colored lanes, branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. |
+| **Inline blame** | Author, age and message at the end of the current line, plus in the status bar. Hover it for links: show in graph, diff, file history, open on remote, copy SHA. |
+| **File blame** | `Ctrl+Alt+B` or the editor title button. Per-line author/date gutter with a heat bar (orange = recent, blue = old). |
+| **History** | Right-click in an editor: *Show File History* / *Show Line History* (works on selections). |
+| **My Tickets** | Gitland activity bar → your open Azure Boards work items (or GitHub issues). Click one → create a branch `feature/1234-title` from the base you pick. The branch remembers its ticket. |
+| **Pull Requests** | *Create Pull Request* pushes the branch, pre-fills the title from the ticket, links the work item and lists commits in the description. The view lists PRs by *mine / to review / others*; checkout any PR branch in one click. |
+
+## Authentication
+
+- **Azure DevOps**: uses your Microsoft work account through VS Code's built-in sign-in (you'll be prompted once).
+  If your organization blocks that, run **Gitland: Set Azure DevOps Personal Access Token** (scopes: *Work Items R/W*, *Code R/W*).
+- **GitHub**: VS Code's built-in GitHub sign-in.
+
+Tokens are stored in VS Code's secret storage.
+
+## Settings
+
+- `gitland.branch.template`: default `${prefix}/${id}-${title}`
+- `gitland.branch.prefixByType`: e.g. `Bug → fix`
+- `gitland.azureDevOps.wiql`: the query behind *My Tickets*
+- `gitland.azureDevOps.activateOnStartWork`: move the work item to *Active* when you start it
+- `gitland.blame.inline.format`: `${author}, ${ago} • ${message}`
+- `gitland.graph.maxCommits`, `gitland.pr.draftByDefault`
+
+## Develop
+
+```sh
+npm install
+npm run watch        # then F5 in VS Code ("Run Gitland")
+npm run package      # builds gitland-x.y.z.vsix
+code --install-extension gitland-0.1.0.vsix
+```
