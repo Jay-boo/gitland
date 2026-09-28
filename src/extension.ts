@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { BlameController } from './blame/blameController';
+import { BlameCodeLensProvider } from './blame/codeLens';
 import { fileHistory, lineHistory } from './commands/history';
 import { checkoutPullRequest, createPullRequest } from './commands/pullRequests';
 import { startWork } from './commands/work';
@@ -72,7 +73,13 @@ export function activate(context: vscode.ExtensionContext): void {
       GraphPanel.show(context, repos, repo, arg?.sha);
     }),
     command('gitland.toggleFileBlame', () => blame.toggleFileBlame()),
+    command('gitland.toggleFileBlameOff', () => blame.toggleFileBlame()),
     command('gitland.toggleInlineBlame', () => blame.toggleInline()),
+    command('gitland.toggleCodeLens', () => {
+      const cfg = vscode.workspace.getConfiguration('gitland');
+      return cfg.update('codeLens.enabled', !cfg.get('codeLens.enabled', true), vscode.ConfigurationTarget.Global);
+    }),
+    vscode.languages.registerCodeLensProvider({ scheme: 'file' }, new BlameCodeLensProvider(blame)),
     command('gitland.fileHistory', (arg?: unknown) => fileHistory(repos, arg)),
     command('gitland.lineHistory', () => lineHistory(repos)),
 

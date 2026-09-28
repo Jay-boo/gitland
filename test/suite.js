@@ -50,6 +50,16 @@ exports.run = async function () {
     const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
     assert.ok(tab && tab.input instanceof vscode.TabInputTextDiff, `active tab is ${tab && tab.label}`);
   });
+  await step('GitLens-style CodeLens: recent change + authors', async () => {
+    const pyFile = vscode.Uri.file(path.join(ws, process.env.GITLAND_TEST_PYFILE || 'azure-pipelines.yml'));
+    const doc = await vscode.workspace.openTextDocument(pyFile);
+    await vscode.window.showTextDocument(doc);
+    await sleep(4000); // let language servers index symbols
+    const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', pyFile, 100);
+    const ours = lenses.filter((l) => l.command && /^\$\((history|person|organization|pencil)\)/.test(l.command.title));
+    console.log(`    ${ours.length} Gitland lenses, e.g.: ${ours.slice(0, 4).map((l) => `L${l.range.start.line + 1} "${l.command.title}"`).join(' | ')}`);
+    assert.ok(ours.length >= 2, 'expected at least the document-level lenses');
+  });
   await step('views are contributed', async () => {
     await vscode.commands.executeCommand('workbench.view.extension.gitland');
     await sleep(1500);

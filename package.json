@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -142,6 +142,17 @@
         "title": "Show Log",
         "category": "Gitland",
         "icon": "$(output)"
+      },
+      {
+        "command": "gitland.toggleCodeLens",
+        "title": "Toggle Blame CodeLens",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.toggleFileBlameOff",
+        "title": "Hide File Blame",
+        "category": "Gitland",
+        "icon": "$(person-filled)"
       }
     ],
     "viewsContainers": {
@@ -262,7 +273,12 @@
         {
           "command": "gitland.toggleFileBlame",
           "group": "navigation@90",
-          "when": "resourceScheme == file && config.gitland.blame.showEditorTitleButton"
+          "when": "resourceScheme == file && config.gitland.blame.showEditorTitleButton && !gitland.fileBlameOn"
+        },
+        {
+          "command": "gitland.toggleFileBlameOff",
+          "group": "navigation@90",
+          "when": "resourceScheme == file && config.gitland.blame.showEditorTitleButton && gitland.fileBlameOn"
         }
       ],
       "editor/context": [
@@ -308,6 +324,10 @@
         },
         {
           "command": "gitland.prs.checkout",
+          "when": "false"
+        },
+        {
+          "command": "gitland.toggleFileBlameOff",
           "when": "false"
         }
       ]
@@ -390,6 +410,41 @@
           "type": "boolean",
           "default": false,
           "description": "Create pull requests as draft by default."
+        },
+        "gitland.blame.toggleMode": {
+          "type": "string",
+          "enum": [
+            "file",
+            "window"
+          ],
+          "enumDescriptions": [
+            "File blame is toggled for the current file only",
+            "File blame is toggled for every file in the window"
+          ],
+          "default": "file",
+          "description": "How 'Toggle File Blame' behaves (same as GitLens' blame toggle mode)."
+        },
+        "gitland.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show GitLens-style blame CodeLens (most recent change and authors) above the file and its classes/functions."
+        },
+        "gitland.codeLens.scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "document",
+              "containers",
+              "blocks"
+            ]
+          },
+          "default": [
+            "document",
+            "containers",
+            "blocks"
+          ],
+          "description": "Where to show blame CodeLens: 'document' = top of file, 'containers' = classes/modules, 'blocks' = functions/methods."
         }
       }
     }

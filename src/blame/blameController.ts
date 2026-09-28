@@ -3,20 +3,35 @@ import { BlameCommit, Repo, UNCOMMITTED_SHA } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
 import { commandUri, config, formatDate, timeAgo, truncate } from '../util';
 
+export interface BlameResult {
+  repo: Repo;
+  lines: BlameCommit[];
+  me?: string;
+}
+
 interface BlameEntry {
   version: number;
-  promise: Promise<{ repo: Repo; lines: BlameCommit[]; me?: string } | undefined>;
+  promise: Promise<BlameResult | undefined>;
 }
 
 const MAX_LINES = 30000;
 
+/**
+ * GitLens-like blame: current-line annotation + status bar by default,
+ * full-file blame annotations on demand (per file or for the whole window).
+ */
 export class BlameController implements vscode.Disposable {
   private readonly cache = new Map<string, BlameEntry>();
   private readonly fileBlameOn = new Set<string>();
+  private fileBlameWindow = false;
   private readonly disposables: vscode.Disposable[] = [];
   private readonly statusBar: vscode.StatusBarItem;
+  private readonly changeEmitter = new vscode.EventEmitter<vscode.Uri | undefined>();
   private timer?: NodeJS.Timeout;
   private inlineEnabled: boolean;
+
+  /** Fires when blame information may have changed (save, commit, checkout…). */
+  readonly onDidChangeBlame = this.changeEmitter.event;
 
   private readonly inlineDecoration = vscode.window.createTextEditorDecorationType({
     after: {
@@ -31,8 +46,16 @@ export class BlameController implements vscode.Disposable {
     before: {
       color: new vscode.ThemeColor('editorCodeLens.foreground'),
       margin: '0 1.5em 0 0',
-      width: '32ch',
+      width: '48ch',
     },
+  });
+
+  /** Highlights the lines introduced by the commit of the current line (while file blame is on). */
+  private readonly sameCommitDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: 'rgba(255, 140, 40, 0.06)',
+    overviewRulerColor: 'rgba(255, 140, 40, 0.6)',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 
   constructor(private readonly repos: RepoManager) {
@@ -44,6 +67,8 @@ export class BlameController implements vscode.Disposable {
       this.statusBar,
       this.inlineDecoration,
       this.gutterDecoration,
+      this.sameCommitDecoration,
+      this.changeEmitter,
       vscode.window.onDidChangeTextEditorSelection((e) => this.schedule(e.textEditor)),
       vscode.window.onDidChangeActiveTextEditor((e) => {
         if (e) {
@@ -62,6 +87,7 @@ export class BlameController implements vscode.Disposable {
       }),
       vscode.workspace.onDidSaveTextDocument((doc) => {
         this.cache.delete(doc.uri.toString());
+        this.changeEmitter.fire(doc.uri);
         vscode.window.visibleTextEditors.filter((e) => e.document === doc).forEach((e) => this.refreshGutter(e));
       }),
       vscode.workspace.onDidCloseTextDocument((doc) => this.cache.delete(doc.uri.toString())),
@@ -73,6 +99,7 @@ export class BlameController implements vscode.Disposable {
       }),
       repos.onDidChangeRepo(() => {
         this.cache.clear();
+        this.changeEmitter.fire(undefined);
         this.schedule(vscode.window.activeTextEditor);
         vscode.window.visibleTextEditors.forEach((e) => this.refreshGutter(e));
       }),
@@ -91,21 +118,37 @@ export class BlameController implements vscode.Disposable {
     this.schedule(vscode.window.activeTextEditor);
   }
 
+  private isFileBlameOn(editor: vscode.TextEditor): boolean {
+    return this.fileBlameWindow || this.fileBlameOn.has(editor.document.uri.toString());
+  }
+
   toggleFileBlame(editor = vscode.window.activeTextEditor): void {
     if (!editor) {
       return;
     }
-    const key = editor.document.uri.toString();
-    if (this.fileBlameOn.has(key)) {
-      this.fileBlameOn.delete(key);
-      editor.setDecorations(this.gutterDecoration, []);
+    const windowMode = config<'file' | 'window'>('blame.toggleMode', 'file') === 'window';
+    const turnOn = !this.isFileBlameOn(editor);
+    if (windowMode) {
+      this.fileBlameWindow = turnOn;
+      this.fileBlameOn.clear();
     } else {
-      this.fileBlameOn.add(key);
-      this.refreshGutter(editor);
+      this.fileBlameWindow = false;
+      const key = editor.document.uri.toString();
+      turnOn ? this.fileBlameOn.add(key) : this.fileBlameOn.delete(key);
     }
+    vscode.commands.executeCommand('setContext', 'gitland.fileBlameOn', turnOn);
+    for (const e of windowMode ? vscode.window.visibleTextEditors : [editor]) {
+      if (turnOn) {
+        this.refreshGutter(e);
+      } else {
+        e.setDecorations(this.gutterDecoration, []);
+        e.setDecorations(this.sameCommitDecoration, []);
+      }
+    }
+    this.schedule(editor);
   }
 
-  private getBlame(doc: vscode.TextDocument): BlameEntry['promise'] {
+  getBlame(doc: vscode.TextDocument): Promise<BlameResult | undefined> {
     const key = doc.uri.toString();
     const cached = this.cache.get(key);
     if (cached && cached.version === doc.version) {
@@ -142,7 +185,7 @@ export class BlameController implements vscode.Disposable {
     this.timer = setTimeout(() => this.updateCurrentLine(editor), 120);
   }
 
-  private authorName(c: BlameCommit, me?: string): string {
+  authorName(c: BlameCommit, me?: string): string {
     if (c.sha === UNCOMMITTED_SHA) {
       return 'You';
     }
@@ -154,7 +197,8 @@ export class BlameController implements vscode.Disposable {
       return;
     }
     const showStatus = config('blame.statusBar.enabled', true);
-    if (!this.inlineEnabled && !showStatus) {
+    const fileBlame = this.isFileBlameOn(editor);
+    if (!this.inlineEnabled && !showStatus && !fileBlame) {
       this.statusBar.hide();
       return;
     }
@@ -177,7 +221,8 @@ export class BlameController implements vscode.Disposable {
     const uncommitted = commit.sha === UNCOMMITTED_SHA;
     const hover = this.hover(blame.repo, commit, author, doc.uri);
 
-    if (this.inlineEnabled && editor.selections.length === 1) {
+    // GitLens hides the current-line annotation while the file blame is shown.
+    if (this.inlineEnabled && !fileBlame && editor.selections.length === 1) {
       const text = uncommitted
         ? 'You • Uncommitted changes'
         : config('blame.inline.format', '${author}, ${ago} • ${message}')
@@ -194,6 +239,18 @@ export class BlameController implements vscode.Disposable {
       editor.setDecorations(this.inlineDecoration, []);
     }
 
+    if (fileBlame) {
+      const same: vscode.Range[] = [];
+      if (!uncommitted) {
+        blame.lines.forEach((c, i) => {
+          if (c.sha === commit.sha && i < doc.lineCount) {
+            same.push(new vscode.Range(i, 0, i, 0));
+          }
+        });
+      }
+      editor.setDecorations(this.sameCommitDecoration, same);
+    }
+
     if (showStatus) {
       this.statusBar.text = uncommitted ? '$(git-commit) You, uncommitted' : `$(git-commit) ${author}, ${timeAgo(commit.date)}`;
       this.statusBar.tooltip = hover;
@@ -206,7 +263,7 @@ export class BlameController implements vscode.Disposable {
     }
   }
 
-  private hover(repo: Repo, c: BlameCommit, author: string, uri: vscode.Uri): vscode.MarkdownString {
+  hover(repo: Repo, c: BlameCommit, author: string, uri: vscode.Uri): vscode.MarkdownString {
     const md = new vscode.MarkdownString(undefined, true);
     md.isTrusted = true;
     md.supportHtml = true;
@@ -227,7 +284,7 @@ export class BlameController implements vscode.Disposable {
   }
 
   private async refreshGutter(editor: vscode.TextEditor): Promise<void> {
-    if (!this.fileBlameOn.has(editor.document.uri.toString())) {
+    if (!this.isFileBlameOn(editor)) {
       return;
     }
     const blame = await this.getBlame(editor.document);
@@ -247,24 +304,29 @@ export class BlameController implements vscode.Disposable {
       const first = c.sha !== prev;
       prev = c.sha;
       const author = this.authorName(c, blame.me);
+      // Like GitLens: "message   ago" on the first line of each block, author in the hover.
       const text =
         c.sha === UNCOMMITTED_SHA
-          ? 'Uncommitted'
-          : `${formatDate(c.date).slice(0, 10)}  ${truncate(author, 18)}`;
+          ? pad('Uncommitted changes', 32) + ' ' + pad('now', 13)
+          : pad(truncate(c.summary, 32), 32) + ' ' + pad(truncate(shortAgo(c.date), 13), 13);
       const heat = c.sha === UNCOMMITTED_SHA ? 1 : max === min ? 1 : (c.date - min) / (max - min);
-      const color = heatColor(heat);
       decorations.push({
         range: new vscode.Range(i, 0, i, 0),
         hoverMessage: first ? this.hover(blame.repo, c, author, editor.document.uri) : undefined,
         renderOptions: {
           before: {
             contentText: first ? ' ' + text : ' ',
-            textDecoration: `none; border-left: 3px solid ${color}; padding-left: 6px; white-space: pre; box-sizing: border-box;${first ? ' border-top: 1px solid rgba(128,128,128,0.15);' : ''}`,
+            textDecoration: `none; border-left: 2px solid ${heatColor(heat)}; padding-left: 6px; white-space: pre; box-sizing: border-box;${
+              first && i > 0 ? ' border-top: 1px solid rgba(128,128,128,0.18);' : ''
+            }`,
           },
         },
       });
     }
     editor.setDecorations(this.gutterDecoration, decorations);
+    if (editor === vscode.window.activeTextEditor) {
+      this.schedule(editor);
+    }
   }
 
   dispose(): void {
@@ -273,8 +335,22 @@ export class BlameController implements vscode.Disposable {
   }
 }
 
+function pad(s: string, n: number): string {
+  return s.length >= n ? s : s + ' '.repeat(n - s.length);
+}
+
+function shortAgo(ms: number): string {
+  if (Date.now() - ms < 30000) {
+    return 'just now';
+  }
+  return timeAgo(ms).replace(' ago', '').replace(/ (second|minute|hour|day|week|month|year)s?/, (_, u: string) => {
+    const unit: Record<string, string> = { second: 's', minute: 'min', hour: 'h', day: 'd', week: 'w', month: 'mo', year: 'y' };
+    return unit[u];
+  }) + ' ago';
+}
+
 function heatColor(t: number): string {
-  // old = cool blue, recent = warm orange
+  // old = cool blue, recent = warm orange (same idea as the GitLens heatmap)
   const cold = [70, 130, 200];
   const hot = [255, 140, 40];
   const c = cold.map((v, i) => Math.round(v + (hot[i] - v) * t));

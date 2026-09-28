@@ -11,7 +11,7 @@ runTests({
   extensionDevelopmentPath: path.resolve(__dirname, '..'),
   extensionTestsPath: path.resolve(__dirname, 'suite.js'),
   launchArgs: [workspace, '--disable-extensions', '--user-data-dir', path.resolve(__dirname, '../.vscode-test/user-data')],
-  extensionTestsEnv: { GITLAND_TEST_WORKSPACE: workspace },
+  extensionTestsEnv: { GITLAND_TEST_WORKSPACE: workspace, GITLAND_TEST_PYFILE: process.env.GITLAND_TEST_PYFILE },
 }).catch((e) => {
   console.error('Tests failed', e);
   process.exit(1);
