@@ -7,7 +7,7 @@ import { startWork } from './commands/work';
 import { RepoManager } from './git/repoManager';
 import { GraphPanel, openCommitFileDiff } from './graph/graphPanel';
 import { getProvider } from './providers';
-import { AZURE_DEVOPS_SCOPES, AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey } from './providers/azureDevOps';
+import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps } from './providers/azureDevOps';
 import { GITHUB_SCOPES } from './providers/github';
 import { initLog, log } from './log';
 import { errorMessage } from './util';
@@ -154,10 +154,12 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshViews();
     }),
     command('gitland.switchAzureAccount', async () => {
-      const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, {
-        clearSessionPreference: true,
-        createIfNone: true,
-      });
+      const org = await activeAzureOrg();
+      if (!org) {
+        vscode.window.showWarningMessage('Gitland: open a repository hosted on Azure DevOps first.');
+        return;
+      }
+      const session = await signInToAzureDevOps(org, true);
       vscode.window.showInformationMessage(`Gitland: Azure DevOps now uses ${session.account.label}.`);
       refreshViews();
     }),

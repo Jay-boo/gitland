@@ -8,6 +8,56 @@ export const AZURE_DEVOPS_SCOPES = ['499b84ac-1321-427f-aa17-267ca6975798/.defau
 export const PAT_SECRET_KEY = 'gitland.azureDevOps.pat';
 /** Tokens are stored per organization so work and personal orgs can use different ones. */
 export const patSecretKey = (org: string) => `${PAT_SECRET_KEY}:${org.toLowerCase()}`;
+
+const tenants = new Map<string, Promise<string | undefined>>();
+
+/**
+ * Entra ID tenant that owns an Azure DevOps organization. Azure DevOps reports it in the
+ * `x-vss-resourcetenant` header of any anonymous request, so no sign-in is needed to find it.
+ */
+export function organizationTenant(org: string): Promise<string | undefined> {
+  const key = org.toLowerCase();
+  let tenant = tenants.get(key);
+  if (!tenant) {
+    tenant = fetch(`https://dev.azure.com/${encodeURIComponent(org)}/_apis/connectionData`, { redirect: 'manual' })
+      .then((res) => {
+        const id = res.headers.get('x-vss-resourcetenant') ?? undefined;
+        // All zeros = organization backed by personal Microsoft accounts (no tenant).
+        return id && !/^[0-]+$/.test(id) ? id : undefined;
+      })
+      .catch((e) => {
+        log.warn(`Could not discover the tenant of Azure DevOps organization '${org}': ${e}`);
+        tenants.delete(key);
+        return undefined;
+      });
+    tenants.set(key, tenant);
+  }
+  return tenant;
+}
+
+/**
+ * Scopes for a token valid in the organization's tenant. Pinning the tenant makes VS Code pick
+ * the account that belongs to it (e.g. the work account) instead of any other signed-in account.
+ */
+export async function azureDevOpsScopes(org: string): Promise<string[]> {
+  const tenant = await organizationTenant(org);
+  return tenant ? [...AZURE_DEVOPS_SCOPES, `VSCODE_TENANT:${tenant}`] : AZURE_DEVOPS_SCOPES;
+}
+
+/** Interactive Microsoft sign-in, with a notification because the Windows account dialog often opens behind VS Code. */
+export async function signInToAzureDevOps(org: string, chooseAccount: boolean): Promise<vscode.AuthenticationSession> {
+  const scopes = await azureDevOpsScopes(org);
+  const tenant = scopes.find((s) => s.startsWith('VSCODE_TENANT:'))?.slice('VSCODE_TENANT:'.length);
+  log.info(`Azure DevOps (${org}): signing in${tenant ? ` for tenant ${tenant}` : ''}…`);
+  return vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Signing in to Azure DevOps (${org})… If nothing shows up, look for a Microsoft sign-in window behind VS Code (Alt+Tab).`,
+    },
+    () =>
+      vscode.authentication.getSession('microsoft', scopes, chooseAccount ? { clearSessionPreference: true, createIfNone: true } : { createIfNone: true }),
+  );
+}
 const API = 'api-version=7.1';
 const FIELDS = ['System.Id', 'System.Title', 'System.State', 'System.WorkItemType', 'System.AssignedTo'];
 
@@ -86,7 +136,7 @@ export class AzureDevOpsProvider implements Provider {
     if ((await this.secrets.get(patSecretKey(this.org))) ?? (await this.secrets.get(PAT_SECRET_KEY))) {
       return true;
     }
-    const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, { silent: true });
+    const session = await vscode.authentication.getSession('microsoft', await azureDevOpsScopes(this.org), { silent: true });
     return !!session;
   }
 
@@ -95,7 +145,9 @@ export class AzureDevOpsProvider implements Provider {
     if (pat) {
       return 'Basic ' + Buffer.from(':' + pat).toString('base64');
     }
-    const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, { createIfNone: true });
+    const session =
+      (await vscode.authentication.getSession('microsoft', await azureDevOpsScopes(this.org), { silent: true })) ??
+      (await signInToAzureDevOps(this.org, false));
     log.info(`Azure DevOps (${this.org}): using Microsoft account ${session.account.label}`);
     return 'Bearer ' + session.accessToken;
   }
