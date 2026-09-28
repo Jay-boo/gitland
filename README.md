@@ -6,7 +6,7 @@ A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHu
 
 | | |
 |---|---|
-| **Git Graph** | `Ctrl+Alt+G` or the button in the Source Control title bar. Colored lanes, branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. |
+| **Commit Graph** | **Bottom panel → Gitland → Commit Graph** (like GitLens), `Ctrl+Alt+G`, or the button in the Source Control title bar. Author pictures on each commit (Azure DevOps profile photo, GitHub avatar, Gravatar, else a generated default like GitLens). *Open Commit Graph in Editor* for a full tab. Colored lanes, branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. |
 | **Inline blame** | Author, age and message at the end of the current line, plus in the status bar. Hover it for links: show in graph, diff, file history, open on remote, copy SHA. |
 | **CodeLens** | Above the file and each class/function: *Author, 3 days ago* (click → graph) and *N authors (X and others)* (click → file blame). |
 | **File blame** (on demand) | `Ctrl+Alt+B` or the editor title button. GitLens-style annotations (message + age, heat bar: orange = recent, blue = old); lines from the same commit as the cursor are highlighted. `gitland.blame.toggleMode`: `file` or `window`. |
@@ -16,7 +16,7 @@ A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHu
 
 ## Authentication
 
-- **Azure DevOps**: uses your Microsoft work account through VS Code's built-in sign-in (you'll be prompted once).
+- **Azure DevOps**: uses your Microsoft work account through VS Code's built-in sign-in, **in the browser** by default (`gitland.azureDevOps.browserSignIn`): the Windows account dialog is often blocked on laptops the organization doesn't manage. The token is requested for the organization's own tenant, so the right account is used when several are signed in.
   If your organization blocks that, run **Gitland: Set Azure DevOps Personal Access Token** (scopes: *Work Items R/W*, *Code R/W*).
 - **GitHub**: VS Code's built-in GitHub sign-in.
 
@@ -30,6 +30,7 @@ Tokens are stored in VS Code's secret storage.
 - `gitland.azureDevOps.activateOnStartWork`: move the work item to *Active* when you start it
 - `gitland.blame.inline.format`: `${author}, ${ago} • ${message}`
 - `gitland.codeLens.enabled`, `gitland.codeLens.scopes` (`document`, `containers`, `blocks`)
+- `gitland.graph.location` (`panel` | `editor`), `gitland.graph.avatars`, `gitland.blame.avatars`, `gitland.avatars.defaultStyle`
 - `gitland.graph.maxCommits`, `gitland.pr.draftByDefault`
 
 ## Develop

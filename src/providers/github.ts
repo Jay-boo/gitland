@@ -81,6 +81,14 @@ export class GitHubProvider implements Provider {
     return (await res.json()) as T;
   }
 
+  async avatarFor(_email: string, sha?: string): Promise<string | undefined> {
+    if (!sha) {
+      return undefined;
+    }
+    const c = await this.request<{ author?: { avatar_url?: string } | null }>('GET', `/repos/${this.owner}/${this.repo}/commits/${sha}`);
+    return c.author?.avatar_url ? `${c.author.avatar_url}${c.author.avatar_url.includes('?') ? '&' : '?'}s=64` : undefined;
+  }
+
   private me(): Promise<string> {
     this.login ??= this.request<{ login: string }>('GET', '/user').then((u) => u.login);
     this.login.catch(() => (this.login = undefined));

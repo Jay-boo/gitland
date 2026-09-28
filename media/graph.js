@@ -2,7 +2,11 @@
 (function () {
   // @ts-ignore
   const vscode = acquireVsCodeApi();
-  const LANE = 16;
+  // Report webview errors to the "Gitland" output channel.
+  window.addEventListener('error', (e) => vscode.postMessage({ type: 'log', level: 'error', message: `${e.message} (${e.filename}:${e.lineno})` }));
+  window.addEventListener('unhandledrejection', (e) => vscode.postMessage({ type: 'log', level: 'error', message: String(e.reason) }));
+  let LANE = 16;
+  const AVATAR = 20;
   const COLORS = ['#4dabf7', '#f76707', '#37b24d', '#e64980', '#fab005', '#7950f2', '#15aabf', '#f03e3e', '#82c91e', '#be4bdb'];
   const WORKTREE = 'WORKTREE';
 
@@ -43,7 +47,11 @@
       }
     }
     const x = cx(g.lane), y = h / 2, c = color(g.color);
-    if (commit.sha === WORKTREE) {
+    if (avatarNode(commit)) {
+      // Ring in the lane color; the author picture is an <img> laid over it (see avatarImg).
+      const ring = commit.sha === data.head ? 3 : 2;
+      s += `<circle cx="${x}" cy="${y}" r="${AVATAR / 2 + ring / 2}" fill="var(--vscode-editor-background)" stroke="${c}" stroke-width="${ring}"/>`;
+    } else if (commit.sha === WORKTREE) {
       s += `<circle cx="${x}" cy="${y}" r="5" fill="var(--vscode-editor-background)" stroke="${c}" stroke-width="2" stroke-dasharray="2 2"/>`;
     } else if (commit.sha === data.head) {
       s += `<circle cx="${x}" cy="${y}" r="6.5" fill="var(--vscode-editor-background)" stroke="${c}" stroke-width="2.5"/>`;
@@ -54,6 +62,36 @@
       s += `<circle cx="${x}" cy="${y}" r="4.5" fill="${c}" stroke="var(--vscode-editor-background)" stroke-width="1.5"/>`;
     }
     return s + '</svg>';
+  }
+
+  /** Commits drawn with the author picture (merges stay small dots, like GitLens). */
+  function avatarNode(commit) {
+    return data.showAvatars && commit.sha !== WORKTREE && commit.parents.length <= 1 && !!commit.email;
+  }
+
+  function avatarUrl(email) {
+    return (data.avatars || {})[String(email).toLowerCase()];
+  }
+
+  function initials(name) {
+    const parts = String(name || '?').replace(/[^\p{L}\p{N} ._-]/gu, '').split(/[ ._-]+/).filter(Boolean);
+    return ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  }
+
+  /** <img> for an author; falls back to initials when the picture cannot be loaded (offline…). */
+  function avatarImg(email, name, size, cls, style) {
+    const url = avatarUrl(email);
+    const common = `class="avatar ${cls}" data-email="${esc(String(email).toLowerCase())}" data-initials="${esc(initials(name))}" style="width:${size}px;height:${size}px;${style || ''}"`;
+    return url
+      ? `<img ${common} src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+      : `<span ${common}>${esc(initials(name))}</span>`;
+  }
+
+  function graphAvatar(commit, h) {
+    if (!avatarNode(commit)) return '';
+    const left = LANE / 2 + commit.graph.lane * LANE + 4 - AVATAR / 2;
+    const top = h / 2 - AVATAR / 2;
+    return avatarImg(commit.email, commit.author, AVATAR, 'node', `left:${left}px;top:${top}px;--c:${color(commit.graph.color)}`);
   }
 
   /** Merge "main" + "origin/main" into one badge when they point at the same commit. */
@@ -86,6 +124,7 @@
 
   function render() {
     if (!data) return;
+    LANE = data.showAvatars ? 22 : 16;
     const h = rowH();
     document.documentElement.style.setProperty('--graph-w', `${Math.min((data.width + 1) * LANE + 12, 420)}px`);
     $('repoName').textContent = data.repoName;
@@ -94,9 +133,9 @@
     const html = data.commits
       .map(
         (c, i) => `<div class="row commit${c.sha === WORKTREE ? ' worktree' : ''}${c.sha === selected ? ' selected' : ''}" data-i="${i}" data-sha="${c.sha}">
-  <div class="c-graph">${svgFor(c, h)}</div>
+  <div class="c-graph">${svgFor(c, h)}${graphAvatar(c, h)}</div>
   <div class="c-msg">${refBadges(c)}<span class="subject" title="${esc(c.subject)}">${esc(c.subject)}</span></div>
-  <div class="c-author" title="${esc(c.email)}">${esc(c.author)}</div>
+  <div class="c-author" title="${esc(c.email)}">${c.sha === WORKTREE || !data.showAvatars ? '' : avatarImg(c.email, c.author, 16, 'small')}<span>${esc(c.author)}</span></div>
   <div class="c-date">${esc(c.date)}</div>
   <div class="c-sha">${esc(c.short)}</div>
 </div>`,
@@ -105,6 +144,7 @@
     rowsEl.innerHTML = html;
     $('more').innerHTML = data.hasMore ? '<button id="btnMore">Load more commits…</button>' : `<span class="muted">${data.commits.length} commits</span>`;
     applySearch(false);
+    vscode.postMessage({ type: 'log', level: 'info', message: `graph rendered ${data.commits.length} commits, ${data.width} lanes, list height ${listEl.clientHeight}px` });
   }
 
   // ---------- details ----------
@@ -140,7 +180,7 @@
       ? ''
       : `<div class="meta">
     <span class="k">Commit</span><span><code>${esc(d.sha)}</code> <span class="link" data-act="copySha">copy</span></span>
-    <span class="k">Author</span><span>${esc(d.author)} &lt;${esc(d.email)}&gt;</span>
+    <span class="k">Author</span><span class="who">${data.showAvatars ? avatarImg(d.email, d.author, 20, 'small') : ''}${esc(d.author)} &lt;${esc(d.email)}&gt;</span>
     <span class="k">Date</span><span>${esc(d.authorDate)}</span>
     ${d.committer && d.committer !== d.author ? `<span class="k">Committer</span><span>${esc(d.committer)} · ${esc(d.commitDate)}</span>` : ''}
     <span class="k">Parents</span><span>${parents || '<span class="muted">none</span>'}</span>
@@ -395,6 +435,20 @@
         listEl.scrollTop = scroll;
         if (selected) vscode.postMessage({ type: 'select', sha: selected });
       }
+    } else if (m.type === 'avatars') {
+      data && (data.avatars = { ...(data.avatars || {}), ...m.avatars });
+      for (const [email, url] of Object.entries(m.avatars)) {
+        document.querySelectorAll(`.avatar[data-email="${CSS.escape(email)}"]`).forEach((el) => {
+          if (el instanceof HTMLImageElement) {
+            el.src = url;
+          } else {
+            const img = document.createElement('img');
+            for (const a of el.attributes) img.setAttribute(a.name, a.value);
+            img.src = url;
+            el.replaceWith(img);
+          }
+        });
+      }
     } else if (m.type === 'details') {
       showDetails(m.sha, m.details);
     } else if (m.type === 'error') {
@@ -402,6 +456,20 @@
       $('error').textContent = m.message;
     }
   });
+
+  // Picture failed to load (offline, blocked…): show the author's initials instead.
+  document.addEventListener(
+    'error',
+    (e) => {
+      const img = e.target;
+      if (!(img instanceof HTMLImageElement) || !img.classList.contains('avatar')) return;
+      const span = document.createElement('span');
+      for (const a of img.attributes) if (a.name !== 'src') span.setAttribute(a.name, a.value);
+      span.textContent = img.dataset.initials || '?';
+      img.replaceWith(span);
+    },
+    true,
+  );
 
   const saved = vscode.getState();
   if (saved && saved.selected) selected = saved.selected;

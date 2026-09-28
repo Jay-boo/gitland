@@ -2,81 +2,190 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Commit, Repo, WORKTREE_SHA } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
+import { AvatarService } from '../avatars';
 import { getProvider } from '../providers';
+import { log } from '../log';
 import { config, errorMessage, formatDate } from '../util';
 import { computeGraph } from './layout';
 
 type WebviewMessage =
   | { type: 'ready' }
+  | { type: 'log'; level: 'info' | 'error'; message: string }
   | { type: 'refresh' }
   | { type: 'loadMore' }
   | { type: 'select'; sha: string }
   | { type: 'openDiff'; sha: string; path: string; oldPath?: string; status: string }
   | { type: 'action'; action: string; sha?: string; ref?: string; refType?: string };
 
-export class GraphPanel implements vscode.Disposable {
-  private static current?: GraphPanel;
+/** Where a graph is rendered: the bottom panel view or an editor tab. */
+interface GraphHost {
+  readonly webview: vscode.Webview;
+  readonly visible: boolean;
+  setTitle(title: string): void;
+  readonly onDidBecomeVisible: vscode.Event<void>;
+  readonly onDidDispose: vscode.Event<void>;
+}
 
-  private readonly panel: vscode.WebviewPanel;
+/** Opens the graph in the bottom panel ("Commit Graph", like GitLens) or in an editor tab. */
+export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposable {
+  static readonly viewId = 'gitland.graphView';
+  private view?: GraphController;
+  private editor?: { panel: vscode.WebviewPanel; controller: GraphController };
+  private pending?: { repo: Repo; sha?: string };
+
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly repos: RepoManager,
+    private readonly avatars: AvatarService,
+  ) {}
+
+  async show(repo: Repo, sha?: string, where?: 'panel' | 'editor'): Promise<void> {
+    where ??= config<'panel' | 'editor'>('graph.location', 'panel');
+    if (where === 'editor') {
+      this.showInEditor(repo, sha);
+      return;
+    }
+    if (this.view) {
+      this.view.setRepo(repo, sha);
+    } else {
+      this.pending = { repo, sha };
+    }
+    await vscode.commands.executeCommand(`${GraphManager.viewId}.focus`);
+  }
+
+  private showInEditor(repo: Repo, sha?: string): void {
+    if (this.editor) {
+      this.editor.panel.reveal(undefined, false);
+      this.editor.controller.setRepo(repo, sha);
+      return;
+    }
+    const media = vscode.Uri.joinPath(this.context.extensionUri, 'media');
+    const panel = vscode.window.createWebviewPanel('gitland.graph', 'Commit Graph', vscode.ViewColumn.Active, {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [media],
+    });
+    panel.iconPath = vscode.Uri.joinPath(media, 'activity.svg');
+    const visible = new vscode.EventEmitter<void>();
+    panel.onDidChangeViewState((e) => e.webviewPanel.visible && visible.fire());
+    const host: GraphHost = {
+      webview: panel.webview,
+      get visible() {
+        return panel.visible;
+      },
+      setTitle: (t) => (panel.title = t),
+      onDidBecomeVisible: visible.event,
+      onDidDispose: panel.onDidDispose,
+    };
+    const controller = new GraphController(this.context, this.repos, this.avatars, host, repo, sha);
+    this.editor = { panel, controller };
+    panel.onDidDispose(() => {
+      controller.dispose();
+      visible.dispose();
+      this.editor = undefined;
+    });
+  }
+
+  async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
+    const media = vscode.Uri.joinPath(this.context.extensionUri, 'media');
+    view.webview.options = { enableScripts: true, localResourceRoots: [media] };
+    const visible = new vscode.EventEmitter<void>();
+    view.onDidChangeVisibility(() => view.visible && visible.fire());
+    const host: GraphHost = {
+      webview: view.webview,
+      get visible() {
+        return view.visible;
+      },
+      setTitle: (t) => (view.description = t),
+      onDidBecomeVisible: visible.event,
+      onDidDispose: view.onDidDispose,
+    };
+    const pending = this.pending;
+    this.pending = undefined;
+    const repo = pending?.repo ?? (await this.repos.activeRepo(false));
+    this.view = new GraphController(this.context, this.repos, this.avatars, host, repo, pending?.sha);
+    view.onDidDispose(() => {
+      this.view?.dispose();
+      visible.dispose();
+      this.view = undefined;
+    });
+  }
+
+  dispose(): void {
+    this.view?.dispose();
+    this.editor?.panel.dispose();
+  }
+}
+
+export class GraphController implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
-  private repo: Repo;
+  private repo?: Repo;
   private max: number;
   private pendingSelect?: string;
   private commits: Commit[] = [];
 
-  static show(context: vscode.ExtensionContext, repos: RepoManager, repo: Repo, selectSha?: string): void {
-    if (GraphPanel.current) {
-      const p = GraphPanel.current;
-      p.panel.reveal(undefined, false);
-      if (p.repo.root !== repo.root) {
-        p.repo = repo;
-        p.max = config('graph.maxCommits', 400);
-      }
-      p.pendingSelect = selectSha;
-      p.load();
-      return;
-    }
-    GraphPanel.current = new GraphPanel(context, repos, repo, selectSha);
-  }
-
-  private constructor(
+  constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly repos: RepoManager,
-    repo: Repo,
+    private readonly avatars: AvatarService,
+    private readonly host: GraphHost,
+    repo: Repo | undefined,
     selectSha?: string,
   ) {
     this.repo = repo;
     this.max = config('graph.maxCommits', 400);
     this.pendingSelect = selectSha;
     const media = vscode.Uri.joinPath(context.extensionUri, 'media');
-    this.panel = vscode.window.createWebviewPanel('gitland.graph', 'Git Graph', vscode.ViewColumn.Active, {
-      enableScripts: true,
-      retainContextWhenHidden: true,
-      localResourceRoots: [media],
-    });
-    this.panel.iconPath = vscode.Uri.joinPath(media, 'activity.svg');
-    this.panel.webview.html = this.html(media);
+    host.webview.html = this.html(media);
     this.disposables.push(
-      this.panel.onDidDispose(() => this.dispose()),
-      this.panel.webview.onDidReceiveMessage((m: WebviewMessage) => this.onMessage(m)),
+      host.webview.onDidReceiveMessage((m: WebviewMessage) => this.onMessage(m)),
       repos.onDidChangeRepo((r) => {
-        if (r.root === this.repo.root && this.panel.visible) {
+        if (r.root === this.repo?.root && this.host.visible) {
           this.load();
         }
       }),
-      this.panel.onDidChangeViewState((e) => {
-        if (e.webviewPanel.visible) {
-          this.load();
+      host.onDidBecomeVisible(() => this.load()),
+      avatars.onDidResolve(({ email, url }) => {
+        if (this.commits.some((c) => c.email.toLowerCase() === email)) {
+          this.post({ type: 'avatars', avatars: { [email]: url } });
+        }
+      }),
+      // Follow the repository of the active editor when several are open.
+      vscode.window.onDidChangeActiveTextEditor(async (e) => {
+        if (!e || e.document.uri.scheme !== 'file') {
+          return;
+        }
+        const r = await this.repos.getRepo(e.document.uri);
+        if (r && r.root !== this.repo?.root) {
+          this.setRepo(r);
         }
       }),
     );
   }
 
+  setRepo(repo: Repo, selectSha?: string): void {
+    if (repo.root !== this.repo?.root) {
+      this.repo = repo;
+      this.max = config('graph.maxCommits', 400);
+    }
+    this.pendingSelect = selectSha;
+    this.load();
+  }
+
   private post(message: unknown): Thenable<boolean> {
-    return this.panel.webview.postMessage(message);
+    return this.host.webview.postMessage(message);
   }
 
   private async load(): Promise<void> {
+    if (!this.repo) {
+      this.repo = await this.repos.activeRepo(false);
+      if (!this.repo) {
+        await this.post({ type: 'error', message: 'No git repository found in this workspace.' });
+        return;
+      }
+    }
+    const repo = this.repo;
+    log.info(`Graph: loading ${repo.root}`);
     try {
       const [commits, head, branch, dirty, provider] = await Promise.all([
         this.repo.log(this.max + 1),
@@ -100,7 +209,8 @@ export class GraphPanel implements vscode.Disposable {
       }
       this.commits = list;
       const graph = computeGraph(list);
-      this.panel.title = `Git Graph · ${path.basename(this.repo.root)}`;
+      this.host.setTitle(path.basename(repo.root));
+      const avatars = this.avatarMap(repo, list);
       await this.post({
         type: 'data',
         repoName: path.basename(this.repo.root),
@@ -121,9 +231,12 @@ export class GraphPanel implements vscode.Disposable {
           graph: graph.rows[i],
         })),
         select: this.pendingSelect,
+        avatars,
+        showAvatars: config('graph.avatars', true),
       });
       this.pendingSelect = undefined;
     } catch (e) {
+      log.error('Graph: loading failed', e);
       await this.post({ type: 'error', message: errorMessage(e) });
     }
   }
@@ -131,6 +244,9 @@ export class GraphPanel implements vscode.Disposable {
   private async onMessage(m: WebviewMessage): Promise<void> {
     try {
       switch (m.type) {
+        case 'log':
+          m.level === 'error' ? log.error(`Graph webview: ${m.message}`) : log.info(`Graph webview: ${m.message}`);
+          break;
         case 'ready':
         case 'refresh':
           await this.load();
@@ -154,13 +270,20 @@ export class GraphPanel implements vscode.Disposable {
     }
   }
 
+  private get currentRepo(): Repo {
+    if (!this.repo) {
+      throw new Error('No git repository is open in the graph.');
+    }
+    return this.repo;
+  }
+
   private async sendDetails(sha: string): Promise<void> {
     if (sha === WORKTREE_SHA) {
-      const files = await this.repo.workingTreeChanges();
+      const files = await this.currentRepo.workingTreeChanges();
       await this.post({ type: 'details', sha, details: { sha, message: 'Uncommitted changes', files, parents: [] } });
       return;
     }
-    const d = await this.repo.commitDetails(sha);
+    const d = await this.currentRepo.commitDetails(sha);
     const commit = this.commits.find((c) => c.sha === sha);
     await this.post({
       type: 'details',
@@ -175,11 +298,11 @@ export class GraphPanel implements vscode.Disposable {
   }
 
   async openDiff(sha: string, relPath: string, oldPath: string | undefined, status: string): Promise<void> {
-    await openCommitFileDiff(this.repos, this.repo, sha, relPath, oldPath, status);
+    await openCommitFileDiff(this.repos, this.currentRepo, sha, relPath, oldPath, status);
   }
 
   private async runAction(action: string, sha?: string, ref?: string, refType?: string): Promise<void> {
-    const repo = this.repo;
+    const repo = this.currentRepo;
     const short = sha?.slice(0, 7);
     const confirm = async (msg: string, button: string) =>
       (await vscode.window.showWarningMessage(msg, { modal: true }, button)) === button;
@@ -316,7 +439,7 @@ export class GraphPanel implements vscode.Disposable {
   }
 
   private html(media: vscode.Uri): string {
-    const webview = this.panel.webview;
+    const webview = this.host.webview;
     const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
     const css = webview.asWebviewUri(vscode.Uri.joinPath(media, 'graph.css'));
     const js = webview.asWebviewUri(vscode.Uri.joinPath(media, 'graph.js'));
@@ -324,7 +447,7 @@ export class GraphPanel implements vscode.Disposable {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${css}">
 <title>Git Graph</title>
@@ -354,10 +477,24 @@ export class GraphPanel implements vscode.Disposable {
 </html>`;
   }
 
+  /** Immediate avatar URLs per email; better pictures are looked up in the background. */
+  private avatarMap(repo: Repo, commits: Commit[]): Record<string, string> {
+    const map: Record<string, string> = {};
+    if (!config('graph.avatars', true)) {
+      return map;
+    }
+    for (const c of commits) {
+      const email = c.email.toLowerCase();
+      if (email && !map[email]) {
+        map[email] = this.avatars.urlFor(email);
+        this.avatars.resolve(repo, email, c.sha);
+      }
+    }
+    return map;
+  }
+
   dispose(): void {
-    GraphPanel.current = undefined;
     this.disposables.forEach((d) => d.dispose());
-    this.panel.dispose();
   }
 }
 

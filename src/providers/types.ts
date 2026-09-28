@@ -45,6 +45,8 @@ export interface Provider {
   activateTicket?(id: string): Promise<void>;
   listPullRequests(): Promise<PullRequest[]>;
   createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest>;
+  /** Profile picture of a commit author (URL or data URI), when the host has a real one. */
+  avatarFor?(email: string, sha?: string): Promise<string | undefined>;
   commitUrl(sha: string): string;
   branchUrl(branch: string): string;
 }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { BlameCommit, Repo, UNCOMMITTED_SHA } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
+import { AvatarService } from '../avatars';
 import { commandUri, config, formatDate, timeAgo, truncate } from '../util';
 
 export interface BlameResult {
@@ -58,7 +59,7 @@ export class BlameController implements vscode.Disposable {
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 
-  constructor(private readonly repos: RepoManager) {
+  constructor(private readonly repos: RepoManager, private readonly avatars: AvatarService) {
     this.inlineEnabled = config('blame.inline.enabled', true);
     this.statusBar = vscode.window.createStatusBarItem('gitland.blame', vscode.StatusBarAlignment.Left, 50);
     this.statusBar.name = 'Gitland Blame';
@@ -271,7 +272,14 @@ export class BlameController implements vscode.Disposable {
       md.appendMarkdown('$(circle-large-outline) **Uncommitted changes**');
       return md;
     }
-    md.appendMarkdown(`$(account) **${escapeMd(author)}** ${c.email ? `<${escapeMd(c.email)}>` : ''}, `);
+    const avatar = c.email && config('blame.avatars', true) ? this.avatars.urlFor(c.email) : undefined;
+    if (avatar) {
+      this.avatars.resolve(repo, c.email, c.sha);
+      md.appendMarkdown(`<img src="${avatar}" width="18" height="18" style="border-radius:50%"/>&nbsp;`);
+    } else {
+      md.appendMarkdown('$(account) ');
+    }
+    md.appendMarkdown(`**${escapeMd(author)}** ${c.email ? `<${escapeMd(c.email)}>` : ''}, `);
     md.appendMarkdown(`${timeAgo(c.date)} _(${formatDate(c.date)})_\n\n`);
     md.appendMarkdown(`${escapeMd(c.summary)}\n\n---\n\n`);
     const args = { repoRoot: repo.root, sha: c.sha, path: c.filename, previousPath: c.previous?.path, uri: uri.toString() };

@@ -29,7 +29,13 @@ exports.run = async function () {
     const missing = declared.filter((c) => !all.includes(c));
     assert.deepStrictEqual(missing, []);
   });
-  const file = vscode.Uri.file(path.join(ws, 'azure-pipelines.yml'));
+  const cp = require('child_process');
+  // A tracked text file with some history, e.g. the most recently changed one.
+  const tracked =
+    cp.execSync("git log -1 --diff-filter=AM --name-only --format= -- '*.py' '*.ts' '*.yml' '*.md' '*.json'", { cwd: ws }).toString().trim().split('\n')[0] ||
+    cp.execSync('git ls-files', { cwd: ws }).toString().split('\n')[0];
+  console.log(`    using ${tracked}`);
+  const file = vscode.Uri.file(path.join(ws, tracked));
   await step('toggle file blame on a tracked file', async () => {
     const doc = await vscode.workspace.openTextDocument(file);
     const editor = await vscode.window.showTextDocument(doc);
@@ -37,21 +43,28 @@ exports.run = async function () {
     await vscode.commands.executeCommand('gitland.toggleFileBlame');
     await sleep(1500);
   });
-  await step('show git graph', async () => {
+  await step('show commit graph in the bottom panel (default)', async () => {
     await vscode.commands.executeCommand('gitland.showGraph');
+    await sleep(3000);
+    if (process.env.GITLAND_TEST_HOLD) {
+      await sleep(Number(process.env.GITLAND_TEST_HOLD));
+    }
+  });
+  await step('open commit graph in an editor tab', async () => {
+    await vscode.commands.executeCommand('gitland.showGraphInEditor');
     await sleep(2500);
     const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
-    assert.ok(tab && /Git Graph/.test(tab.label), `active tab is ${tab && tab.label}`);
+    assert.ok(tab && /^Commit Graph|TRESO|Infra|gitland/.test(tab.label) && tab.input instanceof vscode.TabInputWebview, `active tab is ${tab && tab.label}`);
   });
   await step('open commit diff from blame args', async () => {
-    const out = require('child_process').execSync('git log -1 --format=%H -- azure-pipelines.yml', { cwd: ws }).toString().trim();
-    await vscode.commands.executeCommand('gitland.openCommitFileDiff', { repoRoot: ws, sha: out, path: 'azure-pipelines.yml', previousPath: 'azure-pipelines.yml' });
+    const out = cp.execSync(`git log -1 --format=%H -- "${tracked}"`, { cwd: ws }).toString().trim();
+    await vscode.commands.executeCommand('gitland.openCommitFileDiff', { repoRoot: ws, sha: out, path: tracked, previousPath: tracked });
     await sleep(1500);
     const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
     assert.ok(tab && tab.input instanceof vscode.TabInputTextDiff, `active tab is ${tab && tab.label}`);
   });
   await step('GitLens-style CodeLens: recent change + authors', async () => {
-    const pyFile = vscode.Uri.file(path.join(ws, process.env.GITLAND_TEST_PYFILE || 'azure-pipelines.yml'));
+    const pyFile = vscode.Uri.file(path.join(ws, process.env.GITLAND_TEST_PYFILE || tracked));
     const doc = await vscode.workspace.openTextDocument(pyFile);
     await vscode.window.showTextDocument(doc);
     await sleep(4000); // let language servers index symbols

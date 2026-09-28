@@ -108,7 +108,27 @@ button.primary:hover { background: var(--vscode-button-hoverBackground); }
 .commit.dim { opacity: 0.45; }
 .commit.worktree .subject { font-style: italic; color: var(--muted); }
 
-.c-graph { height: 100%; overflow: hidden; }
+.c-graph { height: 100%; overflow: hidden; position: relative; }
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: var(--c, var(--vscode-badge-background));
+  user-select: none;
+}
+.avatar.node { position: absolute; }
+.avatar.small { margin-right: 6px; vertical-align: middle; }
+.c-author { display: flex; align-items: center; }
+.c-author span:last-child { overflow: hidden; text-overflow: ellipsis; }
+#details .who { display: inline-flex; align-items: center; }
 .c-graph svg { display: block; height: var(--row-h); overflow: visible; }
 .c-msg { display: flex; align-items: center; gap: 6px; padding-right: 12px; }
 .subject { overflow: hidden; text-overflow: ellipsis; }
@@ -202,4 +222,25 @@ button.primary:hover { background: var(--vscode-button-hoverBackground); }
   .c-author, .c-date { display: none; }
   #details { grid-template-columns: 1fr; }
   #details .files { border-left: none; border-top: 1px solid var(--border); }
+}
+
+/* Short views (bottom panel): commit details go to the right of the list instead of below it. */
+@media (max-height: 520px) and (min-width: 801px) {
+  #main { flex-direction: row; }
+  #list { min-width: 0; }
+  #details {
+    height: auto !important;
+    width: 42%;
+    min-width: 320px;
+    max-width: 640px;
+    border-top: none;
+    border-left: 1px solid var(--border);
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: auto;
+  }
+  #details .files { border-left: none; border-top: 1px solid var(--border); overflow: visible; }
+  #details .info { overflow: visible; }
+  #details .resizer { display: none; }
+  .row { grid-template-columns: var(--graph-w, 80px) minmax(160px, 1fr) 150px 120px 70px; }
 }

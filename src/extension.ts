@@ -5,7 +5,8 @@ import { fileHistory, lineHistory } from './commands/history';
 import { checkoutPullRequest, createPullRequest } from './commands/pullRequests';
 import { startWork } from './commands/work';
 import { RepoManager } from './git/repoManager';
-import { GraphPanel, openCommitFileDiff } from './graph/graphPanel';
+import { GraphManager, openCommitFileDiff } from './graph/graphPanel';
+import { AvatarService } from './avatars';
 import { getProvider } from './providers';
 import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps } from './providers/azureDevOps';
 import { GITHUB_SCOPES } from './providers/github';
@@ -30,7 +31,9 @@ export function activate(context: vscode.ExtensionContext): void {
   repos.init().catch((e) => log.error('Repository discovery failed', e));
   const { secrets } = context;
 
-  const blame = new BlameController(repos);
+  const avatars = new AvatarService(context);
+  const graph = new GraphManager(context, repos, avatars);
+  const blame = new BlameController(repos, avatars);
   const tickets = new TicketsView(repos, secrets);
   const prs = new PullRequestsView(repos, secrets);
 
@@ -63,6 +66,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     repos,
+    avatars,
+    graph,
+    vscode.window.registerWebviewViewProvider(GraphManager.viewId, graph, { webviewOptions: { retainContextWhenHidden: true } }),
     blame,
     tickets,
     prs,
@@ -73,8 +79,15 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage('Gitland: no git repository found in this workspace.');
         return;
       }
-      GraphPanel.show(context, repos, repo, arg?.sha);
+      await graph.show(repo, arg?.sha);
     }),
+    command('gitland.showGraphInEditor', async (arg?: Partial<CommitArgs>) => {
+      const repo = await repoFor(arg?.repoRoot);
+      if (repo) {
+        await graph.show(repo, arg?.sha, 'editor');
+      }
+    }),
+    command('gitland.clearAvatarCache', () => avatars.clear()),
     command('gitland.toggleFileBlame', () => blame.toggleFileBlame()),
     command('gitland.toggleFileBlameOff', () => blame.toggleFileBlame()),
     command('gitland.toggleInlineBlame', () => blame.toggleInline()),

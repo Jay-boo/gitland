@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -36,7 +36,7 @@
     "commands": [
       {
         "command": "gitland.showGraph",
-        "title": "Show Git Graph",
+        "title": "Show Commit Graph",
         "category": "Gitland",
         "icon": "$(git-merge)"
       },
@@ -153,12 +153,30 @@
         "title": "Hide File Blame",
         "category": "Gitland",
         "icon": "$(person-filled)"
+      },
+      {
+        "command": "gitland.showGraphInEditor",
+        "title": "Open Commit Graph in Editor",
+        "category": "Gitland",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "gitland.clearAvatarCache",
+        "title": "Clear Avatar Cache",
+        "category": "Gitland"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "gitland",
+          "title": "Gitland",
+          "icon": "media/activity.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "gitlandPanel",
           "title": "Gitland",
           "icon": "media/activity.svg"
         }
@@ -173,6 +191,14 @@
         {
           "id": "gitland.prs",
           "name": "Pull Requests"
+        }
+      ],
+      "gitlandPanel": [
+        {
+          "type": "webview",
+          "id": "gitland.graphView",
+          "name": "Commit Graph",
+          "icon": "media/activity.svg"
         }
       ]
     },
@@ -223,6 +249,11 @@
           "command": "gitland.showLog",
           "when": "view == gitland.tickets || view == gitland.prs",
           "group": "9_account@3"
+        },
+        {
+          "command": "gitland.showGraphInEditor",
+          "when": "view == gitland.graphView",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -445,6 +476,47 @@
             "blocks"
           ],
           "description": "Where to show blame CodeLens: 'document' = top of file, 'containers' = classes/modules, 'blocks' = functions/methods."
+        },
+        "gitland.graph.location": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "editor"
+          ],
+          "enumDescriptions": [
+            "In the bottom panel, next to the terminal (like GitLens)",
+            "In an editor tab"
+          ],
+          "default": "panel",
+          "description": "Where 'Show Commit Graph' opens the graph."
+        },
+        "gitland.graph.avatars": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show author pictures in the commit graph."
+        },
+        "gitland.blame.avatars": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show author pictures in blame hovers."
+        },
+        "gitland.avatars.defaultStyle": {
+          "type": "string",
+          "enum": [
+            "robohash",
+            "identicon",
+            "retro",
+            "monsterid",
+            "wavatar",
+            "mp"
+          ],
+          "default": "robohash",
+          "description": "Picture used when an author has no profile photo (Gravatar default style, 'robohash' like GitLens)."
+        },
+        "gitland.azureDevOps.browserSignIn": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sign in to Azure DevOps through the browser instead of the Windows account dialog (sets 'microsoft-authentication.implementation' to 'msal-no-broker'). The Windows dialog is often blocked on laptops not managed by the organization."
         }
       }
     }
