@@ -43,7 +43,7 @@ exports.run = async function () {
     await vscode.commands.executeCommand('gitland.toggleFileBlame');
     await sleep(1500);
   });
-  await step('show commit graph in the bottom panel (default)', async () => {
+  await step('show commit graph view in the Gitland sidebar (default, like GitLens)', async () => {
     await vscode.commands.executeCommand('gitland.showGraph');
     await sleep(3000);
     if (process.env.GITLAND_TEST_HOLD) {

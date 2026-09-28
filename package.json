@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -156,7 +156,7 @@
       },
       {
         "command": "gitland.showGraphInEditor",
-        "title": "Open Commit Graph in Editor",
+        "title": "Show Commit Graph in Editor",
         "category": "Gitland",
         "icon": "$(link-external)"
       },
@@ -164,6 +164,12 @@
         "command": "gitland.clearAvatarCache",
         "title": "Clear Avatar Cache",
         "category": "Gitland"
+      },
+      {
+        "command": "gitland.showGraphView",
+        "title": "Show Commit Graph View",
+        "category": "Gitland",
+        "icon": "$(git-merge)"
       }
     ],
     "viewsContainers": {
@@ -173,32 +179,29 @@
           "title": "Gitland",
           "icon": "media/activity.svg"
         }
-      ],
-      "panel": [
-        {
-          "id": "gitlandPanel",
-          "title": "Gitland",
-          "icon": "media/activity.svg"
-        }
       ]
     },
     "views": {
       "gitland": [
         {
+          "type": "webview",
+          "id": "gitland.graphView",
+          "name": "Graph",
+          "icon": "media/activity.svg",
+          "visibility": "visible",
+          "initialSize": 7
+        },
+        {
           "id": "gitland.tickets",
-          "name": "My Tickets"
+          "name": "My Tickets",
+          "visibility": "visible",
+          "initialSize": 2
         },
         {
           "id": "gitland.prs",
-          "name": "Pull Requests"
-        }
-      ],
-      "gitlandPanel": [
-        {
-          "type": "webview",
-          "id": "gitland.graphView",
-          "name": "Commit Graph",
-          "icon": "media/activity.svg"
+          "name": "Pull Requests",
+          "visibility": "visible",
+          "initialSize": 2
         }
       ]
     },
@@ -214,11 +217,6 @@
           "command": "gitland.tickets.startWorkById",
           "when": "view == gitland.tickets",
           "group": "navigation@1"
-        },
-        {
-          "command": "gitland.showGraph",
-          "when": "view == gitland.tickets",
-          "group": "navigation@2"
         },
         {
           "command": "gitland.tickets.refresh",
@@ -296,7 +294,7 @@
       "scm/title": [
         {
           "command": "gitland.showGraph",
-          "group": "navigation",
+          "group": "navigation@-1",
           "when": "scmProvider == git"
         }
       ],
@@ -477,19 +475,6 @@
           ],
           "description": "Where to show blame CodeLens: 'document' = top of file, 'containers' = classes/modules, 'blocks' = functions/methods."
         },
-        "gitland.graph.location": {
-          "type": "string",
-          "enum": [
-            "panel",
-            "editor"
-          ],
-          "enumDescriptions": [
-            "In the bottom panel, next to the terminal (like GitLens)",
-            "In an editor tab"
-          ],
-          "default": "panel",
-          "description": "Where 'Show Commit Graph' opens the graph."
-        },
         "gitland.graph.avatars": {
           "type": "boolean",
           "default": true,
@@ -517,6 +502,24 @@
           "type": "boolean",
           "default": true,
           "description": "Sign in to Azure DevOps through the browser instead of the Windows account dialog (sets 'microsoft-authentication.implementation' to 'msal-no-broker'). The Windows dialog is often blocked on laptops not managed by the organization."
+        },
+        "gitland.graph.layout": {
+          "type": "string",
+          "enum": [
+            "editor",
+            "panel"
+          ],
+          "enumDescriptions": [
+            "Prefer showing the Commit Graph in the editor area",
+            "Prefer showing the Commit Graph as a view (Gitland sidebar)"
+          ],
+          "default": "panel",
+          "description": "Preferred layout of the Commit Graph (same as GitLens' gitlens.graph.layout)."
+        },
+        "gitland.graph.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a 'Graph' button in the status bar (like GitLens)."
         }
       }
     }

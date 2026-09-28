@@ -12,7 +12,7 @@ import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps 
 import { GITHUB_SCOPES } from './providers/github';
 import { AuthError } from './providers/types';
 import { initLog, log } from './log';
-import { errorMessage } from './util';
+import { config, errorMessage } from './util';
 import { PullRequestItem, PullRequestsView } from './views/prsView';
 import { TicketItem, TicketsView } from './views/ticketsView';
 
@@ -87,7 +87,14 @@ export function activate(context: vscode.ExtensionContext): void {
         await graph.show(repo, arg?.sha, 'editor');
       }
     }),
+    command('gitland.showGraphView', async () => {
+      const repo = await repoFor();
+      if (repo) {
+        await graph.show(repo, undefined, 'panel');
+      }
+    }),
     command('gitland.clearAvatarCache', () => avatars.clear()),
+    graphStatusBar(),
     command('gitland.toggleFileBlame', () => blame.toggleFileBlame()),
     command('gitland.toggleFileBlameOff', () => blame.toggleFileBlame()),
     command('gitland.toggleInlineBlame', () => blame.toggleInline()),
@@ -216,6 +223,19 @@ export function activate(context: vscode.ExtensionContext): void {
     log.info(r ? `Active repository: ${r.root}` : 'No git repository found in this workspace.');
   });
   log.info('Gitland activated.');
+}
+
+/** "Graph" button in the status bar, like GitLens. */
+function graphStatusBar(): vscode.Disposable {
+  const item = vscode.window.createStatusBarItem('gitland.graph', vscode.StatusBarAlignment.Left, 49);
+  item.name = 'Gitland Commit Graph';
+  item.text = '$(git-merge) Graph';
+  item.tooltip = 'Show Commit Graph';
+  item.command = 'gitland.showGraph';
+  const update = () => (config('graph.statusBar.enabled', true) ? item.show() : item.hide());
+  update();
+  const sub = vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('gitland.graph.statusBar') && update());
+  return vscode.Disposable.from(item, sub);
 }
 
 export function deactivate(): void {

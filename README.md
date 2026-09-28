@@ -6,7 +6,7 @@ A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHu
 
 | | |
 |---|---|
-| **Commit Graph** | **Bottom panel → Gitland → Commit Graph** (like GitLens), `Ctrl+Alt+G`, or the button in the Source Control title bar. Author pictures on each commit (Azure DevOps profile photo, GitHub avatar, Gravatar, else a generated default like GitLens). *Open Commit Graph in Editor* for a full tab. Colored lanes, branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. |
+| **Commit Graph** | Placed like GitLens: the **Graph** view at the top of the **Gitland sidebar** (activity bar), the **Graph** button in the status bar, and the first button of the Source Control title bar. *Show Commit Graph in Editor* for a full tab (`gitland.graph.layout`: `panel` | `editor`). Compact layout when narrow. Author pictures on each commit (Azure DevOps profile photo, GitHub avatar, Gravatar, else a generated default like GitLens). *Open Commit Graph in Editor* for a full tab. Colored lanes, branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. |
 | **Inline blame** | Author, age and message at the end of the current line, plus in the status bar. Hover it for links: show in graph, diff, file history, open on remote, copy SHA. |
 | **CodeLens** | Above the file and each class/function: *Author, 3 days ago* (click → graph) and *N authors (X and others)* (click → file blame). |
 | **File blame** (on demand) | `Ctrl+Alt+B` or the editor title button. GitLens-style annotations (message + age, heat bar: orange = recent, blue = old); lines from the same commit as the cursor are highlighted. `gitland.blame.toggleMode`: `file` or `window`. |
@@ -30,7 +30,7 @@ Tokens are stored in VS Code's secret storage.
 - `gitland.azureDevOps.activateOnStartWork`: move the work item to *Active* when you start it
 - `gitland.blame.inline.format`: `${author}, ${ago} • ${message}`
 - `gitland.codeLens.enabled`, `gitland.codeLens.scopes` (`document`, `containers`, `blocks`)
-- `gitland.graph.location` (`panel` | `editor`), `gitland.graph.avatars`, `gitland.blame.avatars`, `gitland.avatars.defaultStyle`
+- `gitland.graph.layout` (`panel` | `editor`), `gitland.graph.statusBar.enabled`, `gitland.graph.avatars`, `gitland.blame.avatars`, `gitland.avatars.defaultStyle`
 - `gitland.graph.maxCommits`, `gitland.pr.draftByDefault`
 
 ## Develop

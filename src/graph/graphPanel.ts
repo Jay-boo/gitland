@@ -26,7 +26,7 @@ interface GraphHost {
   readonly onDidDispose: vscode.Event<void>;
 }
 
-/** Opens the graph in the bottom panel ("Commit Graph", like GitLens) or in an editor tab. */
+/** Opens the graph like GitLens: the "Graph" view of the Gitland sidebar, or an editor tab. */
 export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposable {
   static readonly viewId = 'gitland.graphView';
   private view?: GraphController;
@@ -40,7 +40,7 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
   ) {}
 
   async show(repo: Repo, sha?: string, where?: 'panel' | 'editor'): Promise<void> {
-    where ??= config<'panel' | 'editor'>('graph.location', 'panel');
+    where ??= config<'panel' | 'editor'>('graph.layout', 'panel');
     if (where === 'editor') {
       this.showInEditor(repo, sha);
       return;
@@ -458,7 +458,7 @@ export class GraphController implements vscode.Disposable {
   <div class="tools">
     <input id="search" type="search" placeholder="Search message, author, SHA, branch…  (Enter = next)" />
     <span id="searchCount" class="muted"></span>
-    <button id="btnFetch" title="Fetch">⤓ Fetch</button>
+    <button id="btnFetch" title="Fetch">⤓<span class="label"> Fetch</span></button>
     <button id="btnRefresh" title="Refresh">⟳</button>
   </div>
 </header>

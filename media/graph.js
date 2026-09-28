@@ -6,7 +6,9 @@
   window.addEventListener('error', (e) => vscode.postMessage({ type: 'log', level: 'error', message: `${e.message} (${e.filename}:${e.lineno})` }));
   window.addEventListener('unhandledrejection', (e) => vscode.postMessage({ type: 'log', level: 'error', message: String(e.reason) }));
   let LANE = 16;
-  const AVATAR = 20;
+  let AVATAR = 20;
+  /** Narrow view (sidebar): compact lanes and one badge per row, like GitLens. */
+  const isCompact = () => window.innerWidth < 600;
   const COLORS = ['#4dabf7', '#f76707', '#37b24d', '#e64980', '#fab005', '#7950f2', '#15aabf', '#f03e3e', '#82c91e', '#be4bdb'];
   const WORKTREE = 'WORKTREE';
 
@@ -95,7 +97,7 @@
   }
 
   /** Merge "main" + "origin/main" into one badge when they point at the same commit. */
-  function refBadges(commit) {
+  function refBadges(commit, limit) {
     const refs = commit.refs || [];
     const locals = new Set(refs.filter((r) => r.type === 'branch').map((r) => r.name));
     const synced = new Set();
@@ -111,7 +113,12 @@
       out.push(r);
     }
     const c = color(commit.graph.color);
-    out.sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0));
+    out.sort((a, b) => (b.current ? 1 : 0) - (a.current ? 1 : 0) || (a.type === 'tag' ? 1 : 0) - (b.type === 'tag' ? 1 : 0));
+    let more = '';
+    if (limit && out.length > limit) {
+      const hidden = out.splice(limit);
+      more = `<span class="ref more" style="--c:${c}" title="${esc(hidden.map((r) => r.name).join('\n'))}">+${hidden.length}</span>`;
+    }
     return out
       .map((r) => {
         const cls = ['ref', r.type, r.current ? 'current' : ''].join(' ');
@@ -119,14 +126,18 @@
         const cloud = synced.has(r.name) ? ' <span class="cloud" title="In sync with remote">☁</span>' : '';
         return `<span class="${cls}" style="--c:${c}" data-ref="${esc(r.name)}" data-reftype="${r.type}" title="${esc(r.type)}: ${esc(r.name)}">${icon}${esc(r.name)}${cloud}</span>`;
       })
-      .join('');
+      .join('') + more;
   }
 
   function render() {
     if (!data) return;
-    LANE = data.showAvatars ? 22 : 16;
+    const compact = isCompact();
+    document.body.classList.toggle('compact', compact);
+    AVATAR = compact ? 16 : 20;
+    LANE = data.showAvatars ? (compact ? 18 : 22) : compact ? 12 : 16;
     const h = rowH();
-    document.documentElement.style.setProperty('--graph-w', `${Math.min((data.width + 1) * LANE + 12, 420)}px`);
+    const graphPx = (data.width + 1) * LANE + 12;
+    document.documentElement.style.setProperty('--graph-w', `${Math.min(graphPx, compact ? Math.round(window.innerWidth * 0.4) : 420)}px`);
     $('repoName').textContent = data.repoName;
     $('branchName').textContent = data.branch ? `⎇ ${data.branch}` : 'detached HEAD';
     $('remoteName').textContent = data.remote || '';
@@ -134,7 +145,7 @@
       .map(
         (c, i) => `<div class="row commit${c.sha === WORKTREE ? ' worktree' : ''}${c.sha === selected ? ' selected' : ''}" data-i="${i}" data-sha="${c.sha}">
   <div class="c-graph">${svgFor(c, h)}${graphAvatar(c, h)}</div>
-  <div class="c-msg">${refBadges(c)}<span class="subject" title="${esc(c.subject)}">${esc(c.subject)}</span></div>
+  <div class="c-msg">${refBadges(c, compact ? 1 : 0)}<span class="subject" title="${esc(c.subject)}">${esc(c.subject)}</span></div>
   <div class="c-author" title="${esc(c.email)}">${c.sha === WORKTREE || !data.showAvatars ? '' : avatarImg(c.email, c.author, 16, 'small')}<span>${esc(c.author)}</span></div>
   <div class="c-date">${esc(c.date)}</div>
   <div class="c-sha">${esc(c.short)}</div>
@@ -470,6 +481,20 @@
     },
     true,
   );
+
+  let resizeTimer;
+  let wasCompact = isCompact();
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (data && isCompact() !== wasCompact) {
+        wasCompact = isCompact();
+        const scroll = listEl.scrollTop;
+        render();
+        listEl.scrollTop = scroll;
+      }
+    }, 120);
+  });
 
   const saved = vscode.getState();
   if (saved && saved.selected) selected = saved.selected;
