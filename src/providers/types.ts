@@ -49,4 +49,9 @@ export interface Provider {
   branchUrl(branch: string): string;
 }
 
-export class AuthError extends Error {}
+export class AuthError extends Error {
+  /** True when the user was already told about it (no extra error popup needed). */
+  constructor(message: string, readonly handled = false) {
+    super(message);
+  }
+}

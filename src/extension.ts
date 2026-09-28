@@ -9,6 +9,7 @@ import { GraphPanel, openCommitFileDiff } from './graph/graphPanel';
 import { getProvider } from './providers';
 import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps } from './providers/azureDevOps';
 import { GITHUB_SCOPES } from './providers/github';
+import { AuthError } from './providers/types';
 import { initLog, log } from './log';
 import { errorMessage } from './util';
 import { PullRequestItem, PullRequestsView } from './views/prsView';
@@ -43,7 +44,9 @@ export function activate(context: vscode.ExtensionContext): void {
         return await fn(...args);
       } catch (e) {
         log.error(`Command ${id} failed`, e);
-        vscode.window.showErrorMessage(`Gitland: ${errorMessage(e)}`);
+        if (!(e instanceof AuthError && e.handled)) {
+          vscode.window.showErrorMessage(`Gitland: ${errorMessage(e)}`);
+        }
       }
     });
 

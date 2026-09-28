@@ -49,14 +49,57 @@ export async function signInToAzureDevOps(org: string, chooseAccount: boolean): 
   const scopes = await azureDevOpsScopes(org);
   const tenant = scopes.find((s) => s.startsWith('VSCODE_TENANT:'))?.slice('VSCODE_TENANT:'.length);
   log.info(`Azure DevOps (${org}): signing in${tenant ? ` for tenant ${tenant}` : ''}…`);
-  return vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: `Signing in to Azure DevOps (${org})… If nothing shows up, look for a Microsoft sign-in window behind VS Code (Alt+Tab).`,
-    },
-    () =>
-      vscode.authentication.getSession('microsoft', scopes, chooseAccount ? { clearSessionPreference: true, createIfNone: true } : { createIfNone: true }),
+  try {
+    return await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Signing in to Azure DevOps (${org})… If nothing shows up, look for a Microsoft sign-in window behind VS Code (Alt+Tab).`,
+      },
+      () =>
+        vscode.authentication.getSession(
+          'microsoft',
+          scopes,
+          chooseAccount ? { clearSessionPreference: true, createIfNone: true } : { createIfNone: true },
+        ),
+    );
+  } catch (e) {
+    log.error(`Azure DevOps (${org}): Microsoft sign-in failed`, e);
+    offerSignInAlternatives(org);
+    throw new AuthError(`Microsoft sign-in to Azure DevOps (${org}) did not complete.`, true);
+  }
+}
+
+/**
+ * The Windows account broker (WAM) is often blocked by company policies on machines that are not
+ * managed by that company (e.g. a consultant laptop). A browser sign-in or a PAT usually still works.
+ */
+async function offerSignInAlternatives(org: string): Promise<void> {
+  const authConfig = vscode.workspace.getConfiguration('microsoft-authentication');
+  const usingBroker = authConfig.get<string>('implementation', 'msal') === 'msal';
+  const browser = 'Sign in with the browser instead';
+  const pat = 'Use a Personal Access Token';
+  const choice = await vscode.window.showWarningMessage(
+    `Microsoft sign-in to Azure DevOps (${org}) did not complete. ` +
+      (usingBroker
+        ? "On a laptop not managed by this organization, the Windows sign-in dialog is often blocked by its security policies. Signing in through the browser usually works."
+        : 'You can use a Personal Access Token instead.'),
+    ...(usingBroker ? [browser, pat] : [pat]),
   );
+  if (choice === browser) {
+    await authConfig.update('implementation', 'msal-no-broker', vscode.ConfigurationTarget.Global);
+    log.info('Set microsoft-authentication.implementation = msal-no-broker (browser sign-in).');
+    const reload = 'Reload Window';
+    const r = await vscode.window.showInformationMessage(
+      'VS Code will now sign in to Microsoft accounts through your browser. Reload the window, then click "Sign in to Azure DevOps" again.',
+      reload,
+    );
+    if (r === reload) {
+      await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+  } else if (choice === pat) {
+    await vscode.env.openExternal(vscode.Uri.parse(`https://dev.azure.com/${encodeURIComponent(org)}/_usersSettings/tokens`));
+    await vscode.commands.executeCommand('gitland.setAzurePat');
+  }
 }
 const API = 'api-version=7.1';
 const FIELDS = ['System.Id', 'System.Title', 'System.State', 'System.WorkItemType', 'System.AssignedTo'];
