@@ -2,12 +2,55 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run Gitland",
+      "name": "Test in Infra-Toolbox-Dataplatform",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "/home/jayboo/projects/voltalia/Infra-Toolbox-Dataplatform"
+      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "watch"
+    },
+    {
+      "name": "Test in a project…",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${input:project}"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "watch"
+    },
+    {
+      "name": "Test in an empty window",
       "type": "extensionHost",
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "npm: build"
+      "preLaunchTask": "watch"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "project",
+      "type": "pickString",
+      "description": "Project to open with the development version of Gitland",
+      "default": "/home/jayboo/projects/voltalia/Infra-Toolbox-Dataplatform",
+      "options": [
+        "/home/jayboo/projects/voltalia/Infra-Toolbox-Dataplatform",
+        "/home/jayboo/projects/voltalia/Infra%20-%20Terraform%20-%20DataPlatformRessources",
+        "/home/jayboo/projects/voltalia/BU%20-%20AMP%20-%20MonthlyProduction",
+        "/home/jayboo/projects/voltalia/BU-DEV-bloomberg",
+        "/home/jayboo/projects/voltalia/CACAO_APP",
+        "/home/jayboo/projects/voltalia/INVOICE-APP",
+        "/home/jayboo/projects/voltalia/Onestream",
+        "/home/jayboo/projects/voltalia/Scada2L",
+        "/home/jayboo/projects/voltalia/Streem",
+        "/home/jayboo/projects/voltalia/TRESO",
+        "/home/jayboo/projects/joblauncher_databricks",
+        "/home/jayboo/projects/spark-data",
+        "/home/jayboo/projects/sparkstagelapse",
+        "/home/jayboo/projects/gitland"
+      ]
     }
   ]
 }

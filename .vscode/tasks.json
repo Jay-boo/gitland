@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watch",
+      "type": "npm",
+      "script": "watch",
+      "isBackground": true,
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "never", "panel": "dedicated" },
+      "problemMatcher": {
+        "owner": "esbuild",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^✘ \\[ERROR\\] (.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[watch\\] build started",
+          "endsPattern": "^\\[watch\\] build finished"
+        }
+      }
+    },
+    {
+      "label": "typecheck",
+      "type": "npm",
+      "script": "typecheck",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "package (.vsix)",
+      "type": "npm",
+      "script": "package",
+      "problemMatcher": []
+    }
+  ]
+}
