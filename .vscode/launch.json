@@ -1,4 +1,6 @@
 {
+  // Tip: Ctrl+F5 ("Run Without Debugging") starts the test window without waiting for the debugger.
+  // Use it if F5 opens a window where no extension loads (debugger failed to attach, seen on WSL).
   "version": "0.2.0",
   "configurations": [
     {
@@ -10,7 +12,8 @@
         "/home/jayboo/projects/voltalia/Infra-Toolbox-Dataplatform"
       ],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "watch"
+      "preLaunchTask": "watch",
+      "trace": true
     },
     {
       "name": "Test in a project…",
@@ -18,7 +21,8 @@
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${input:project}"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "watch"
+      "preLaunchTask": "watch",
+      "trace": true
     },
     {
       "name": "Test in an empty window",
@@ -26,7 +30,19 @@
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "watch"
+      "preLaunchTask": "watch",
+      "trace": true
+    },
+    {
+      // If an F5 window is stuck (nothing loads), pick its "node … --inspect-brk" process here:
+      // the debugger attaches over 127.0.0.1 and lets the window finish starting.
+      "name": "Attach to a stuck test window",
+      "type": "node",
+      "request": "attach",
+      "processId": "${command:PickProcess}",
+      "address": "127.0.0.1",
+      "continueOnAttach": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
     }
   ],
   "inputs": [
