@@ -37,6 +37,8 @@ export interface Provider {
   readonly displayName: string;
   /** Name used in the UI for tickets, e.g. "work item" or "issue". */
   readonly ticketNoun: string;
+  /** True when a request can be made without prompting the user to sign in. */
+  isSignedIn(): Promise<boolean>;
   listMyTickets(): Promise<Ticket[]>;
   searchTickets(text: string): Promise<Ticket[]>;
   getTicket(id: string): Promise<Ticket | undefined>;

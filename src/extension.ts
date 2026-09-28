@@ -6,7 +6,9 @@ import { startWork } from './commands/work';
 import { RepoManager } from './git/repoManager';
 import { GraphPanel, openCommitFileDiff } from './graph/graphPanel';
 import { getProvider } from './providers';
-import { PAT_SECRET_KEY } from './providers/azureDevOps';
+import { AZURE_DEVOPS_SCOPES, AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey } from './providers/azureDevOps';
+import { GITHUB_SCOPES } from './providers/github';
+import { initLog, log } from './log';
 import { errorMessage } from './util';
 import { PullRequestItem, PullRequestsView } from './views/prsView';
 import { TicketItem, TicketsView } from './views/ticketsView';
@@ -18,9 +20,12 @@ interface CommitArgs {
   previousPath?: string;
 }
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export function activate(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(initLog());
+  log.info(`Gitland ${context.extension.packageJSON.version} activating…`);
   const repos = new RepoManager();
-  await repos.init();
+  // Discovery runs in the background: commands must be registered right away.
+  repos.init().catch((e) => log.error('Repository discovery failed', e));
   const { secrets } = context;
 
   const blame = new BlameController(repos);
@@ -36,9 +41,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       try {
         return await fn(...args);
       } catch (e) {
+        log.error(`Command ${id} failed`, e);
         vscode.window.showErrorMessage(`Gitland: ${errorMessage(e)}`);
       }
     });
+
+  /** Azure DevOps organization of the active repository, if any. */
+  const activeAzureOrg = async (): Promise<string | undefined> => {
+    const repo = await repos.activeRepo();
+    const provider = repo && (await getProvider(repo, secrets));
+    return provider instanceof AzureDevOpsProvider ? provider.organization : undefined;
+  };
+  const refreshViews = () => {
+    tickets.refresh();
+    prs.refresh();
+  };
 
   context.subscriptions.push(
     repos,
@@ -109,31 +126,52 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
 
     command('gitland.setAzurePat', async () => {
+      const org = await activeAzureOrg();
       const pat = await vscode.window.showInputBox({
-        title: 'Azure DevOps Personal Access Token',
+        title: `Azure DevOps Personal Access Token${org ? ` for '${org}'` : ' (all organizations)'}`,
         prompt:
-          'Scopes needed: Work Items (Read & write) and Code (Read & write). Leave empty to use your Microsoft account sign-in instead.',
+          'Scopes needed: Work Items (Read & write) and Code (Read & write). Leave empty to remove it and use your Microsoft account instead.',
         password: true,
         ignoreFocusOut: true,
       });
       if (pat === undefined) {
         return;
       }
+      const key = org ? patSecretKey(org) : PAT_SECRET_KEY;
       if (pat.trim()) {
-        await secrets.store(PAT_SECRET_KEY, pat.trim());
-        vscode.window.showInformationMessage('Gitland: Azure DevOps token saved.');
+        await secrets.store(key, pat.trim());
+        vscode.window.showInformationMessage(`Gitland: token saved${org ? ` for ${org}` : ''}.`);
       } else {
-        await secrets.delete(PAT_SECRET_KEY);
+        await secrets.delete(key);
       }
-      tickets.refresh();
-      prs.refresh();
+      refreshViews();
+    }),
+    command('gitland.switchAzureAccount', async () => {
+      const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, {
+        clearSessionPreference: true,
+        createIfNone: true,
+      });
+      vscode.window.showInformationMessage(`Gitland: Azure DevOps now uses ${session.account.label}.`);
+      refreshViews();
+    }),
+    command('gitland.switchGitHubAccount', async () => {
+      const session = await vscode.authentication.getSession('github', GITHUB_SCOPES, {
+        clearSessionPreference: true,
+        createIfNone: true,
+      });
+      vscode.window.showInformationMessage(`Gitland: GitHub now uses ${session.account.label}.`);
+      refreshViews();
     }),
     command('gitland.clearCredentials', async () => {
+      const org = await activeAzureOrg();
       await secrets.delete(PAT_SECRET_KEY);
-      vscode.window.showInformationMessage('Gitland: stored credentials cleared.');
-      tickets.refresh();
-      prs.refresh();
+      if (org) {
+        await secrets.delete(patSecretKey(org));
+      }
+      vscode.window.showInformationMessage('Gitland: stored tokens cleared.');
+      refreshViews();
     }),
+    command('gitland.showLog', () => initLog().show()),
 
     vscode.window.onDidChangeActiveTextEditor(async (e) => {
       // Switching to a file of another repository refreshes the tickets / PR views.
@@ -148,7 +186,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
   );
-  lastRoot = (await repos.activeRepo(false))?.root;
+  repos.activeRepo(false).then((r) => {
+    lastRoot = r?.root;
+    log.info(r ? `Active repository: ${r.root}` : 'No git repository found in this workspace.');
+  });
+  log.info('Gitland activated.');
 }
 
 export function deactivate(): void {

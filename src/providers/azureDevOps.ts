@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
+import { log } from '../log';
 import { config } from '../util';
 import { AuthError, CreatePullRequestOptions, Provider, PullRequest, Ticket } from './types';
 
-const AZURE_DEVOPS_SCOPE = '499b84ac-1321-427f-aa17-267ca6975798/.default';
+export const AZURE_DEVOPS_SCOPES = ['499b84ac-1321-427f-aa17-267ca6975798/.default'];
+/** Legacy key: one token for every organization. */
 export const PAT_SECRET_KEY = 'gitland.azureDevOps.pat';
+/** Tokens are stored per organization so work and personal orgs can use different ones. */
+export const patSecretKey = (org: string) => `${PAT_SECRET_KEY}:${org.toLowerCase()}`;
 const API = 'api-version=7.1';
 const FIELDS = ['System.Id', 'System.Title', 'System.State', 'System.WorkItemType', 'System.AssignedTo'];
 
@@ -42,6 +46,10 @@ export class AzureDevOpsProvider implements Provider {
     return `Azure DevOps · ${this.project}/${this.repo}`;
   }
 
+  get organization(): string {
+    return this.org;
+  }
+
   private get orgUrl(): string {
     return `https://dev.azure.com/${e(this.org)}`;
   }
@@ -74,12 +82,21 @@ export class AzureDevOpsProvider implements Provider {
     return `${this.webUrl}/pullrequest/${id}`;
   }
 
+  async isSignedIn(): Promise<boolean> {
+    if ((await this.secrets.get(patSecretKey(this.org))) ?? (await this.secrets.get(PAT_SECRET_KEY))) {
+      return true;
+    }
+    const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, { silent: true });
+    return !!session;
+  }
+
   private async authHeader(): Promise<string> {
-    const pat = await this.secrets.get(PAT_SECRET_KEY);
+    const pat = (await this.secrets.get(patSecretKey(this.org))) ?? (await this.secrets.get(PAT_SECRET_KEY));
     if (pat) {
       return 'Basic ' + Buffer.from(':' + pat).toString('base64');
     }
-    const session = await vscode.authentication.getSession('microsoft', [AZURE_DEVOPS_SCOPE], { createIfNone: true });
+    const session = await vscode.authentication.getSession('microsoft', AZURE_DEVOPS_SCOPES, { createIfNone: true });
+    log.info(`Azure DevOps (${this.org}): using Microsoft account ${session.account.label}`);
     return 'Bearer ' + session.accessToken;
   }
 
@@ -97,7 +114,7 @@ export class AzureDevOpsProvider implements Provider {
     // Azure DevOps answers 203 + HTML sign-in page when the credentials are not accepted.
     if (res.status === 401 || res.status === 203 || (res.ok && !isJson)) {
       throw new AuthError(
-        'Azure DevOps rejected the credentials. Sign in with your Microsoft work account or set a PAT (Gitland: Set Azure DevOps Personal Access Token).',
+        `Azure DevOps (${this.org}) rejected the credentials. Run "Gitland: Switch Azure DevOps Account" to pick your work account, or "Gitland: Set Azure DevOps Personal Access Token".`,
       );
     }
     if (!res.ok) {

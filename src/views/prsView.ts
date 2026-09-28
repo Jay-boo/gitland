@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
 import { getProvider } from '../providers';
 import { AuthError, PullRequest, PullRequestGroup } from '../providers/types';
+import { log } from '../log';
 import { errorMessage, timeAgo } from '../util';
 
 const GROUPS: { key: PullRequestGroup; label: string; icon: string }[] = [
@@ -66,15 +67,26 @@ export class PullRequestsView implements vscode.TreeDataProvider<vscode.TreeItem
       return [];
     }
     this.view.message = undefined;
+    if (!(await provider.isSignedIn())) {
+      const item = new vscode.TreeItem(`Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'} to see pull requests`);
+      item.iconPath = new vscode.ThemeIcon('account');
+      item.description = provider.displayName;
+      item.command = {
+        title: 'Sign in',
+        command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount',
+      };
+      return [item];
+    }
     try {
       const [prs, current] = await Promise.all([provider.listPullRequests(), repo.currentBranch()]);
       return GROUPS.map((g) => new GroupItem(prs.filter((p) => p.group === g.key), g.label, g.icon, current));
     } catch (e) {
+      log.error(`Loading from ${provider.displayName} failed`, e);
       const item = new vscode.TreeItem(e instanceof AuthError ? 'Sign in to load pull requests' : `Failed to load: ${errorMessage(e)}`);
       item.iconPath = new vscode.ThemeIcon(e instanceof AuthError ? 'account' : 'warning');
       item.tooltip = errorMessage(e);
       item.command =
-        e instanceof AuthError ? { title: 'Set PAT', command: 'gitland.setAzurePat' } : { title: 'Retry', command: 'gitland.prs.refresh' };
+        e instanceof AuthError ? { title: 'Sign in', command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount' } : { title: 'Retry', command: 'gitland.prs.refresh' };
       return [item];
     }
   }

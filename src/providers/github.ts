@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { AuthError, CreatePullRequestOptions, Provider, PullRequest, Ticket } from './types';
 
+export const GITHUB_SCOPES = ['repo'];
+
 interface GhIssue {
   number: number;
   title: string;
@@ -46,8 +48,12 @@ export class GitHubProvider implements Provider {
     return `${this.webUrl}/tree/${encodeURIComponent(branch)}`;
   }
 
+  async isSignedIn(): Promise<boolean> {
+    return !!(await vscode.authentication.getSession('github', GITHUB_SCOPES, { silent: true }));
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: true });
+    const session = await vscode.authentication.getSession('github', GITHUB_SCOPES, { createIfNone: true });
     const res = await fetch(`https://api.github.com${path}`, {
       method,
       headers: {
@@ -60,7 +66,7 @@ export class GitHubProvider implements Provider {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 401) {
-      throw new AuthError('GitHub rejected the credentials.');
+      throw new AuthError('GitHub rejected the credentials. Run "Gitland: Switch GitHub Account".');
     }
     if (!res.ok) {
       let msg = `${res.status} ${res.statusText}`;

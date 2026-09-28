@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { runGit } from './exec';
 import { GitApi, GitApiRepository, getGitApi } from './gitApi';
+import { log } from '../log';
 import { Repo } from './repo';
 
 /** Discovers repositories (through the built-in git extension when available) and broadcasts changes. */
@@ -16,15 +17,29 @@ export class RepoManager implements vscode.Disposable {
   /** Fires (debounced) when HEAD, refs or the working tree of a repository change. */
   readonly onDidChangeRepo = this.changeEmitter.event;
 
-  async init(): Promise<void> {
+  private ready?: Promise<void>;
+
+  /** Starts discovery in the background; every lookup waits for it (bounded by a timeout). */
+  init(): Promise<void> {
+    this.ready ??= this.doInit();
+    return this.ready;
+  }
+
+  private async doInit(): Promise<void> {
     try {
-      this.api = await getGitApi();
-    } catch {
+      const timeout = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 8000));
+      this.api = await Promise.race([getGitApi(), timeout]);
+      if (!this.api) {
+        log.warn('Built-in git extension unavailable or slow to start: falling back to the git CLI.');
+      }
+    } catch (e) {
+      log.error('Could not get the built-in git extension API (falling back to the git CLI)', e);
       this.api = undefined;
     }
     if (!this.api) {
       return;
     }
+    log.info(`Git API ready (${this.api.repositories.length} repositories open).`);
     this.api.repositories.forEach((r) => this.watch(r));
     this.disposables.push(
       this.api.onDidOpenRepository((r) => this.watch(r)),
@@ -68,6 +83,7 @@ export class RepoManager implements vscode.Disposable {
   }
 
   async getRepo(uri: vscode.Uri): Promise<Repo | undefined> {
+    await this.init();
     const r = this.api?.getRepository(uri);
     if (r) {
       return this.fromApi(r);
@@ -94,13 +110,15 @@ export class RepoManager implements vscode.Disposable {
         this.repos.set(normalized, repo);
       }
       return repo;
-    } catch {
+    } catch (e) {
+      log.info(`Not a git repository: ${uri.fsPath} (${e instanceof Error ? e.message : e})`);
       return undefined;
     }
   }
 
   /** Repository of the active editor, or the only/first workspace repository (asking if ambiguous). */
   async activeRepo(ask = true): Promise<Repo | undefined> {
+    await this.init();
     const editorUri = vscode.window.activeTextEditor?.document.uri;
     if (editorUri && editorUri.scheme === 'file') {
       const repo = await this.getRepo(editorUri);

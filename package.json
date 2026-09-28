@@ -1,8 +1,8 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets → branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.1.0",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
+  "version": "0.1.1",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -76,7 +76,7 @@
       },
       {
         "command": "gitland.tickets.startWorkById",
-        "title": "Start Work From Ticket…",
+        "title": "Start Work From Ticket\u2026",
         "category": "Gitland",
         "icon": "$(add)"
       },
@@ -122,8 +122,26 @@
       },
       {
         "command": "gitland.clearCredentials",
-        "title": "Clear Stored Credentials",
+        "title": "Clear Stored Tokens",
         "category": "Gitland"
+      },
+      {
+        "command": "gitland.switchAzureAccount",
+        "title": "Switch Azure DevOps Account",
+        "category": "Gitland",
+        "icon": "$(account)"
+      },
+      {
+        "command": "gitland.switchGitHubAccount",
+        "title": "Switch GitHub Account",
+        "category": "Gitland",
+        "icon": "$(github)"
+      },
+      {
+        "command": "gitland.showLog",
+        "title": "Show Log",
+        "category": "Gitland",
+        "icon": "$(output)"
       }
     ],
     "viewsContainers": {
@@ -179,6 +197,21 @@
           "command": "gitland.prs.refresh",
           "when": "view == gitland.prs",
           "group": "navigation@2"
+        },
+        {
+          "command": "gitland.switchAzureAccount",
+          "when": "view == gitland.tickets || view == gitland.prs",
+          "group": "9_account@1"
+        },
+        {
+          "command": "gitland.switchGitHubAccount",
+          "when": "view == gitland.tickets || view == gitland.prs",
+          "group": "9_account@2"
+        },
+        {
+          "command": "gitland.showLog",
+          "when": "view == gitland.tickets || view == gitland.prs",
+          "group": "9_account@3"
         }
       ],
       "view/item/context": [
@@ -302,7 +335,7 @@
         },
         "gitland.blame.inline.format": {
           "type": "string",
-          "default": "${author}, ${ago} • ${message}",
+          "default": "${author}, ${ago} \u2022 ${message}",
           "description": "Inline blame format. Placeholders: ${author}, ${ago}, ${date}, ${message}, ${sha}."
         },
         "gitland.blame.statusBar.enabled": {
@@ -366,11 +399,13 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "package": "npm run typecheck && npx -y node@20 node_modules/@vscode/vsce/vsce package --no-dependencies",
-    "vscode:prepublish": "node esbuild.mjs --production"
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "test": "npm run build && node test/runTest.js"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "~1.85.0",
+    "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.6.0"

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
 import { getProvider } from '../providers';
 import { AuthError, Ticket } from '../providers/types';
+import { log } from '../log';
 import { errorMessage } from '../util';
 
 export class TicketItem extends vscode.TreeItem {
@@ -78,6 +79,16 @@ export class TicketsView implements vscode.TreeDataProvider<vscode.TreeItem>, vs
       return [];
     }
     this.view.description = provider.displayName;
+    if (!(await provider.isSignedIn())) {
+      const item = new vscode.TreeItem(`Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'} to see tickets`);
+      item.iconPath = new vscode.ThemeIcon('account');
+      item.description = provider.displayName;
+      item.command = {
+        title: 'Sign in',
+        command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount',
+      };
+      return [item];
+    }
     try {
       const [tickets, branch] = await Promise.all([provider.listMyTickets(), repo.currentBranch()]);
       this.lastBranch = branch;
@@ -85,6 +96,7 @@ export class TicketsView implements vscode.TreeDataProvider<vscode.TreeItem>, vs
       this.view.message = tickets.length ? undefined : `No open ${provider.ticketNoun}s assigned to you.`;
       return tickets.map((t) => new TicketItem(t, t.id === currentId));
     } catch (e) {
+      log.error(`Loading from ${provider.displayName} failed`, e);
       this.view.message = undefined;
       const item = new vscode.TreeItem(
         e instanceof AuthError ? 'Sign in to load your tickets' : `Failed to load: ${errorMessage(e)}`,
@@ -93,7 +105,7 @@ export class TicketsView implements vscode.TreeDataProvider<vscode.TreeItem>, vs
       item.tooltip = errorMessage(e);
       item.command =
         e instanceof AuthError
-          ? { title: 'Set PAT', command: 'gitland.setAzurePat' }
+          ? { title: 'Sign in', command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount' }
           : { title: 'Retry', command: 'gitland.tickets.refresh' };
       return [item];
     }
