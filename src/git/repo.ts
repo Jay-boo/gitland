@@ -1,11 +1,12 @@
 import * as path from 'path';
 import { runGit } from './exec';
 import { GitApiRepository } from './gitApi';
+import { notebookDiff, notebookLines } from './notebookDiff';
 
 export const UNCOMMITTED_SHA = '0000000000000000000000000000000000000000';
 export const WORKTREE_SHA = 'WORKTREE';
 
-export type RefType = 'head' | 'branch' | 'remote' | 'tag';
+export type RefType = 'head' | 'branch' | 'remote' | 'tag' | 'stash';
 
 export interface Ref {
   type: RefType;
@@ -28,6 +29,9 @@ export interface FileChange {
   status: string;
   path: string;
   oldPath?: string;
+  /** Lines added / deleted (undefined for binary files). */
+  added?: number;
+  deleted?: number;
 }
 
 export interface CommitDetails {
@@ -40,6 +44,111 @@ export interface CommitDetails {
   message: string;
   parents: string[];
   files: FileChange[];
+}
+
+export interface Release {
+  name: string;
+  sha: string;
+  date: number;
+  author: string;
+  /** Message subject of an annotated tag. */
+  subject: string;
+  annotated: boolean;
+  previous?: string;
+  commits: number;
+  pullRequests: number;
+}
+
+/** Orders "v3.10.0" after "v3.9.2" (numbers compared as numbers; pre-releases before releases). */
+export function compareVersions(a: string, b: string): number {
+  const parse = (v: string) => {
+    const m = /^v?(\d+(?:\.\d+)*)(.*)$/.exec(v);
+    return m ? { nums: m[1].split('.').map(Number), pre: m[2] } : undefined;
+  };
+  const x = parse(a);
+  const y = parse(b);
+  if (!x || !y) {
+    return x ? 1 : y ? -1 : a.localeCompare(b);
+  }
+  for (let i = 0; i < Math.max(x.nums.length, y.nums.length); i++) {
+    const d = (x.nums[i] ?? 0) - (y.nums[i] ?? 0);
+    if (d) {
+      return d;
+    }
+  }
+  if (x.pre === y.pre) {
+    return 0;
+  }
+  return !x.pre ? 1 : !y.pre ? -1 : x.pre.localeCompare(y.pre);
+}
+
+export interface ComparedCommit {
+  sha: string;
+  parents: string[];
+  author: string;
+  email: string;
+  date: number;
+  subject: string;
+}
+
+/** First lines of a file's diff, for the hover previews of the file lists. */
+export interface DiffPreview {
+  lines: string[];
+  /** Lines left out. */
+  more: number;
+  binary?: boolean;
+  /** Shown instead of an empty diff, e.g. a notebook whose outputs only changed. */
+  note?: string;
+}
+
+const PREVIEW_LINES = 400;
+
+/** One side of a previewed change: a git object (`rev` '' = the index) or the file on disk. */
+export type PreviewSide = { rev: string; path: string } | { file: string } | undefined;
+
+export interface RefComparison {
+  from: string;
+  to: string;
+  /** In `to`, not in `from`. */
+  ahead: ComparedCommit[];
+  /** In `from`, not in `to`. */
+  behind: ComparedCommit[];
+  files: FileChange[];
+  mergeBase?: { sha: string; subject: string; date: number };
+}
+
+export interface TimelineEntry {
+  sha: string;
+  author: string;
+  email: string;
+  date: number;
+  subject: string;
+  body: string;
+  /** Path of the file at that commit (renames). */
+  path: string;
+  added?: number;
+  deleted?: number;
+  /** Line history: the diff of the lines at that commit. */
+  patch?: string;
+}
+
+export interface RepoOperation {
+  kind: 'rebase' | 'merge' | 'cherry-pick' | 'revert';
+  branch?: string;
+  onto?: string;
+  step?: number;
+  total?: number;
+  title?: string;
+}
+
+export interface RepoStatus {
+  branch?: string;
+  upstream?: string;
+  ahead: number;
+  behind: number;
+  staged: FileChange[];
+  unstaged: FileChange[];
+  conflicts: FileChange[];
 }
 
 export interface BlameCommit {
@@ -77,8 +186,91 @@ export class Repo {
 
   constructor(public readonly root: string, public readonly api?: GitApiRepository) {}
 
-  exec(args: string[], input?: string): Promise<string> {
-    return runGit(this.root, args, input);
+  exec(args: string[], input?: string, env?: Record<string, string>): Promise<string> {
+    return runGit(this.root, args, input, env);
+  }
+
+  /**
+   * Hunks of a file's diff for a hover preview. `args`: the git diff / show command (without
+   * formatting options); `untracked`: a new file not in git yet, shown as all added.
+   * `sides`: both versions of the file, to compare a Jupyter notebook by its cells only.
+   */
+  async diffPreview(args: string[], untracked?: string, sides?: { path: string; before: PreviewSide; after: PreviewSide }): Promise<DiffPreview> {
+    let lines: string[];
+    if (sides && /\.ipynb$/i.test(sides.path)) {
+      const [before, after] = await Promise.all([this.previewText(sides.before), this.previewText(sides.after)]);
+      lines = notebookDiff(notebookLines(before), notebookLines(after));
+      if (!lines.length) {
+        return { lines, more: 0, note: 'No code change: only outputs, execution counts or metadata.' };
+      }
+    } else if (untracked) {
+      const fs = await import('fs');
+      const text = await fs.promises.readFile(path.join(this.root, untracked), 'utf8').catch(() => '');
+      if (text.includes('\0')) {
+        return { lines: [], more: 0, binary: true };
+      }
+      lines = text.split('\n').map((l) => `+${l}`);
+    } else {
+      const [cmd, ...rest] = args;
+      const out = await this.exec([cmd, '--no-color', '-M', '-U2', ...rest]).catch(() => '');
+      if (/^Binary files /m.test(out)) {
+        return { lines: [], more: 0, binary: true };
+      }
+      const body = out.split('\n');
+      const start = body.findIndex((l) => l.startsWith('@@'));
+      lines = start < 0 ? [] : body.slice(start).filter((l) => !l.startsWith('\\ No newline'));
+    }
+    while (lines.length && (lines[lines.length - 1] === '' || lines[lines.length - 1] === '+')) {
+      lines.pop();
+    }
+    return { lines: lines.slice(0, PREVIEW_LINES), more: Math.max(0, lines.length - PREVIEW_LINES) };
+  }
+
+  private async previewText(side: PreviewSide): Promise<string> {
+    if (!side) {
+      return '';
+    }
+    if ('file' in side) {
+      const fs = await import('fs');
+      return fs.promises.readFile(path.join(this.root, side.file), 'utf8').catch(() => '');
+    }
+    return this.exec(['show', `${side.rev}:${side.path}`]).catch(() => '');
+  }
+
+  /** Merge, rebase, cherry-pick or revert in progress (stopped on conflicts or an "edit" step). */
+  async operation(): Promise<RepoOperation | undefined> {
+    const fs = await import('fs');
+    const p = async (name: string) => {
+      const rel = (await this.exec(['rev-parse', '--git-path', name])).trim();
+      return path.isAbsolute(rel) ? rel : path.join(this.root, rel);
+    };
+    const exists = async (name: string) => fs.existsSync(await p(name));
+    if ((await exists('rebase-merge')) || (await exists('rebase-apply'))) {
+      const dir = (await exists('rebase-merge')) ? await p('rebase-merge') : await p('rebase-apply');
+      const read = (f: string) => {
+        try {
+          return fs.readFileSync(path.join(dir, f), 'utf8').trim();
+        } catch {
+          return '';
+        }
+      };
+      const onto = read('onto');
+      const head = read('head-name').replace(/^refs\/heads\//, '');
+      const step = Number(read('msgnum') || read('next')) || 0;
+      const total = Number(read('end') || read('last')) || 0;
+      return { kind: 'rebase', branch: head || undefined, onto: onto ? onto.slice(0, 7) : undefined, step, total };
+    }
+    if (await exists('MERGE_HEAD')) {
+      const msg = fs.readFileSync(await p('MERGE_MSG'), 'utf8').split('\n')[0] ?? '';
+      return { kind: 'merge', title: msg };
+    }
+    if (await exists('CHERRY_PICK_HEAD')) {
+      return { kind: 'cherry-pick' };
+    }
+    if (await exists('REVERT_HEAD')) {
+      return { kind: 'revert' };
+    }
+    return undefined;
   }
 
   relativePath(fsPath: string): string {
@@ -220,15 +412,159 @@ export class Repo {
     return out.trim().length > 0;
   }
 
-  async log(max: number, allRefs = true): Promise<Commit[]> {
+  /** Stash entries as commits whose only parent is the commit they were made on. */
+  async stashes(): Promise<Commit[]> {
+    let out: string;
+    try {
+      out = await this.exec(['stash', 'list', `--format=%H${FS}%P${FS}%an${FS}%ae${FS}%at${FS}%gd${FS}%s${RS}`]);
+    } catch {
+      return [];
+    }
+    const list: Commit[] = [];
+    for (const record of out.split(RS)) {
+      const r = record.replace(/^\n/, '');
+      if (!r) {
+        continue;
+      }
+      const [sha, parents, author, email, date, name, subject] = r.split(FS);
+      list.push({
+        sha,
+        parents: parents ? [parents.split(' ')[0]] : [],
+        author,
+        email,
+        date: Number(date) * 1000,
+        // "WIP on dev: 1a2b3c4 subject" (git's default) → "WIP on dev"; "On dev: my message" → "my message"
+        subject: (subject ?? '').replace(/^WIP on ([^:]+): .*$/, 'WIP on $1').replace(/^On [^:]+: /, ''),
+        refs: [{ type: 'stash', name }],
+      });
+    }
+    return list;
+  }
+
+  /**
+   * Commits of `to` that are not in `from` (and the reverse), the files changed between them and
+   * where they diverged: what a compare / release notes view shows.
+   */
+  async compare(from: string, to: string, max = 500): Promise<RefComparison> {
+    const fmt = `--format=%H${FS}%P${FS}%an${FS}%ae${FS}%at${FS}%s${RS}`;
+    const parse = (out: string) =>
+      out
+        .split(RS)
+        .map((r) => r.replace(/^\n/, ''))
+        .filter(Boolean)
+        .map((r) => {
+          const [sha, parents, author, email, date, subject] = r.split(FS);
+          return { sha, parents: parents ? parents.split(' ') : [], author, email, date: Number(date) * 1000, subject: subject ?? '' };
+        });
+    const [ahead, behind, base, nameStatus, numstat] = await Promise.all([
+      this.exec(['log', `--max-count=${max}`, fmt, `${from}..${to}`]),
+      this.exec(['log', `--max-count=${max}`, fmt, `${to}..${from}`]),
+      this.exec(['merge-base', from, to]).catch(() => ''),
+      this.exec(['diff', '--name-status', '-M', from, to]),
+      this.exec(['diff', '--numstat', '-z', '-M', from, to]).catch(() => ''),
+    ]);
+    const files = parseNameStatus(nameStatus);
+    applyNumstat(files, numstat);
+    const mergeBase = base.trim() || undefined;
+    let baseInfo: { sha: string; subject: string; date: number } | undefined;
+    if (mergeBase) {
+      const [subject, date] = (await this.exec(['show', '-s', `--format=%s${FS}%at`, mergeBase])).trim().split(FS);
+      baseInfo = { sha: mergeBase, subject, date: Number(date) * 1000 };
+    }
+    return { from, to, ahead: parse(ahead), behind: parse(behind), files, mergeBase: baseInfo };
+  }
+
+  /** Tags, newest version first, with what each one added since the previous one. */
+  async releases(max = 60): Promise<Release[]> {
+    const out = await this.exec([
+      'for-each-ref',
+      '--sort=-creatordate',
+      `--format=%(refname:short)${FS}%(objectname)${FS}%(*objectname)${FS}%(creatordate:unix)${FS}%(taggername)%(if)%(taggername)%(then)%(else)%(authorname)%(end)${FS}%(contents:subject)${FS}%(objecttype)`,
+      'refs/tags',
+    ]);
+    const tags = out
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => {
+        const [name, obj, peeled, date, who, subject, type] = l.split(FS);
+        return { name, sha: peeled || obj, date: Number(date) * 1000, author: who, subject: type === 'tag' ? subject : '', annotated: type === 'tag' };
+      })
+      .sort((a, b) => compareVersions(b.name, a.name) || b.date - a.date)
+      .slice(0, max);
+    // What each tag added: commits (and PR merges) since the previous tag in its history.
+    return Promise.all(
+      tags.map(async (t) => {
+        const previous = await this.previousTag(t.name);
+        const range = previous ? `${previous}..${t.name}` : t.name;
+        const [count, merges] = await Promise.all([
+          this.exec(['rev-list', '--count', '--no-merges', range]).catch(() => '0'),
+          this.exec(['log', '--merges', '--format=%s', range]).catch(() => ''),
+        ]);
+        const prs = merges.split('\n').filter((m) => /^(Merged PR \d+|Merge pull request #?\d+)/i.test(m)).length;
+        return { ...t, previous, commits: Number(count.trim()) || 0, pullRequests: prs };
+      }),
+    );
+  }
+
+  /** The first release (tag) that contains a commit, e.g. "3.7.1" — undefined when not released yet. */
+  async releaseOf(sha: string): Promise<string | undefined> {
+    try {
+      const out = await this.exec(['tag', '--contains', sha, '--sort=creatordate']);
+      return out.split('\n').find(Boolean)?.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** The tag before `tag` in its history (git describe), for "compare with previous tag". */
+  async previousTag(tag: string): Promise<string | undefined> {
+    try {
+      return (await this.exec(['describe', '--tags', '--abbrev=0', `${tag}^`])).trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Every local branch, remote branch and tag, most recent first. */
+  async allRefs(): Promise<{ type: RefType; name: string; sha: string; date: number; current: boolean }[]> {
+    const out = await this.exec([
+      'for-each-ref',
+      '--sort=-creatordate',
+      `--format=%(refname)${FS}%(refname:short)${FS}%(objectname)${FS}%(*objectname)${FS}%(creatordate:unix)${FS}%(HEAD)`,
+      'refs/heads',
+      'refs/remotes',
+      'refs/tags',
+    ]);
+    const refs = [];
+    for (const line of out.split('\n')) {
+      const [full, name, sha, peeled, date, head] = line.split(FS);
+      if (!full || full.endsWith('/HEAD')) {
+        continue;
+      }
+      const type: RefType = full.startsWith('refs/heads/') ? 'branch' : full.startsWith('refs/remotes/') ? 'remote' : 'tag';
+      refs.push({ type, name, sha: peeled || sha, date: Number(date) * 1000, current: head === '*' });
+    }
+    return refs;
+  }
+
+  /**
+   * Commits in topological order: of every ref (default), or of `refs` only.
+   * `firstParent`: only the main line of those refs (merged branches become one merge commit).
+   */
+  async log(max: number, allRefs: boolean | { refs: string[]; firstParent?: boolean } = true): Promise<Commit[]> {
     const args = [
       'log',
       `--max-count=${max}`,
       '--topo-order',
       `--format=%H${FS}%P${FS}%an${FS}%ae${FS}%at${FS}%D${FS}%s${RS}`,
     ];
-    if (allRefs) {
+    if (allRefs === true) {
       args.push('--exclude=refs/stash', '--all');
+    } else if (allRefs) {
+      if (allRefs.firstParent) {
+        args.push('--first-parent');
+      }
+      args.push(...allRefs.refs, '--');
     }
     let out: string;
     try {
@@ -265,7 +601,12 @@ export class Repo {
       parentList.length > 1
         ? ['diff', '--name-status', '-M', `${full}^1`, full]
         : ['diff-tree', '--no-commit-id', '-r', '-M', '--name-status', '--root', full];
-    const files = parseNameStatus(await this.exec(diffArgs));
+    const [nameStatus, numstat] = await Promise.all([
+      this.exec(diffArgs),
+      this.exec([...diffArgs.filter((a) => a !== '--name-status'), '--numstat', '-z']).catch(() => ''),
+    ]);
+    const files = parseNameStatus(nameStatus);
+    applyNumstat(files, numstat);
     return {
       sha: full,
       author,
@@ -395,6 +736,124 @@ export class Repo {
     return entries;
   }
 
+  /**
+   * History of a file (following renames) or of a line range (git log -L, with the patch of those
+   * lines at each commit), newest first.
+   */
+  async timeline(relPath: string, range?: { start: number; end: number }, max = 200): Promise<TimelineEntry[]> {
+    const GS = '\x1d';
+    const fmt = `--format=${RS}%H${FS}%an${FS}%ae${FS}%at${FS}%s${FS}%b${GS}`;
+    const args = range
+      ? ['log', `-L${range.start},${range.end}:${relPath}`, `--max-count=${max}`, fmt]
+      : ['log', '--follow', `--max-count=${max}`, fmt, '--numstat', '--', relPath];
+    const out = await this.exec(args);
+    const entries: TimelineEntry[] = [];
+    for (const record of out.split(RS)) {
+      if (!record.trim()) {
+        continue;
+      }
+      const cut = record.indexOf(GS);
+      const [sha, author, email, date, subject, body] = record.slice(0, cut).split(FS);
+      const rest = record.slice(cut + 1).replace(/^\n+/, '');
+      const e: TimelineEntry = { sha, author, email, date: Number(date) * 1000, subject, body: (body ?? '').trim(), path: relPath };
+      if (range) {
+        e.patch = rest.trim();
+        e.added = (rest.match(/^\+(?!\+\+)/gm) ?? []).length;
+        e.deleted = (rest.match(/^-(?!--)/gm) ?? []).length;
+        const m = /^\+\+\+ b\/(.+)$/m.exec(rest);
+        if (m) {
+          e.path = m[1];
+        }
+      } else {
+        const line = rest.split('\n').find((l) => /^(\d+|-)\t(\d+|-)\t/.test(l));
+        if (line) {
+          const [a, d, ...p] = line.split('\t');
+          e.added = a === '-' ? undefined : Number(a);
+          e.deleted = d === '-' ? undefined : Number(d);
+          // "dir/{old => new}.ts" or "old => new": the path at that commit.
+          e.path = p.join('\t').replace(/\{[^{}]* => ([^{}]*)\}/, '$1').replace(/^.* => /, '').replace(/\/\//g, '/');
+        }
+      }
+      entries.push(e);
+    }
+    return entries;
+  }
+
+  /** Signature of a commit: G good, B bad, U good but untrusted key, X/Y expired, R revoked, E cannot check, N none. */
+  async signature(sha: string): Promise<{ status: string; signer?: string; key?: string } | undefined> {
+    const out = await this.exec(['log', '-1', `--format=%G?${FS}%GS${FS}%GK`, sha]).catch(() => '');
+    const [status, signer, key] = out.trim().split(FS);
+    return status && status !== 'N' ? { status, signer: signer || undefined, key: key || undefined } : undefined;
+  }
+
+  /** Commit hooks that will run (pre-commit, commit-msg…), from core.hooksPath or .git/hooks. */
+  async commitHooks(): Promise<string[]> {
+    const fs = await import('fs');
+    const custom = await this.getConfig('core.hooksPath');
+    const dir = custom
+      ? path.isAbsolute(custom) ? custom : path.join(this.root, custom)
+      : path.join(this.root, (await this.exec(['rev-parse', '--git-path', 'hooks'])).trim());
+    const names = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit'];
+    return names.filter((n) => {
+      try {
+        const st = fs.statSync(path.join(dir, n));
+        return st.isFile() && (process.platform === 'win32' || (st.mode & 0o111) !== 0);
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  /** Patch of one file in one commit (against its first parent). */
+  async filePatch(sha: string, relPath: string): Promise<string> {
+    return this.exec(['show', '--format=', '--patch', '-M', '--first-parent', sha, '--', relPath]).catch(() => '');
+  }
+
+  /** Branch, upstream, ahead/behind and the staged / unstaged / conflicted files (git status v2). */
+  async status(): Promise<RepoStatus> {
+    const out = await this.exec(['status', '--porcelain=v2', '--branch', '--untracked-files=all', '-z']);
+    const st: RepoStatus = { ahead: 0, behind: 0, staged: [], unstaged: [], conflicts: [] };
+    const parts = out.split('\0');
+    for (let i = 0; i < parts.length; i++) {
+      const line = parts[i];
+      if (line.startsWith('# branch.head ')) {
+        const b = line.slice(14);
+        st.branch = b === '(detached)' ? undefined : b;
+      } else if (line.startsWith('# branch.upstream ')) {
+        st.upstream = line.slice(18);
+      } else if (line.startsWith('# branch.ab ')) {
+        const m = /\+(\d+) -(\d+)/.exec(line);
+        if (m) {
+          st.ahead = Number(m[1]);
+          st.behind = Number(m[2]);
+        }
+      } else if (line.startsWith('1 ') || line.startsWith('2 ')) {
+        const f = line.split(' ');
+        const xy = f[1];
+        const renamed = line.startsWith('2 ');
+        const file = f.slice(renamed ? 9 : 8).join(' ');
+        const oldPath = renamed ? parts[++i] : undefined;
+        if (xy[0] !== '.') {
+          st.staged.push({ status: xy[0] === 'C' ? 'C' : xy[0], path: file, oldPath: xy[0] === 'R' || xy[0] === 'C' ? oldPath : undefined });
+        }
+        if (xy[1] !== '.') {
+          st.unstaged.push({ status: xy[1], path: file });
+        }
+      } else if (line.startsWith('u ')) {
+        st.conflicts.push({ status: '!', path: line.split(' ').slice(10).join(' ') });
+      } else if (line.startsWith('? ')) {
+        st.unstaged.push({ status: 'U', path: line.slice(2) });
+      }
+    }
+    const [cached, work] = await Promise.all([
+      this.exec(['diff', '--cached', '--numstat', '-z', '-M']).catch(() => ''),
+      this.exec(['diff', '--numstat', '-z']).catch(() => ''),
+    ]);
+    applyNumstat(st.staged, cached);
+    applyNumstat(st.unstaged, work);
+    return st;
+  }
+
   async fetch(): Promise<void> {
     if (this.api) {
       await this.api.fetch();
@@ -445,6 +904,24 @@ function parseDecorations(decorations: string, remotes: string[]): Ref[] {
     }
   }
   return refs;
+}
+
+/** Adds line counts from `--numstat -z` output (renames are "a\td\t\0old\0new\0"). */
+export function applyNumstat(files: FileChange[], out: string): void {
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  const parts = out.split('\0');
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^(-|\d+)\t(-|\d+)\t(.*)$/s.exec(parts[i].replace(/^\n/, ''));
+    if (!m) {
+      continue;
+    }
+    const path = m[3] || ((i += 2), parts[i]);
+    const f = byPath.get(path);
+    if (f && m[1] !== '-') {
+      f.added = Number(m[1]);
+      f.deleted = Number(m[2]);
+    }
+  }
 }
 
 function parseNameStatus(out: string): FileChange[] {

@@ -4,52 +4,33 @@ import { getProvider } from '../providers';
 import { AuthError, Ticket } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
+import { webviewHtml, webviewOptions } from './webviewHtml';
 
-export class TicketItem extends vscode.TreeItem {
-  constructor(public readonly ticket: Ticket, isCurrent: boolean) {
-    super(ticket.title, vscode.TreeItemCollapsibleState.None);
-    this.id = `ticket:${ticket.id}`;
-    this.description = `#${ticket.id} · ${ticket.state}${isCurrent ? ' · ● current branch' : ''}`;
-    this.contextValue = 'ticket';
-    this.iconPath = ticketIcon(ticket.type, isCurrent);
-    const md = new vscode.MarkdownString();
-    md.appendMarkdown(`**${ticket.type} #${ticket.id}** — ${ticket.state}\n\n${ticket.title}`);
-    if (ticket.assignee) {
-      md.appendMarkdown(`\n\n$(account) ${ticket.assignee}`);
-    }
-    md.supportThemeIcons = true;
-    this.tooltip = md;
-    this.command = { title: 'Start work', command: 'gitland.tickets.startWork', arguments: [this] };
-  }
+/** What the ticket commands receive (from the webview, or the command palette). */
+export interface TicketItem {
+  ticket: Ticket;
 }
 
-export function ticketIcon(type: string, highlight = false): vscode.ThemeIcon {
-  const t = type.toLowerCase();
-  const [icon, color] = t.includes('bug')
-    ? ['bug', 'charts.red']
-    : t.includes('task')
-      ? ['tasklist', 'charts.yellow']
-      : t.includes('story') || t.includes('backlog')
-        ? ['book', 'charts.blue']
-        : t.includes('feature')
-          ? ['star-full', 'charts.purple']
-          : t.includes('epic')
-            ? ['rocket', 'charts.orange']
-            : ['issues', 'charts.green'];
-  return new vscode.ThemeIcon(highlight ? 'arrow-circle-right' : icon, new vscode.ThemeColor(color));
-}
+type Message =
+  | { type: 'ready' | 'refresh' | 'startById' | 'sources' | 'signIn' }
+  | { type: 'start' | 'open' | 'copy' | 'show'; id: string };
 
-export class TicketsView implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
-  private readonly emitter = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this.emitter.event;
-  private readonly view: vscode.TreeView<vscode.TreeItem>;
+/** "My Tickets": your open work items / issues, in the Gitland style. Click one to start working on it. */
+export class TicketsView implements vscode.WebviewViewProvider, vscode.Disposable {
+  static readonly viewId = 'gitland.tickets';
+  private view?: vscode.WebviewView;
   private readonly disposables: vscode.Disposable[] = [];
   private lastBranch?: string;
+  private tickets: Ticket[] = [];
+  private signInCommand = 'gitland.switchAzureAccount';
 
-  constructor(private readonly repos: RepoManager, private readonly secrets: vscode.SecretStorage) {
-    this.view = vscode.window.createTreeView('gitland.tickets', { treeDataProvider: this, showCollapseAll: false });
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly repos: RepoManager,
+    private readonly secrets: vscode.SecretStorage,
+  ) {
     this.disposables.push(
-      this.view,
+      vscode.window.registerWebviewViewProvider(TicketsView.viewId, this),
       repos.onDidChangeRepo(async (r) => {
         const b = await r.currentBranch();
         if (b !== this.lastBranch) {
@@ -59,60 +40,117 @@ export class TicketsView implements vscode.TreeDataProvider<vscode.TreeItem>, vs
     );
   }
 
+  resolveWebviewView(view: vscode.WebviewView): void {
+    this.view = view;
+    view.webview.options = webviewOptions(this.context.extensionUri);
+    view.webview.html = webviewHtml(view.webview, this.context.extensionUri, {
+      title: 'My Tickets',
+      body: LIST_BODY('Filter tickets'),
+      script: 'tickets.js',
+      styles: ['list.css'],
+      bodyClass: 'list',
+    });
+    view.webview.onDidReceiveMessage((m: Message) => this.onMessage(m), undefined, this.disposables);
+    view.onDidChangeVisibility(() => view.visible && this.refresh(), undefined, this.disposables);
+  }
+
   refresh(): void {
-    this.emitter.fire();
+    this.load().catch((e) => log.error('Tickets: refresh failed', e));
   }
 
-  getTreeItem(e: vscode.TreeItem): vscode.TreeItem {
-    return e;
+  private post(m: unknown): void {
+    this.view?.webview.postMessage(m);
   }
 
-  async getChildren(): Promise<vscode.TreeItem[]> {
+  private async load(): Promise<void> {
+    if (!this.view) {
+      return;
+    }
     const repo = await this.repos.activeRepo(false);
     if (!repo) {
-      this.view.message = 'No git repository in this workspace.';
-      return [];
+      return this.post({ type: 'state', state: 'empty', title: 'No git repository', text: 'Open a folder with an Azure DevOps or GitHub remote.' });
     }
     const provider = await getProvider(repo, this.secrets);
     if (!provider) {
-      this.view.message = 'No Azure DevOps or GitHub remote found for this repository.';
-      return [];
+      return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps or GitHub remote', text: 'Tickets come from the remote of this repository.' });
     }
-    this.view.description = provider.displayName;
+    this.signInCommand = provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount';
+    const source = provider.ticketSourceLabel ?? provider.displayName;
+    this.view.description = source;
     if (!(await provider.isSignedIn())) {
-      const item = new vscode.TreeItem(`Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'} to see tickets`);
-      item.iconPath = new vscode.ThemeIcon('account');
-      item.description = provider.displayName;
-      item.command = {
-        title: 'Sign in',
-        command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount',
-      };
-      return [item];
+      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'}`, text: `to see your ${provider.ticketNoun}s` });
     }
+    this.post({ type: 'loading' });
     try {
       const [tickets, branch] = await Promise.all([provider.listMyTickets(), repo.currentBranch()]);
       this.lastBranch = branch;
+      this.tickets = tickets;
       const currentId = branch ? await repo.getConfig(`branch.${branch}.gitlandTicket`) : undefined;
-      this.view.message = tickets.length ? undefined : `No open ${provider.ticketNoun}s assigned to you.`;
-      return tickets.map((t) => new TicketItem(t, t.id === currentId));
+      this.post({ type: 'tickets', tickets, currentId, source, noun: provider.ticketNoun, multiSource: new Set(tickets.map((t) => t.project)).size > 1 });
     } catch (e) {
-      log.error(`Loading from ${provider.displayName} failed`, e);
-      this.view.message = undefined;
-      const item = new vscode.TreeItem(
-        e instanceof AuthError ? 'Sign in to load your tickets' : `Failed to load: ${errorMessage(e)}`,
-      );
-      item.iconPath = new vscode.ThemeIcon(e instanceof AuthError ? 'account' : 'warning');
-      item.tooltip = errorMessage(e);
-      item.command =
+      log.error(`Loading from ${source} failed`, e);
+      this.post(
         e instanceof AuthError
-          ? { title: 'Sign in', command: provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount' }
-          : { title: 'Retry', command: 'gitland.tickets.refresh' };
-      return [item];
+          ? { type: 'state', state: 'signin', title: 'Sign in to load your tickets', text: errorMessage(e) }
+          : { type: 'state', state: 'error', title: 'Could not load the tickets', text: errorMessage(e) },
+      );
+    }
+  }
+
+  private async onMessage(m: Message): Promise<void> {
+    const ticket = 'id' in m ? this.tickets.find((t) => t.id === m.id) : undefined;
+    switch (m.type) {
+      case 'ready':
+      case 'refresh':
+        return this.refresh();
+      case 'startById':
+        await vscode.commands.executeCommand('gitland.tickets.startWorkById');
+        return;
+      case 'sources':
+        await vscode.commands.executeCommand('gitland.tickets.sources');
+        return;
+      case 'signIn':
+        await vscode.commands.executeCommand(this.signInCommand);
+        return this.refresh();
+      case 'start':
+        if (ticket) {
+          await vscode.commands.executeCommand('gitland.tickets.startWork', { ticket } satisfies TicketItem);
+        }
+        return;
+      case 'show':
+        if (ticket) {
+          await vscode.commands.executeCommand('gitland.tickets.show', { ticket } satisfies TicketItem);
+        }
+        return;
+      case 'open':
+        if (ticket) {
+          await vscode.env.openExternal(vscode.Uri.parse(ticket.url));
+        }
+        return;
+      case 'copy':
+        if (ticket) {
+          await vscode.env.clipboard.writeText(ticket.id);
+          vscode.window.setStatusBarMessage(`Gitland: #${ticket.id} copied`, 2000);
+        }
+        return;
     }
   }
 
   dispose(): void {
     this.disposables.forEach((d) => d.dispose());
-    this.emitter.dispose();
   }
+}
+
+/** Shared list page: a filter box and the list (tickets and pull requests). */
+export const LIST_BODY = (placeholder: string) => `<header class="lv-head">
+  <label class="search"><i class="codicon codicon-filter"></i><input id="filter" type="search" placeholder="${placeholder}" spellcheck="false" /></label>
+</header>
+<main id="list"></main>`;
+
+/** Codicon of a ticket type (quick picks). */
+export function ticketIcon(type: string): vscode.ThemeIcon {
+  const t = type.toLowerCase();
+  return new vscode.ThemeIcon(
+    t.includes('bug') ? 'bug' : t.includes('task') ? 'tasklist' : t.includes('story') || t.includes('backlog') ? 'book' : t.includes('feature') ? 'star-full' : t.includes('epic') ? 'rocket' : 'issues',
+  );
 }

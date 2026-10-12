@@ -54,6 +54,23 @@ exports.run = async function () {
     await vscode.commands.executeCommand('gitland.showGraphInPanel');
     await sleep(2500);
   });
+  await step('show the Changes view (stage / commit / push)', async () => {
+    await vscode.commands.executeCommand('gitland.changesView.focus');
+    await sleep(2000);
+  });
+  await step('show the Changes view in the bottom panel too', async () => {
+    await vscode.commands.executeCommand('gitland.showChangesInPanel');
+    await sleep(2000);
+    await vscode.commands.executeCommand('gitland.showChangesView');
+    await sleep(1000);
+  });
+  await step('open the Changes view in an editor tab', async () => {
+    await vscode.commands.executeCommand('gitland.showChangesInEditor');
+    await sleep(2500);
+    const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    assert.ok(tab && /^Changes/.test(tab.label) && tab.input instanceof vscode.TabInputWebview, `active tab is ${tab && tab.label}`);
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  });
   await step('open commit graph in an editor tab', async () => {
     await vscode.commands.executeCommand('gitland.showGraphInEditor');
     await sleep(2500);
@@ -77,8 +94,13 @@ exports.run = async function () {
     console.log(`    ${ours.length} Gitland lenses, e.g.: ${ours.slice(0, 4).map((l) => `L${l.range.start.line + 1} "${l.command.title}"`).join(' | ')}`);
     assert.ok(ours.length >= 2, 'expected at least the document-level lenses');
   });
+  await step('show My Tickets and Pull Requests (webviews)', async () => {
+    await vscode.commands.executeCommand('gitland.tickets.focus');
+    await vscode.commands.executeCommand('gitland.prs.focus');
+    await sleep(2000);
+  });
   await step('views are contributed', async () => {
-    await vscode.commands.executeCommand('workbench.view.extension.gitland');
+    await vscode.commands.executeCommand('workbench.view.extension.gitlandSidebar');
     await sleep(1500);
   });
   // Give background work a moment to log anything unexpected.

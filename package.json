@@ -1,8 +1,8 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.3.2",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets → branches and pull requests for Azure DevOps & GitHub.",
+  "version": "0.23.2",
   "publisher": "jayboo",
   "license": "MIT",
   "repository": {
@@ -27,7 +27,17 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onWebviewPanel:gitland.pullRequest",
+    "onWebviewPanel:gitland.ticket",
+    "onWebviewPanel:gitland.compare",
+    "onWebviewPanel:gitland.history",
+    "onWebviewPanel:gitland.dashboard",
+    "onWebviewPanel:gitland.cleanup",
+    "onWebviewPanel:gitland.newPullRequest",
+    "onWebviewPanel:gitland.newRelease",
+    "onWebviewPanel:gitland.graph",
+    "onWebviewPanel:gitland.changes"
   ],
   "extensionDependencies": [
     "vscode.git"
@@ -63,6 +73,12 @@
         "category": "Gitland"
       },
       {
+        "command": "gitland.tickets.sources",
+        "title": "Ticket Sources…",
+        "category": "Gitland",
+        "icon": "$(settings)"
+      },
+      {
         "command": "gitland.tickets.refresh",
         "title": "Refresh Tickets",
         "category": "Gitland",
@@ -76,9 +92,15 @@
       },
       {
         "command": "gitland.tickets.startWorkById",
-        "title": "Start Work From Ticket\u2026",
+        "title": "Start Work From Ticket…",
         "category": "Gitland",
         "icon": "$(add)"
+      },
+      {
+        "command": "gitland.tickets.show",
+        "title": "Show Ticket",
+        "category": "Gitland",
+        "icon": "$(issues)"
       },
       {
         "command": "gitland.tickets.open",
@@ -102,6 +124,12 @@
         "title": "Create Pull Request",
         "category": "Gitland",
         "icon": "$(git-pull-request-create)"
+      },
+      {
+        "command": "gitland.prs.show",
+        "title": "Show Pull Request",
+        "category": "Gitland",
+        "icon": "$(git-pull-request)"
       },
       {
         "command": "gitland.prs.open",
@@ -166,6 +194,12 @@
         "category": "Gitland"
       },
       {
+        "command": "gitland.chooseAvatarStyle",
+        "title": "Choose Author Picture Style",
+        "category": "Gitland",
+        "icon": "$(account)"
+      },
+      {
         "command": "gitland.showGraphView",
         "title": "Show Commit Graph in Sidebar",
         "category": "Gitland",
@@ -176,12 +210,99 @@
         "title": "Show Commit Graph in Bottom Panel",
         "category": "Gitland",
         "icon": "$(layout-panel)"
+      },
+      {
+        "command": "gitland.toggleChat",
+        "title": "Toggle Chat Panel",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.compare",
+        "title": "Compare Branches or Tags…",
+        "category": "Gitland",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitland.releases.create",
+        "title": "Create Release…",
+        "category": "Gitland",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "gitland.releases.refresh",
+        "title": "Refresh Releases",
+        "category": "Gitland",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitland.rebase.interactive",
+        "title": "Interactive Rebase…",
+        "category": "Gitland",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "gitland.branches.cleanup",
+        "title": "Clean Up Branches…",
+        "category": "Gitland",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitland.worktrees",
+        "title": "Worktrees…",
+        "category": "Gitland",
+        "icon": "$(window)"
+      },
+      {
+        "command": "gitland.worktrees.open",
+        "title": "Open Branch in a New Worktree",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.pipelines.openLatest",
+        "title": "Open the Latest CI Run",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.explainLines",
+        "title": "Explain These Lines (AI)",
+        "category": "Gitland",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "gitland.search",
+        "title": "Search Everywhere…",
+        "category": "Gitland",
+        "icon": "$(search)"
+      },
+      {
+        "command": "gitland.dashboard",
+        "title": "Dashboard",
+        "category": "Gitland",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "gitland.showChangesInPanel",
+        "title": "Show Changes in Bottom Panel",
+        "category": "Gitland",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "gitland.showChangesView",
+        "title": "Show Changes in Sidebar",
+        "category": "Gitland",
+        "icon": "$(layout-sidebar-left)"
+      },
+      {
+        "command": "gitland.showChangesInEditor",
+        "title": "Open Changes in Editor",
+        "category": "Gitland",
+        "icon": "$(link-external)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "gitland",
+          "id": "gitlandSidebar",
           "title": "Gitland",
           "icon": "media/activity.svg"
         }
@@ -195,26 +316,44 @@
       ]
     },
     "views": {
-      "gitland": [
+      "gitlandSidebar": [
+        {
+          "type": "webview",
+          "id": "gitland.changesView",
+          "name": "Changes",
+          "icon": "media/activity.svg",
+          "visibility": "visible",
+          "initialSize": 12
+        },
         {
           "type": "webview",
           "id": "gitland.graphView",
           "name": "Graph",
           "icon": "media/activity.svg",
           "visibility": "visible",
-          "initialSize": 7
+          "initialSize": 4
         },
         {
           "id": "gitland.tickets",
           "name": "My Tickets",
           "visibility": "visible",
-          "initialSize": 2
+          "initialSize": 2,
+          "type": "webview"
         },
         {
           "id": "gitland.prs",
           "name": "Pull Requests",
           "visibility": "visible",
-          "initialSize": 2
+          "initialSize": 2,
+          "type": "webview"
+        },
+        {
+          "type": "webview",
+          "id": "gitland.releases",
+          "name": "Releases",
+          "icon": "media/activity.svg",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "gitlandPanel": [
@@ -223,15 +362,15 @@
           "id": "gitland.graphPanelView",
           "name": "Commit Graph",
           "icon": "media/activity.svg"
+        },
+        {
+          "type": "webview",
+          "id": "gitland.changesPanelView",
+          "name": "Changes",
+          "icon": "media/activity.svg"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "gitland.tickets",
-        "contents": "Open a folder with an Azure DevOps or GitHub remote to see your tickets.\n[Show Git Graph](command:gitland.showGraph)"
-      }
-    ],
     "menus": {
       "view/title": [
         {
@@ -243,6 +382,11 @@
           "command": "gitland.tickets.refresh",
           "when": "view == gitland.tickets",
           "group": "navigation@3"
+        },
+        {
+          "command": "gitland.tickets.sources",
+          "when": "view == gitland.tickets",
+          "group": "navigation@4"
         },
         {
           "command": "gitland.prs.create",
@@ -283,43 +427,41 @@
           "command": "gitland.showGraphView",
           "when": "view == gitland.graphPanelView",
           "group": "navigation@1"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "gitland.tickets.startWork",
-          "when": "view == gitland.tickets && viewItem == ticket",
-          "group": "inline@1"
         },
         {
-          "command": "gitland.tickets.open",
-          "when": "view == gitland.tickets && viewItem == ticket",
-          "group": "inline@2"
+          "command": "gitland.releases.create",
+          "when": "view == gitland.releases",
+          "group": "navigation@1"
         },
         {
-          "command": "gitland.tickets.startWork",
-          "when": "view == gitland.tickets && viewItem == ticket",
-          "group": "1_actions@1"
+          "command": "gitland.releases.refresh",
+          "when": "view == gitland.releases",
+          "group": "navigation@2"
         },
         {
-          "command": "gitland.tickets.open",
-          "when": "view == gitland.tickets && viewItem == ticket",
-          "group": "1_actions@2"
+          "command": "gitland.dashboard",
+          "when": "view =~ /^gitland\\.(changesView|graphView|tickets|prs|releases)$/",
+          "group": "navigation@0"
         },
         {
-          "command": "gitland.tickets.copyId",
-          "when": "view == gitland.tickets && viewItem == ticket",
-          "group": "1_actions@3"
+          "command": "gitland.search",
+          "when": "view == gitland.graphView",
+          "group": "navigation@0"
         },
         {
-          "command": "gitland.prs.checkout",
-          "when": "view == gitland.prs && viewItem == pr",
-          "group": "inline@1"
+          "command": "gitland.showChangesInPanel",
+          "when": "view == gitland.changesView",
+          "group": "navigation@8"
         },
         {
-          "command": "gitland.prs.open",
-          "when": "view == gitland.prs && viewItem == pr",
-          "group": "inline@2"
+          "command": "gitland.showChangesView",
+          "when": "view == gitland.changesPanelView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitland.showChangesInEditor",
+          "when": "view == gitland.changesView || view == gitland.changesPanelView",
+          "group": "navigation@7"
         }
       ],
       "scm/title": [
@@ -356,6 +498,11 @@
           "command": "gitland.lineHistory",
           "group": "gitland@3",
           "when": "resourceScheme == file"
+        },
+        {
+          "command": "gitland.explainLines",
+          "when": "resourceScheme == file",
+          "group": "gitland@3"
         }
       ],
       "explorer/context": [
@@ -389,6 +536,10 @@
         {
           "command": "gitland.toggleFileBlameOff",
           "when": "false"
+        },
+        {
+          "command": "gitland.worktrees.open",
+          "when": "false"
         }
       ]
     },
@@ -403,6 +554,16 @@
         "key": "ctrl+alt+b",
         "mac": "cmd+alt+b",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "gitland.search",
+        "key": "ctrl+alt+shift+f",
+        "mac": "cmd+alt+shift+f"
+      },
+      {
+        "command": "gitland.toggleChat",
+        "key": "ctrl+alt+shift+c",
+        "mac": "cmd+alt+shift+c"
       }
     ],
     "configuration": {
@@ -415,7 +576,7 @@
         },
         "gitland.blame.inline.format": {
           "type": "string",
-          "default": "${author}, ${ago} \u2022 ${message}",
+          "default": "${author}, ${ago} • ${message}",
           "description": "Inline blame format. Placeholders: ${author}, ${ago}, ${date}, ${message}, ${sha}."
         },
         "gitland.blame.statusBar.enabled": {
@@ -455,6 +616,52 @@
           "type": "boolean",
           "default": true,
           "description": "Fetch the remote before creating a branch from a ticket."
+        },
+        "gitland.changes.autoStageAll": {
+          "type": "boolean",
+          "default": false,
+          "description": "Commit all changes without asking when nothing is staged (Changes view)."
+        },
+        "gitland.changes.commitMessageInstructions": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Extra instructions for the ✨ generated commit messages, e.g. `Write in French` or `Use Conventional Commits`."
+        },
+        "gitland.changes.commitMessageModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Language model family for the ✨ commit messages (e.g. `gpt-4o-mini`, `claude-sonnet-4`). Empty: a fast Copilot model."
+        },
+        "gitland.changes.pullRebase": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pull with --rebase from the Changes view."
+        },
+        "gitland.tickets.sources": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Azure DevOps projects the tickets come from, when they are not in the repository's project (e.g. a shared backlog). Empty = the repository's project. Easiest with **Gitland: Ticket Sources…** (⚙ in the Tickets view).",
+          "items": {
+            "type": "object",
+            "required": [
+              "organization",
+              "project"
+            ],
+            "properties": {
+              "organization": {
+                "type": "string",
+                "description": "Azure DevOps organization (dev.azure.com/<organization>)."
+              },
+              "project": {
+                "type": "string",
+                "description": "Project that holds the work items."
+              },
+              "wiql": {
+                "type": "string",
+                "description": "WIQL for 'My Tickets' in this project (default: gitland.azureDevOps.wiql; @project is this project)."
+              }
+            }
+          }
         },
         "gitland.azureDevOps.wiql": {
           "type": "string",
@@ -506,6 +713,11 @@
           ],
           "description": "Where to show blame CodeLens: 'document' = top of file, 'containers' = classes/modules, 'blocks' = functions/methods."
         },
+        "gitland.graph.showStashes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show stash entries in the Commit Graph."
+        },
         "gitland.graph.avatars": {
           "type": "boolean",
           "default": true,
@@ -519,6 +731,41 @@
         "gitland.avatars.defaultStyle": {
           "type": "string",
           "enum": [
+            "pixel",
+            "geometric",
+            "marble",
+            "rings",
+            "initials",
+            "dicebear-notionists",
+            "dicebear-notionists-neutral",
+            "dicebear-lorelei",
+            "dicebear-lorelei-neutral",
+            "dicebear-avataaars",
+            "dicebear-avataaars-neutral",
+            "dicebear-adventurer",
+            "dicebear-adventurer-neutral",
+            "dicebear-big-ears",
+            "dicebear-big-ears-neutral",
+            "dicebear-big-smile",
+            "dicebear-micah",
+            "dicebear-open-peeps",
+            "dicebear-personas",
+            "dicebear-dylan",
+            "dicebear-miniavs",
+            "dicebear-croodles",
+            "dicebear-croodles-neutral",
+            "dicebear-fun-emoji",
+            "dicebear-thumbs",
+            "dicebear-bottts",
+            "dicebear-bottts-neutral",
+            "dicebear-pixel-art",
+            "dicebear-pixel-art-neutral",
+            "dicebear-icons",
+            "dicebear-identicon",
+            "dicebear-initials",
+            "dicebear-rings",
+            "dicebear-shapes",
+            "dicebear-glass",
             "robohash",
             "identicon",
             "retro",
@@ -526,8 +773,51 @@
             "wavatar",
             "mp"
           ],
-          "default": "robohash",
-          "description": "Picture used when an author has no profile photo (Gravatar default style, 'robohash' like GitLens)."
+          "enumDescriptions": [
+            "Symmetric 5×5 identicon, drawn locally",
+            "Bauhaus shapes, drawn locally",
+            "Soft blurred blobs, drawn locally",
+            "Concentric arcs, drawn locally",
+            "Initials on a color, drawn locally",
+            "DiceBear “notionists”",
+            "DiceBear “notionists-neutral” (face only, calmer)",
+            "DiceBear “lorelei”",
+            "DiceBear “lorelei-neutral” (face only, calmer)",
+            "DiceBear “avataaars”",
+            "DiceBear “avataaars-neutral” (face only, calmer)",
+            "DiceBear “adventurer”",
+            "DiceBear “adventurer-neutral” (face only, calmer)",
+            "DiceBear “big-ears”",
+            "DiceBear “big-ears-neutral” (face only, calmer)",
+            "DiceBear “big-smile”",
+            "DiceBear “micah”",
+            "DiceBear “open-peeps”",
+            "DiceBear “personas”",
+            "DiceBear “dylan”",
+            "DiceBear “miniavs”",
+            "DiceBear “croodles”",
+            "DiceBear “croodles-neutral” (face only, calmer)",
+            "DiceBear “fun-emoji”",
+            "DiceBear “thumbs”",
+            "DiceBear “bottts”",
+            "DiceBear “bottts-neutral” (face only, calmer)",
+            "DiceBear “pixel-art”",
+            "DiceBear “pixel-art-neutral” (face only, calmer)",
+            "DiceBear “icons”",
+            "DiceBear “identicon”",
+            "DiceBear “initials”",
+            "DiceBear “rings”",
+            "DiceBear “shapes”",
+            "DiceBear “glass”",
+            "Robots from Gravatar (GitLens default)",
+            "Gravatar identicon",
+            "Gravatar retro pixels",
+            "Gravatar monsters",
+            "Gravatar faces",
+            "Gravatar silhouette"
+          ],
+          "default": "pixel",
+          "markdownDescription": "Picture used when an author has no profile photo (a real Azure DevOps / GitHub / Gravatar photo always wins). Drawn locally in the graph colors, or from [DiceBear](https://www.dicebear.com) or Gravatar. Preview them with **Gitland: Choose Author Picture Style**."
         },
         "gitland.azureDevOps.browserSignIn": {
           "type": "boolean",
@@ -551,6 +841,46 @@
           "type": "boolean",
           "default": true,
           "description": "Show a 'Graph' button in the status bar (like GitLens)."
+        },
+        "gitland.tickets.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the ticket of the current branch in the status bar (click to see it)."
+        },
+        "gitland.pr.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the pull request of the current branch in the status bar (click to see it)."
+        },
+        "gitland.pr.addMeAsReviewer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add yourself as an optional reviewer of the pull requests you create (Azure DevOps)."
+        },
+        "gitland.pr.descriptionInstructions": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Extra instructions for the ✨ generated pull request title and description, e.g. `Write in French`."
+        },
+        "gitland.releases.notesInstructions": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Extra instructions for the ✨ release notes, e.g. `Write in French`."
+        },
+        "gitland.graph.pipelines": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the CI status (Azure Pipelines / GitHub Actions) of the commits in the Commit Graph."
+        },
+        "gitland.pipelines.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the CI status of the current branch in the status bar."
+        },
+        "gitland.ai.explainInstructions": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Extra instructions for ✨ Explain, e.g. `Answer in French`."
         }
       }
     }

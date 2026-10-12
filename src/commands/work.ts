@@ -5,6 +5,7 @@ import { getProvider } from '../providers';
 import { Provider, Ticket } from '../providers/types';
 import { config, errorMessage, slugify } from '../util';
 import { ticketIcon } from '../views/ticketsView';
+import { createWorktree, listWorktrees, openFolderInNewWindow } from './worktrees';
 
 export async function pickTicket(provider: Provider): Promise<Ticket | undefined> {
   const qp = vscode.window.createQuickPick<vscode.QuickPickItem & { ticket?: Ticket }>();
@@ -107,6 +108,32 @@ async function pickBaseBranch(repo: Repo, remote: string | undefined): Promise<s
   return pick?.ref;
 }
 
+/**
+ * Like GitLens' Start Work: switch this folder to the branch, or put it in its own worktree (a separate
+ * folder and window) so another ticket — yours or an agent's — keeps going untouched in this one.
+ */
+async function pickWhere(repo: Repo, ticket: Ticket, create: boolean): Promise<'here' | 'worktree' | undefined> {
+  const [current, dirty] = await Promise.all([repo.currentBranch(), repo.isDirty()]);
+  const currentTicket = current ? await repo.getConfig(`branch.${current}.gitlandTicket`) : undefined;
+  const busy = currentTicket && currentTicket !== ticket.id ? `#${currentTicket} keeps going in this window` : dirty ? 'your uncommitted changes stay in this window' : 'a separate folder, opened in a new window';
+  const pick = await vscode.window.showQuickPick(
+    [
+      {
+        label: create ? '$(git-branch) Create & switch to branch' : '$(git-branch) Switch to branch',
+        description: current ? `replaces ${current} in this window` : '',
+        where: 'here' as const,
+      },
+      {
+        label: create ? '$(folder-opened) Create branch in a new worktree' : '$(folder-opened) Open branch in a new worktree',
+        description: busy,
+        where: 'worktree' as const,
+      },
+    ],
+    { placeHolder: `#${ticket.id} ${ticket.title}` },
+  );
+  return pick?.where;
+}
+
 export async function startWork(repos: RepoManager, secrets: vscode.SecretStorage, ticket?: Ticket): Promise<boolean> {
   const repo = await repos.activeRepo();
   if (!repo) {
@@ -145,6 +172,27 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
       return false;
     }
     if (choice.branch) {
+      // Already checked out in another worktree (e.g. a second ticket in parallel): open that window.
+      const wt = (await listWorktrees(repo)).find((w) => w.branch === choice.branch);
+      if (wt && wt.path !== repo.root) {
+        await openFolderInNewWindow(wt.path);
+        return true;
+      }
+      if (wt) {
+        vscode.window.setStatusBarMessage(`Gitland: already on ${choice.branch}`, 4000);
+        return true;
+      }
+      const where = await pickWhere(repo, ticket, false);
+      if (!where) {
+        return false;
+      }
+      if (where === 'worktree') {
+        const folder = await createWorktree(repo, choice.branch);
+        if (folder) {
+          await openFolderInNewWindow(folder);
+        }
+        return !!folder;
+      }
       await repo.checkout(choice.branch);
       vscode.window.setStatusBarMessage(`Gitland: switched to ${choice.branch}`, 4000);
       return true;
@@ -162,8 +210,21 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     return false;
   }
   const branch = name.trim();
-  if (await repo.localBranchExists(branch)) {
-    await repo.checkout(branch);
+  const exists = await repo.localBranchExists(branch);
+  const where = await pickWhere(repo, ticket, !exists);
+  if (!where) {
+    return false;
+  }
+  let worktree: string | undefined;
+  if (exists) {
+    if (where === 'worktree') {
+      worktree = await createWorktree(repo, branch);
+      if (!worktree) {
+        return false;
+      }
+    } else {
+      await repo.checkout(branch);
+    }
   } else {
     const remote = await repo.defaultRemote();
     if (remote && config('branch.fetchBeforeCreate', true)) {
@@ -176,16 +237,30 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     if (!base) {
       return false;
     }
-    await repo.exec(['checkout', '--no-track', '-b', branch, base]);
+    if (where === 'worktree') {
+      worktree = await createWorktree(repo, branch, { startPoint: base });
+      if (!worktree) {
+        return false;
+      }
+    } else {
+      await repo.exec(['checkout', '--no-track', '-b', branch, base]);
+    }
   }
   await repo.setConfig(`branch.${branch}.gitlandTicket`, ticket.id);
   await repo.setConfig(`branch.${branch}.gitlandTicketTitle`, ticket.title);
 
   if (provider?.activateTicket && config('azureDevOps.activateOnStartWork', false)) {
-    provider.activateTicket(ticket.id).catch((e) => vscode.window.showWarningMessage(`Could not activate work item: ${errorMessage(e)}`));
+    provider.activateTicket(ticket.id, ticket.org).catch((e) => vscode.window.showWarningMessage(`Could not activate work item: ${errorMessage(e)}`));
+  }
+  if (worktree) {
+    // Git config is shared by all worktrees, so the new window already sees the ticket link.
+    await openFolderInNewWindow(worktree);
   }
   const open = 'Open ticket';
-  vscode.window.showInformationMessage(`Working on #${ticket.id} in branch '${branch}'.`, open).then((c) => {
+  const msg = worktree
+    ? `Working on #${ticket.id} in branch '${branch}', in a new window (${worktree}).`
+    : `Working on #${ticket.id} in branch '${branch}'.`;
+  vscode.window.showInformationMessage(msg, open).then((c) => {
     if (c === open) {
       vscode.env.openExternal(vscode.Uri.parse(ticket!.url));
     }

@@ -1,0 +1,39 @@
+/* Pull request page: extends ticket.css. */
+.t-kind .br { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.t-kind .br .codicon { font-size: 11px; }
+.glyph.small { width: 18px; height: 18px; border-radius: 5px; }
+.glyph.small .codicon { font-size: 11px; }
+.rev { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.rev .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.rev .req { font-family: var(--mono); font-size: 9.5px; color: var(--accent); }
+.rev .k { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.comment .file { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comment .file .codicon { font-size: 10px; }
+
+.review-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -8px 0 16px; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); }
+.review-bar .k { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.review-bar .k b { color: var(--fg); }
+.vote { --v: var(--muted); height: 24px; gap: 5px; font-size: 11.5px; }
+.vote .codicon { color: var(--v); font-size: 13px; }
+.vote.v-approved { --v: #6fb293; }
+.vote.v-changes { --v: #c792ab; }
+.vote.on { border-color: var(--v); background: color-mix(in srgb, var(--v) 14%, transparent); }
+.complete-btn { border-color: color-mix(in srgb, #6fb293 55%, transparent); color: #6fb293; }
+.complete-btn:disabled { opacity: 0.45; }
+.thread .th-file { margin: -2px 0 6px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.thread .th-file .codicon { font-size: 10px; }
+.thread .reply { margin: 8px 0 0 14px; padding-left: 10px; border-left: 2px solid var(--line-strong); }
+.thread.resolved { opacity: 0.7; }
+.thread .ch .pill { height: 15px; line-height: 15px; font-size: 9.5px; margin-left: auto; }
+.th-acts { display: flex; gap: 12px; margin-top: 6px; }
+.th-acts .link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.th-acts .link:hover { color: var(--fg); }
+.th-acts .codicon { font-size: 12px; }
+.reply-box, .new-comment { margin-top: 8px; }
+.reply-box[hidden] { display: none; }
+.reply-box textarea, .new-comment textarea { width: 100%; resize: vertical; padding: 7px 9px; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; color: var(--vscode-input-foreground, var(--fg)); background: var(--vscode-input-background, var(--surface-2)); border: 1px solid var(--vscode-input-border, var(--line)); border-radius: 5px; outline: none; }
+.reply-box textarea:focus, .new-comment textarea:focus { border-color: var(--accent); }
+.rb-bar { display: flex; gap: 4px; margin-top: 4px; }
+.rb-bar button { height: 24px; }
+.check .k { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.link-row .glyph { flex: none !important; }

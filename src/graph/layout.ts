@@ -19,20 +19,32 @@ export interface GraphRow {
 
 export const PALETTE_SIZE = 10;
 
-export function computeGraph(commits: { sha: string; parents: string[] }[]): { rows: GraphRow[]; width: number } {
+interface LayoutCommit {
+  sha: string;
+  parents: string[];
+}
+
+/**
+ * Color of a lane when it starts: at a branch tip (`merge` undefined) or for the second parent of a
+ * merge. Undefined = next color in order (GitLens-like).
+ */
+export type LaneColor<T> = (commit: T, merge?: T) => number | undefined;
+
+export function computeGraph<T extends LayoutCommit>(commits: T[], laneColor?: LaneColor<T>): { rows: GraphRow[]; width: number } {
   const lanes: (string | null)[] = [];
   const laneColors: number[] = [];
   let nextColor = 0;
   let width = 1;
   const rows: GraphRow[] = [];
 
-  const allocate = (except: number): number => {
+  const bySha = laneColor ? new Map(commits.map((c) => [c.sha, c])) : undefined;
+  const allocate = (except: number, color?: number): number => {
     let i = lanes.findIndex((l, k) => l === null && k !== except);
     if (i === -1) {
       i = lanes.length;
       lanes.push(null);
     }
-    laneColors[i] = nextColor++ % PALETTE_SIZE;
+    laneColors[i] = color ?? nextColor++ % PALETTE_SIZE;
     return i;
   };
 
@@ -43,7 +55,7 @@ export function computeGraph(commits: { sha: string; parents: string[] }[]): { r
 
     let lane = lanes.indexOf(c.sha);
     if (lane === -1) {
-      lane = allocate(-1);
+      lane = allocate(-1, laneColor?.(c));
     }
     const color = laneColors[lane];
 
@@ -75,7 +87,8 @@ export function computeGraph(commits: { sha: string; parents: string[] }[]): { r
     for (const p of others) {
       let k = lanes.indexOf(p);
       if (k === -1) {
-        k = allocate(lane);
+        const parent = bySha?.get(p);
+        k = allocate(lane, parent && laneColor?.(parent, c));
         lanes[k] = p;
       }
       segments.push({ x1: lane, y1: 0.5, x2: k, y2: 1, color: laneColors[k] });

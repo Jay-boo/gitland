@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import { BlameCommit, Repo, UNCOMMITTED_SHA } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
 import { AvatarService } from '../avatars';
+import { getProvider } from '../providers';
+import { findLinks, MessageLink } from '../links';
+import { authorColor } from '../avatarArt';
 import { commandUri, config, formatDate, timeAgo, truncate } from '../util';
 
 export interface BlameResult {
@@ -16,6 +19,33 @@ interface BlameEntry {
 }
 
 const MAX_LINES = 30000;
+/** Commits whose full message / stats are fetched for the file blame hovers. */
+const MAX_ENRICHED = 150;
+
+/** What the hover shows beyond the blame line: full message, stats, PR / work item links. */
+interface CommitExtra {
+  message: string;
+  files: number;
+  added: number;
+  deleted: number;
+  links: MessageLink[];
+  /** Nearest branch, e.g. "dev~3" (git name-rev). */
+  branch?: string;
+  /** Pull request that brought the commit into the current branch. */
+  pr?: MessageLink;
+  /** First release (tag) that contains the commit. */
+  release?: string;
+}
+
+const HOVER_COMMANDS = ['gitland.showGraph', 'gitland.openCommitFileDiff', 'gitland.fileHistory', 'gitland.lineHistory', 'gitland.explainLines', 'gitland.openCommitOnRemote', 'gitland.copyText'];
+
+const MUTED = '#8b949e';
+const BRANCH = '#6f9fd0';
+const PR = '#a08cc8';
+const TICKET = '#6fb293';
+const RELEASE = '#c6ab6e';
+const ADDED = '#7fb58f';
+const DELETED = '#c98686';
 
 /**
  * GitLens-like blame: current-line annotation + status bar by default,
@@ -23,6 +53,7 @@ const MAX_LINES = 30000;
  */
 export class BlameController implements vscode.Disposable {
   private readonly cache = new Map<string, BlameEntry>();
+  private readonly extras = new Map<string, Promise<CommitExtra | undefined>>();
   private readonly fileBlameOn = new Set<string>();
   private fileBlameWindow = false;
   private readonly disposables: vscode.Disposable[] = [];
@@ -59,7 +90,11 @@ export class BlameController implements vscode.Disposable {
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 
-  constructor(private readonly repos: RepoManager, private readonly avatars: AvatarService) {
+  constructor(
+    private readonly repos: RepoManager,
+    private readonly avatars: AvatarService,
+    private readonly secrets: vscode.SecretStorage,
+  ) {
     this.inlineEnabled = config('blame.inline.enabled', true);
     this.statusBar = vscode.window.createStatusBarItem('gitland.blame', vscode.StatusBarAlignment.Left, 50);
     this.statusBar.name = 'Gitland Blame';
@@ -220,7 +255,17 @@ export class BlameController implements vscode.Disposable {
     }
     const author = this.authorName(commit, blame.me);
     const uncommitted = commit.sha === UNCOMMITTED_SHA;
-    const hover = this.hover(blame.repo, commit, author, doc.uri);
+    // Wait briefly for the full message; the plain hover is still fine if git is slow.
+    const pending = this.extra(blame.repo, commit.sha);
+    const extra = await Promise.race([pending, sleep(400).then(() => undefined)]);
+    if (editor !== vscode.window.activeTextEditor || editor.selection.active.line !== line) {
+      return;
+    }
+    if (!extra) {
+      // Slow git: show the plain hover now, the full one as soon as it is ready.
+      pending.then((x) => x && editor.selection.active.line === line && this.schedule(editor));
+    }
+    const hover = this.hover(blame.repo, commit, author, doc.uri, extra, line);
 
     // GitLens hides the current-line annotation while the file blame is shown.
     if (this.inlineEnabled && !fileBlame && editor.selections.length === 1) {
@@ -264,30 +309,140 @@ export class BlameController implements vscode.Disposable {
     }
   }
 
-  hover(repo: Repo, c: BlameCommit, author: string, uri: vscode.Uri): vscode.MarkdownString {
+  /** Full message, stats and links of a commit (cached; commits never change). */
+  private extra(repo: Repo, sha: string): Promise<CommitExtra | undefined> {
+    if (sha === UNCOMMITTED_SHA) {
+      return Promise.resolve(undefined);
+    }
+    const key = `${repo.root}\0${sha}`;
+    let p = this.extras.get(key);
+    if (!p) {
+      if (this.extras.size > 1000) {
+        this.extras.clear();
+      }
+      p = (async () => {
+        try {
+          const [d, provider, branch, merges, release] = await Promise.all([
+            repo.commitDetails(sha),
+            getProvider(repo, this.secrets),
+            repo.exec(['name-rev', '--name-only', '--no-undefined', '--refs=refs/heads/*', sha]).catch(() => ''),
+            // Merges between the commit and HEAD, oldest first: the first PR merge brought it in.
+            repo.exec(['log', '--merges', '--ancestry-path', '--reverse', '--format=%s', `${sha}..HEAD`]).catch(() => ''),
+            repo.releaseOf(sha),
+          ]);
+          const links = findLinks(d.message, provider);
+          let pr = links.find((l) => l.kind === 'pr');
+          if (!pr) {
+            for (const subject of merges.split('\n')) {
+              pr = findLinks(subject, provider).find((l) => l.kind === 'pr');
+              if (pr) {
+                break;
+              }
+            }
+          }
+          return {
+            message: d.message,
+            files: d.files.length,
+            added: d.files.reduce((n, f) => n + (f.added ?? 0), 0),
+            deleted: d.files.reduce((n, f) => n + (f.deleted ?? 0), 0),
+            links: links.filter((l) => l !== pr),
+            // Only a readable answer ("dev", "dev~3"); "x~4^2" (reached through a merge) is noise.
+            release,
+            branch: /^[^~^\s]+(~\d+)?$/.test(branch.trim()) ? branch.trim().replace(/^remotes\//, '') : undefined,
+            pr,
+          };
+        } catch {
+          return undefined;
+        }
+      })();
+      this.extras.set(key, p);
+    }
+    return p;
+  }
+
+  hover(repo: Repo, c: BlameCommit, author: string, uri: vscode.Uri, extra?: CommitExtra, line?: number): vscode.MarkdownString {
     const md = new vscode.MarkdownString(undefined, true);
-    md.isTrusted = true;
+    // Only our own commands may run from the hover: commit messages are rendered as markdown.
+    md.isTrusted = { enabledCommands: HOVER_COMMANDS };
     md.supportHtml = true;
     if (c.sha === UNCOMMITTED_SHA) {
-      md.appendMarkdown('$(circle-large-outline) **Uncommitted changes**');
+      md.appendMarkdown('$(edit) **You** &nbsp;·&nbsp; Uncommitted changes\n\n');
+      md.appendMarkdown(muted('This line was changed but not committed yet.'));
       return md;
     }
-    const avatar = c.email && config('blame.avatars', true) ? this.avatars.urlFor(c.email) : undefined;
+
+    // Author and date
+    const avatar = c.email && config('blame.avatars', true) ? this.avatars.hoverUrlFor(c.email) : undefined;
     if (avatar) {
       this.avatars.resolve(repo, c.email, c.sha);
-      md.appendMarkdown(`<img src="${avatar}" width="18" height="18" style="border-radius:50%"/>&nbsp;`);
+      md.appendMarkdown(`<img src="${avatar}" width="20" height="20"/>&nbsp;&nbsp;`);
     } else {
-      md.appendMarkdown('$(account) ');
+      md.appendMarkdown('$(account)&nbsp;');
     }
-    md.appendMarkdown(`**${escapeMd(author)}** ${c.email ? `<${escapeMd(c.email)}>` : ''}, `);
-    md.appendMarkdown(`${timeAgo(c.date)} _(${formatDate(c.date)})_\n\n`);
-    md.appendMarkdown(`${escapeMd(c.summary)}\n\n---\n\n`);
+    const tone = authorColor(c.email || author);
+    md.appendMarkdown(color(`**${escapeMd(author)}**`, tone));
+    if (c.email) {
+      md.appendMarkdown(`&nbsp;&nbsp;${muted(escapeMd(c.email))}`);
+    }
+    md.appendMarkdown(`\n\n${color('●', ageColor(c.date))}&nbsp;${timeAgo(c.date)}&nbsp;&nbsp;${muted(formatDate(c.date))}`);
+    if (extra?.branch) {
+      md.appendMarkdown(`&nbsp;&nbsp;&nbsp;${pill(`$(git-branch) ${escapeMd(truncate(extra.branch, 36))}`, BRANCH)}`);
+    }
+    if (extra) {
+      md.appendMarkdown(`&nbsp;&nbsp;${extra.release ? pill(`$(tag) ${escapeMd(extra.release)}`, RELEASE) : muted('not released yet')}`);
+    }
+    if (extra?.pr) {
+      md.appendMarkdown(`&nbsp;&nbsp;[${pill(`$(git-pull-request) PR ${extra.pr.id}`, PR)}](${extra.pr.url} "Pull request that brought this change")`);
+    }
+    md.appendMarkdown('\n\n');
+
+    // Message
+    const message = extra?.message || c.summary;
+    const nl = message.indexOf('\n');
+    const subject = nl < 0 ? message : message.slice(0, nl);
+    // Trailers (Co-Authored-By, Signed-off-by…) and Azure's "Related work items" line are noise here.
+    const body = message.slice(nl < 0 ? message.length : nl + 1).replace(/^(?:[\w-]+-by|Related work items): .*$/gim, '').trim();
+    md.appendMarkdown(`---\n\n**${escapeMd(subject)}**\n\n`);
+    if (body) {
+      md.appendMarkdown(safeMarkdown(truncate(body, 1500)) + '\n\n');
+    }
+
+    // PR / work item links
+    if (extra?.links.length) {
+      md.appendMarkdown(
+        extra.links
+          .map((l) => (l.kind === 'pr' ? `[${pill(`$(git-pull-request) PR ${l.id}`, PR)}](${l.url})` : `[${pill(`$(issues) #${l.id}`, TICKET)}](${l.url})`))
+          .join('&nbsp;&nbsp;&nbsp;') + '\n\n',
+      );
+    }
+
+    // SHA and stats
+    md.appendMarkdown('---\n\n');
+    let meta = pill(`$(git-commit) ${c.sha.slice(0, 8)}`, tone);
+    if (extra) {
+      meta += `&nbsp;&nbsp;&nbsp;$(file) ${extra.files} file${extra.files === 1 ? '' : 's'}`;
+      if (extra.added || extra.deleted) {
+        meta += `&nbsp;&nbsp;${color(`+${extra.added}`, ADDED)} ${color(`−${extra.deleted}`, DELETED)}&nbsp;&nbsp;${diffBar(extra.added, extra.deleted)}`;
+      }
+    }
+    md.appendMarkdown(meta + '\n\n');
+
+    // Actions
     const args = { repoRoot: repo.root, sha: c.sha, path: c.filename, previousPath: c.previous?.path, uri: uri.toString() };
-    md.appendMarkdown(`[$(git-commit) \`${c.sha.slice(0, 8)}\`](${commandUri('gitland.showGraph', { repoRoot: repo.root, sha: c.sha })} "Show in graph")`);
-    md.appendMarkdown(` &nbsp;|&nbsp; [$(diff) Changes](${commandUri('gitland.openCommitFileDiff', args)} "Open changes of this commit")`);
-    md.appendMarkdown(` &nbsp;|&nbsp; [$(history) File history](${commandUri('gitland.fileHistory', uri.toString())} "File history")`);
-    md.appendMarkdown(` &nbsp;|&nbsp; [$(globe) Remote](${commandUri('gitland.openCommitOnRemote', { repoRoot: repo.root, sha: c.sha })} "Open on remote")`);
-    md.appendMarkdown(` &nbsp;|&nbsp; [$(copy) SHA](${commandUri('gitland.copyText', c.sha)} "Copy SHA")`);
+    const actions = [
+      `[$(git-merge) Graph](${commandUri('gitland.showGraph', { repoRoot: repo.root, sha: c.sha })} "Show this commit in the Commit Graph")`,
+      `[$(diff) Changes](${commandUri('gitland.openCommitFileDiff', args)} "Open the changes this commit made to the file")`,
+      `[$(history) History](${commandUri('gitland.fileHistory', uri.toString())} "File history")`,
+      ...(line !== undefined
+        ? [
+            `[$(list-selection) Lines](${commandUri('gitland.lineHistory', { uri: uri.toString(), line })} "Every commit that changed this line")`,
+            `[$(sparkle) Why?](${commandUri('gitland.explainLines', { uri: uri.toString(), line })} "Explain why this line is like this (AI)")`,
+          ]
+        : []),
+      `[$(link-external) Remote](${commandUri('gitland.openCommitOnRemote', { repoRoot: repo.root, sha: c.sha })} "Open the commit on the remote")`,
+      `[$(copy) SHA](${commandUri('gitland.copyText', c.sha)} "Copy the full SHA")`,
+    ];
+    md.appendMarkdown(actions.join('&nbsp;&nbsp;&nbsp;'));
     return md;
   }
 
@@ -301,11 +456,30 @@ export class BlameController implements vscode.Disposable {
       vscode.window.setStatusBarMessage('Gitland: no blame information for this file', 3000);
       return;
     }
+    const doc = editor.document;
+    editor.setDecorations(this.gutterDecoration, this.gutterDecorations(blame, doc));
+    if (editor === vscode.window.activeTextEditor) {
+      this.schedule(editor);
+    }
+    // Then give each block's hover its full message, stats and links.
+    const shas = [...new Set(blame.lines.map((c) => c.sha))].filter((s) => s !== UNCOMMITTED_SHA).slice(0, MAX_ENRICHED);
+    const extras = new Map<string, CommitExtra>();
+    for (let i = 0; i < shas.length; i += 6) {
+      const batch = shas.slice(i, i + 6);
+      (await Promise.all(batch.map((sha) => this.extra(blame.repo, sha)))).forEach((x, k) => x && extras.set(batch[k], x));
+    }
+    const version = this.cache.get(doc.uri.toString())?.version;
+    if (extras.size && this.isFileBlameOn(editor) && version === doc.version && vscode.window.visibleTextEditors.includes(editor)) {
+      editor.setDecorations(this.gutterDecoration, this.gutterDecorations(blame, doc, extras));
+    }
+  }
+
+  private gutterDecorations(blame: BlameResult, doc: vscode.TextDocument, extras?: Map<string, CommitExtra>): vscode.DecorationOptions[] {
     const dates = blame.lines.filter((c) => c.sha !== UNCOMMITTED_SHA).map((c) => c.date);
     const min = Math.min(...dates);
     const max = Math.max(...dates);
     const decorations: vscode.DecorationOptions[] = [];
-    const lineCount = editor.document.lineCount;
+    const lineCount = doc.lineCount;
     let prev: string | undefined;
     for (let i = 0; i < blame.lines.length && i < lineCount; i++) {
       const c = blame.lines[i];
@@ -320,10 +494,10 @@ export class BlameController implements vscode.Disposable {
       const heat = c.sha === UNCOMMITTED_SHA ? 1 : max === min ? 1 : (c.date - min) / (max - min);
       decorations.push({
         range: new vscode.Range(i, 0, i, 0),
-        hoverMessage: first ? this.hover(blame.repo, c, author, editor.document.uri) : undefined,
+        hoverMessage: first ? this.hover(blame.repo, c, author, doc.uri, extras?.get(c.sha), i) : undefined,
         renderOptions: {
           before: {
-            contentText: first ? ' ' + text : ' ',
+            contentText: first ? ' ' + text : ' ',
             textDecoration: `none; border-left: 2px solid ${heatColor(heat)}; padding-left: 6px; white-space: pre; box-sizing: border-box;${
               first && i > 0 ? ' border-top: 1px solid rgba(128,128,128,0.18);' : ''
             }`,
@@ -331,16 +505,45 @@ export class BlameController implements vscode.Disposable {
         },
       });
     }
-    editor.setDecorations(this.gutterDecoration, decorations);
-    if (editor === vscode.window.activeTextEditor) {
-      this.schedule(editor);
-    }
+    return decorations;
   }
 
   dispose(): void {
     clearTimeout(this.timer);
     this.disposables.forEach((d) => d.dispose());
   }
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+function color(text: string, c: string): string {
+  return `<span style="color:${c};">${text}</span>`;
+}
+
+/** Tinted badge: colored text on the same color at low opacity (#RRGGBBAA is allowed in hovers). */
+function pill(text: string, c: string): string {
+  return `<span style="color:${c};background-color:${c}26;">&nbsp;${text}&nbsp;</span>`;
+}
+
+/** Recent = warm, old = cool (log scale over a year), in the graph's muted palette. */
+function ageColor(ms: number): string {
+  const days = Math.max(0, (Date.now() - ms) / 86400000);
+  const t = 1 - Math.min(1, Math.log(days + 1) / Math.log(366));
+  const cold = [0x6f, 0x9f, 0xd0];
+  const hot = [0xd9, 0x8f, 0x5f];
+  return '#' + cold.map((v, i) => Math.round(v + (hot[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+
+function muted(text: string): string {
+  return color(text, MUTED);
+}
+
+/** Five-block +/- bar, like GitHub. */
+function diffBar(added: number, deleted: number): string {
+  const total = added + deleted;
+  const a = total ? Math.round((added / total) * 5) : 0;
+  const d = total ? Math.min(5 - a, Math.round((deleted / total) * 5)) : 0;
+  return color('■'.repeat(a), ADDED) + color('■'.repeat(d), DELETED) + color('■'.repeat(5 - a - d), '#6e7681');
 }
 
 function pad(s: string, n: number): string {
@@ -359,10 +562,32 @@ function shortAgo(ms: number): string {
 
 function heatColor(t: number): string {
   // old = cool blue, recent = warm orange (same idea as the GitLens heatmap)
-  const cold = [70, 130, 200];
-  const hot = [255, 140, 40];
+  const cold = [0x6f, 0x9f, 0xd0];
+  const hot = [0xd9, 0x8f, 0x5f];
   const c = cold.map((v, i) => Math.round(v + (hot[i] - v) * t));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/**
+ * Commit message markdown for a hover: no raw HTML, no command / file links, no images;
+ * fenced code and lists are kept.
+ */
+function safeMarkdown(text: string): string {
+  // Code (fenced or `inline`) is shown literally by the renderer, so only the prose is escaped.
+  return text
+    .split(/(```[\s\S]*?(?:```|$)|`[^`\n]+`)/g)
+    .map((part, i) =>
+      i % 2
+        ? part
+        : part
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/^&gt;/gm, '>')
+            .replace(/!\[/g, '\\![')
+            .replace(/\]\((?!https:\/\/)[^)]*\)/g, ']'),
+    )
+    .join('');
 }
 
 function escapeMd(s: string): string {

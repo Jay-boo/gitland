@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { log } from '../log';
-import { config } from '../util';
-import { AuthError, CreatePullRequestOptions, Provider, PullRequest, Ticket } from './types';
+import { config, errorMessage } from '../util';
+import { AuthError, CreatePullRequestOptions, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails, TicketSource } from './types';
 
 export const AZURE_DEVOPS_SCOPES = ['499b84ac-1321-427f-aa17-267ca6975798/.default'];
 /** Legacy key: one token for every organization. */
@@ -125,7 +125,7 @@ async function offerSignInAlternatives(org: string): Promise<void> {
   }
 }
 const API = 'api-version=7.1';
-const FIELDS = ['System.Id', 'System.Title', 'System.State', 'System.WorkItemType', 'System.AssignedTo'];
+const FIELDS = ['System.Id', 'System.Title', 'System.State', 'System.WorkItemType', 'System.AssignedTo', 'System.TeamProject'];
 
 interface AzWorkItem {
   id: number;
@@ -190,11 +190,24 @@ export class AzureDevOpsProvider implements Provider {
     return `${this.webUrl}?version=GB${e(branch)}`;
   }
 
-  private workItemUrl(id: number | string): string {
-    return `${this.projectUrl}/_workitems/edit/${id}`;
+  /**
+   * Projects the tickets come from: gitland.tickets.sources, else the repository's project.
+   * Teams often keep all work items in one "backlog" project, separate from the code.
+   */
+  get ticketSources(): TicketSource[] {
+    const list = config<TicketSource[]>('tickets.sources', []).filter((t) => t && t.organization && t.project);
+    return list.length ? list : [{ organization: this.org, project: this.project }];
   }
 
-  private prUrl(id: number): string {
+  get ticketSourceLabel(): string {
+    return this.ticketSources.map((t) => (t.organization === this.org ? t.project : `${t.organization}/${t.project}`)).join(', ');
+  }
+
+  ticketUrl(id: number | string, source = this.ticketSources[0]): string {
+    return `https://dev.azure.com/${e(source.organization)}/${e(source.project)}/_workitems/edit/${id}`;
+  }
+
+  pullRequestUrl(id: number | string): string {
     return `${this.webUrl}/pullrequest/${id}`;
   }
 
@@ -206,23 +219,23 @@ export class AzureDevOpsProvider implements Provider {
     return !!session;
   }
 
-  private async authHeader(): Promise<string> {
-    const pat = (await this.secrets.get(patSecretKey(this.org))) ?? (await this.secrets.get(PAT_SECRET_KEY));
+  private async authHeader(org = this.org): Promise<string> {
+    const pat = (await this.secrets.get(patSecretKey(org))) ?? (await this.secrets.get(PAT_SECRET_KEY));
     if (pat) {
       return 'Basic ' + Buffer.from(':' + pat).toString('base64');
     }
     const session =
-      (await vscode.authentication.getSession('microsoft', await azureDevOpsScopes(this.org), { silent: true })) ??
-      (await signInToAzureDevOps(this.org, false));
-    log.info(`Azure DevOps (${this.org}): using Microsoft account ${session.account.label}`);
+      (await vscode.authentication.getSession('microsoft', await azureDevOpsScopes(org), { silent: true })) ??
+      (await signInToAzureDevOps(org, false));
+    log.info(`Azure DevOps (${org}): using Microsoft account ${session.account.label}`);
     return 'Bearer ' + session.accessToken;
   }
 
-  private async request<T>(method: string, url: string, body?: unknown, contentType = 'application/json'): Promise<T> {
+  private async request<T>(method: string, url: string, body?: unknown, contentType = 'application/json', org = this.org): Promise<T> {
     const res = await fetch(url, {
       method,
       headers: {
-        Authorization: await this.authHeader(),
+        Authorization: await this.authHeader(org),
         'Content-Type': contentType,
         Accept: 'application/json',
       },
@@ -232,7 +245,7 @@ export class AzureDevOpsProvider implements Provider {
     // Azure DevOps answers 203 + HTML sign-in page when the credentials are not accepted.
     if (res.status === 401 || res.status === 203 || (res.ok && !isJson)) {
       throw new AuthError(
-        `Azure DevOps (${this.org}) rejected the credentials. Run "Gitland: Switch Azure DevOps Account" to pick your work account, or "Gitland: Set Azure DevOps Personal Access Token".`,
+        `Azure DevOps (${org}) rejected the credentials. Run "Gitland: Switch Azure DevOps Account" to pick your work account, or "Gitland: Set Azure DevOps Personal Access Token".`,
       );
     }
     if (!res.ok) {
@@ -250,25 +263,59 @@ export class AzureDevOpsProvider implements Provider {
     return (await res.json()) as T;
   }
 
+  /**
+   * Profile photo of an author: find the identity by email (identities API, else the people picker
+   * the web UI uses), then its picture (Graph avatars JSON, else the MemberAvatars image).
+   * Returns undefined when the person has no photo; throws when Azure DevOps could not be asked.
+   */
   async avatarFor(email: string): Promise<string | undefined> {
-    const vssps = `https://vssps.dev.azure.com/${e(this.org)}/_apis`;
-    const ids = await this.request<{ value: { subjectDescriptor?: string }[] }>(
-      'GET',
-      `${vssps}/identities?searchFilter=General&filterValue=${e(email)}&queryMembership=None&${API}`,
-    );
-    const descriptor = ids.value.find((i) => i.subjectDescriptor)?.subjectDescriptor;
+    const descriptor = await this.subjectDescriptor(email);
     if (!descriptor) {
       return undefined;
     }
-    const avatar = await this.request<{ isAutoGenerated?: boolean; value?: string }>(
-      'GET',
-      `${vssps}/graph/Subjects/${e(descriptor)}/avatars?size=medium&format=png&api-version=7.1-preview.1`,
-    );
-    // Azure DevOps generates an "initials" picture when there is no photo: use the default picture instead.
-    if (avatar.isAutoGenerated || !avatar.value) {
-      return undefined;
+    try {
+      const avatar = await this.request<{ isAutoGenerated?: boolean; value?: string }>(
+        'GET',
+        `https://vssps.dev.azure.com/${e(this.org)}/_apis/graph/Subjects/${e(descriptor)}/avatars?size=small&format=png&api-version=7.1-preview.1`,
+      );
+      // Azure DevOps generates an "initials" picture when there is no photo: use the default picture instead.
+      return avatar.isAutoGenerated || !avatar.value ? undefined : `data:image/png;base64,${avatar.value}`;
+    } catch (err) {
+      log.info(`Azure DevOps avatar (graph API) for ${email}: ${errorMessage(err)} — trying MemberAvatars`);
     }
-    return `data:image/png;base64,${avatar.value}`;
+    const res = await fetch(`${this.orgUrl}/_apis/GraphProfile/MemberAvatars/${e(descriptor)}?size=1`, {
+      headers: { Authorization: await this.authHeader(), Accept: 'image/*' },
+    });
+    const type = res.headers.get('content-type') ?? '';
+    if (!res.ok || !type.startsWith('image/')) {
+      throw new Error(`MemberAvatars answered ${res.status} ${type}`);
+    }
+    return `data:${type.split(';')[0]};base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`;
+  }
+
+  private async subjectDescriptor(email: string): Promise<string | undefined> {
+    try {
+      const ids = await this.request<{ value: { subjectDescriptor?: string }[] }>(
+        'GET',
+        `https://vssps.dev.azure.com/${e(this.org)}/_apis/identities?searchFilter=General&filterValue=${e(email)}&queryMembership=None&${API}`,
+      );
+      const d = ids.value.find((i) => i.subjectDescriptor)?.subjectDescriptor;
+      if (d) {
+        return d;
+      }
+    } catch (err) {
+      log.info(`Azure DevOps identities API for ${email}: ${errorMessage(err)} — trying the people picker`);
+    }
+    // The people picker of the web UI: works for any member of the organization.
+    const found = await this.request<{ results: { identities: { subjectDescriptor?: string; mail?: string; signInAddress?: string }[] }[] }>(
+      'POST',
+      `${this.orgUrl}/_apis/IdentityPicker/Identities?api-version=5.0-preview.1`,
+      { query: email, identityTypes: ['user'], operationScopes: ['ims', 'source'], properties: ['DisplayName', 'Mail', 'SignInAddress', 'SubjectDescriptor'] },
+    );
+    const all = found.results.flatMap((r) => r.identities);
+    const lower = email.toLowerCase();
+    const match = all.find((i) => i.mail?.toLowerCase() === lower || i.signInAddress?.toLowerCase() === lower) ?? all[0];
+    return match?.subjectDescriptor;
   }
 
   private currentUserId(): Promise<string> {
@@ -280,8 +327,31 @@ export class AzureDevOpsProvider implements Provider {
     return this.userId;
   }
 
-  private toTicket(w: AzWorkItem): Ticket {
+  private reviewerIds?: Promise<Set<string>>;
+  /** My id plus every team / group I belong to: a PR can ask a team for review. */
+  private myReviewerIds(): Promise<Set<string>> {
+    this.reviewerIds ??= (async () => {
+      const me = await this.currentUserId();
+      const ids = new Set([me]);
+      const identities = `https://vssps.dev.azure.com/${e(this.org)}/_apis/identities`;
+      const self = await this.request<{ value: { memberOf?: string[] }[] }>('GET', `${identities}?identityIds=${e(me)}&queryMembership=Expanded&${API}`).catch(() => ({ value: [] }));
+      const descriptors = self.value[0]?.memberOf ?? [];
+      for (let i = 0; i < descriptors.length; i += 50) {
+        const groups = await this.request<{ value: ({ id: string } | null)[] }>(
+          'GET',
+          `${identities}?descriptors=${e(descriptors.slice(i, i + 50).join(','))}&queryMembership=None&${API}`,
+        ).catch(() => ({ value: [] }));
+        groups.value.forEach((g) => g && ids.add(g.id));
+      }
+      return ids;
+    })();
+    this.reviewerIds.catch(() => (this.reviewerIds = undefined));
+    return this.reviewerIds;
+  }
+
+  private toTicket(w: AzWorkItem, org = this.org): Ticket {
     const f = w.fields;
+    const project = String(f['System.TeamProject'] ?? this.project);
     const assigned = f['System.AssignedTo'] as { displayName?: string } | undefined;
     return {
       id: String(w.id),
@@ -289,15 +359,21 @@ export class AzureDevOpsProvider implements Provider {
       type: String(f['System.WorkItemType'] ?? ''),
       state: String(f['System.State'] ?? ''),
       assignee: assigned?.displayName,
-      url: this.workItemUrl(w.id),
+      url: this.ticketUrl(w.id, { organization: org, project }),
+      org,
+      project,
     };
   }
 
-  private async queryTickets(wiql: string, top = 100): Promise<Ticket[]> {
+  /** Runs a WIQL query in one ticket source (@project = that project). */
+  private async queryTickets(src: TicketSource, wiql: string, top = 100): Promise<Ticket[]> {
+    const orgUrl = `https://dev.azure.com/${e(src.organization)}`;
     const result = await this.request<{ workItems: { id: number }[] }>(
       'POST',
-      `${this.projectUrl}/_apis/wit/wiql?$top=${top}&${API}`,
+      `${orgUrl}/${e(src.project)}/_apis/wit/wiql?$top=${top}&${API}`,
       { query: wiql },
+      'application/json',
+      src.organization,
     );
     const ids = result.workItems.map((w) => w.id).slice(0, 200);
     if (ids.length === 0) {
@@ -305,68 +381,190 @@ export class AzureDevOpsProvider implements Provider {
     }
     const items = await this.request<{ value: AzWorkItem[] }>(
       'GET',
-      `${this.projectUrl}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${FIELDS.join(',')}&${API}`,
+      `${orgUrl}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${FIELDS.join(',')}&${API}`,
+      undefined,
+      'application/json',
+      src.organization,
     );
     const byId = new Map(items.value.map((w) => [w.id, w]));
-    return ids.map((id) => byId.get(id)).filter((w): w is AzWorkItem => !!w).map((w) => this.toTicket(w));
+    return ids.map((id) => byId.get(id)).filter((w): w is AzWorkItem => !!w).map((w) => this.toTicket(w, src.organization));
+  }
+
+  /** Same query in every ticket source; fails only when all of them fail. */
+  private async queryAll(wiql: (src: TicketSource) => string, top?: number): Promise<Ticket[]> {
+    const results = await Promise.allSettled(this.ticketSources.map((src) => this.queryTickets(src, wiql(src), top)));
+    const ok = results.filter((r): r is PromiseFulfilledResult<Ticket[]> => r.status === 'fulfilled');
+    if (!ok.length) {
+      throw (results[0] as PromiseRejectedResult).reason;
+    }
+    results.forEach((r, i) => r.status === 'rejected' && log.error(`Tickets from ${this.ticketSources[i].project} failed`, r.reason));
+    const seen = new Set<string>();
+    return ok.flatMap((r) => r.value).filter((t) => !seen.has(`${t.org}#${t.id}`) && !!seen.add(`${t.org}#${t.id}`));
   }
 
   listMyTickets(): Promise<Ticket[]> {
-    return this.queryTickets(config('azureDevOps.wiql', ''));
+    return this.queryAll((src) => src.wiql || config('azureDevOps.wiql', ''));
   }
 
   async searchTickets(text: string): Promise<Ticket[]> {
-    const trimmed = text.trim().replace(/^#/, '');
+    const trimmed = text.trim().replace(/^(AB)?#/i, '');
     if (/^\d+$/.test(trimmed)) {
       const t = await this.getTicket(trimmed);
       return t ? [t] : [];
     }
     const escaped = trimmed.replace(/'/g, "''");
-    return this.queryTickets(
-      `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Title] CONTAINS '${escaped}' ORDER BY [System.ChangedDate] DESC`,
+    return this.queryAll(
+      () =>
+        `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Title] CONTAINS '${escaped}' ORDER BY [System.ChangedDate] DESC`,
       30,
     );
   }
 
+  /** A work item by ID, looked up in the organizations of the ticket sources (then the repository's). */
   async getTicket(id: string): Promise<Ticket | undefined> {
-    try {
-      const w = await this.request<AzWorkItem>(
-        'GET',
-        `${this.orgUrl}/_apis/wit/workitems/${e(id)}?fields=${FIELDS.join(',')}&${API}`,
-      );
-      return this.toTicket(w);
-    } catch (err) {
-      if (err instanceof AuthError) {
-        throw err;
+    const orgs = [...new Set([...this.ticketSources.map((t) => t.organization), this.org])];
+    for (const org of orgs) {
+      try {
+        const w = await this.request<AzWorkItem>(
+          'GET',
+          `https://dev.azure.com/${e(org)}/_apis/wit/workitems/${e(id)}?fields=${FIELDS.join(',')}&${API}`,
+          undefined,
+          'application/json',
+          org,
+        );
+        return this.toTicket(w, org);
+      } catch (err) {
+        if (err instanceof AuthError && org === orgs[orgs.length - 1]) {
+          throw err;
+        }
       }
-      return undefined;
     }
+    return undefined;
   }
 
-  async activateTicket(id: string): Promise<void> {
+  /** The work item with its rich text, links and comments (for the ticket page). */
+  async getTicketDetails(id: string, org?: string): Promise<TicketDetails | undefined> {
+    const orgs = org ? [org] : [...new Set([...this.ticketSources.map((t) => t.organization), this.org])];
+    for (const o of orgs) {
+      let w: AzWorkItem & { relations?: { rel: string; url: string; attributes?: { name?: string } }[] };
+      try {
+        w = await this.request('GET', `https://dev.azure.com/${e(o)}/_apis/wit/workitems/${e(id)}?$expand=all&${API}`, undefined, 'application/json', o);
+      } catch (err) {
+        if (err instanceof AuthError || o === orgs[orgs.length - 1]) {
+          throw err;
+        }
+        continue;
+      }
+      const f = w.fields;
+      const ticket = this.toTicket(w, o);
+      const person = (v: unknown) => (v as { displayName?: string } | undefined)?.displayName;
+      const text = (k: string) => (typeof f[k] === 'string' && (f[k] as string).trim() ? (f[k] as string) : undefined);
+      const fields = [
+        ['Priority', f['Microsoft.VSTS.Common.Priority']],
+        ['Severity', f['Microsoft.VSTS.Common.Severity']],
+        ['Effort', f['Microsoft.VSTS.Scheduling.Effort'] ?? f['Microsoft.VSTS.Scheduling.StoryPoints'] ?? f['Microsoft.VSTS.Scheduling.OriginalEstimate']],
+        ['Remaining', f['Microsoft.VSTS.Scheduling.RemainingWork']],
+        ['Iteration', f['System.IterationPath']],
+        ['Area', f['System.AreaPath']],
+        ['Created by', person(f['System.CreatedBy'])],
+        ['Reason', f['System.Reason']],
+      ]
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([label, value]) => ({ label: String(label), value: String(value) }));
+      const sections = [
+        ['Acceptance criteria', text('Microsoft.VSTS.Common.AcceptanceCriteria')],
+        ['Repro steps', text('Microsoft.VSTS.TCM.ReproSteps')],
+        ['System info', text('Microsoft.VSTS.TCM.SystemInfo')],
+      ]
+        .filter(([, b]) => b)
+        .map(([title, body]) => ({ title: title!, body: body! }));
+      const pullRequests: TicketDetails['pullRequests'] = [];
+      const related: TicketDetails['related'] = [];
+      for (const r of w.relations ?? []) {
+        // vstfs:///Git/PullRequestId/<project id>%2F<repository id>%2F<PR id> (the code may live in another project)
+        const pr = /^vstfs:\/\/\/Git\/PullRequestId\/([^%]+)%2[Ff]([^%]+)%2[Ff](\d+)/.exec(r.url);
+        if (pr) {
+          pullRequests.push({ id: pr[3], url: `https://dev.azure.com/${e(o)}/${pr[1]}/_git/${pr[2]}/pullrequest/${pr[3]}` });
+          continue;
+        }
+        const wi = /\/workItems\/(\d+)$/i.exec(r.url);
+        if (wi) {
+          const kind = r.attributes?.name ?? (r.rel.includes('Hierarchy-Reverse') ? 'Parent' : r.rel.includes('Hierarchy-Forward') ? 'Child' : 'Related');
+          related.push({ id: wi[1], kind, url: this.ticketUrl(wi[1], { organization: o, project: ticket.project ?? this.project }) });
+        }
+      }
+      let comments: TicketDetails['comments'] = [];
+      try {
+        const c = await this.request<{ comments: { text: string; createdBy: { displayName: string }; createdDate: string }[] }>(
+          'GET',
+          `https://dev.azure.com/${e(o)}/${e(ticket.project ?? this.project)}/_apis/wit/workItems/${e(id)}/comments?$top=50&order=desc&api-version=7.1-preview.4`,
+          undefined,
+          'application/json',
+          o,
+        );
+        comments = c.comments.map((x) => ({ author: x.createdBy.displayName, date: Date.parse(x.createdDate), body: x.text }));
+      } catch (err) {
+        log.info(`Work item ${id}: comments unavailable (${err instanceof Error ? err.message : err})`);
+      }
+      return {
+        ticket,
+        format: 'html',
+        description: text('System.Description'),
+        sections,
+        fields,
+        tags: String(f['System.Tags'] ?? '')
+          .split(';')
+          .map((t) => t.trim())
+          .filter(Boolean),
+        comments,
+        pullRequests,
+        related,
+        changed: f['System.ChangedDate'] ? Date.parse(String(f['System.ChangedDate'])) : undefined,
+      };
+    }
+    return undefined;
+  }
+
+  async activateTicket(id: string, org = this.org): Promise<void> {
     await this.request(
       'PATCH',
-      `${this.orgUrl}/_apis/wit/workitems/${e(id)}?${API}`,
+      `https://dev.azure.com/${e(org)}/_apis/wit/workitems/${e(id)}?${API}`,
       [{ op: 'add', path: '/fields/System.State', value: 'Active' }],
       'application/json-patch+json',
+      org,
     );
   }
 
-  async listPullRequests(): Promise<PullRequest[]> {
-    const [data, me] = await Promise.all([
-      this.request<{ value: AzPullRequest[] }>('GET', `${this.repoApi}/pullrequests?searchCriteria.status=active&$top=100&${API}`),
-      this.currentUserId().catch(() => ''),
-    ]);
-    return data.value.map((pr) => this.toPullRequest(pr, me));
+  /** Projects of an organization, to pick ticket sources. */
+  async listProjects(org = this.org): Promise<{ name: string; description?: string }[]> {
+    const data = await this.request<{ value: { name: string; description?: string }[] }>(
+      'GET',
+      `https://dev.azure.com/${e(org)}/_apis/projects?$top=500&${API}`,
+      undefined,
+      'application/json',
+      org,
+    );
+    return data.value.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  private toPullRequest(pr: AzPullRequest, me: string): PullRequest {
+  async listPullRequests(): Promise<PullRequest[]> {
+    const [data, me, mine] = await Promise.all([
+      this.request<{ value: AzPullRequest[] }>('GET', `${this.repoApi}/pullrequests?searchCriteria.status=active&$top=100&${API}`),
+      this.currentUserId().catch(() => ''),
+      this.myReviewerIds().catch(() => new Set<string>()),
+    ]);
+    return data.value.map((pr) => this.toPullRequest(pr, me, mine));
+  }
+
+  /** `mine`: my id and my teams' ids, so a PR asking one of my teams is "to review". */
+  private toPullRequest(pr: AzPullRequest, me: string, mine = new Set([me])): PullRequest {
     let group: PullRequest['group'] = 'other';
     if (pr.createdBy.id === me) {
       group = 'mine';
-    } else if (pr.reviewers?.some((r) => r.id === me)) {
+    } else if (pr.reviewers?.some((r) => mine.has(r.id))) {
       group = 'review';
     }
+    const myVote = pr.reviewers?.find((r) => r.id === me)?.vote ?? 0;
     return {
       id: String(pr.pullRequestId),
       label: `!${pr.pullRequestId}`,
@@ -374,14 +572,157 @@ export class AzureDevOpsProvider implements Provider {
       sourceBranch: stripHeads(pr.sourceRefName),
       targetBranch: stripHeads(pr.targetRefName),
       author: pr.createdBy.displayName,
-      url: this.prUrl(pr.pullRequestId),
+      url: this.pullRequestUrl(pr.pullRequestId),
       isDraft: !!pr.isDraft,
       group,
       created: pr.creationDate ? Date.parse(pr.creationDate) : undefined,
+      // Votes: 10 approved, 5 approved with suggestions, -5 waiting for author, -10 rejected.
+      review: pr.reviewers?.some((r) => r.vote < 0)
+        ? 'changes'
+        : pr.reviewers?.some((r) => r.vote > 0)
+          ? 'approved'
+          : 'waiting',
+      needsMyReview: myVote === 0 && !!pr.reviewers?.some((r) => mine.has(r.id)),
     };
   }
 
+  /** Pull request with its description, reviewers, work items, commits and discussion. */
+  async getPullRequestDetails(id: string): Promise<PullRequestDetails> {
+    type AzPrFull = Omit<AzPullRequest, 'reviewers'> & {
+      description?: string;
+      status: string;
+      mergeStatus?: string;
+      reviewers?: { id: string; vote: number; displayName: string; isRequired?: boolean }[];
+      lastMergeSourceCommit?: { commitId: string };
+    };
+    const base = `${this.repoApi}/pullrequests/${e(id)}`;
+    const [pr, me, mine, items, commits, threads] = await Promise.all([
+      this.request<AzPrFull>('GET', `${base}?${API}`),
+      this.currentUserId().catch(() => ''),
+      this.myReviewerIds().catch(() => new Set<string>()),
+      this.request<{ value: { id: string }[] }>('GET', `${base}/workitems?${API}`).catch(() => ({ value: [] })),
+      this.request<{ value: { commitId: string; comment: string; author: { name: string; date: string } }[] }>('GET', `${base}/commits?$top=100&${API}`).catch(() => ({ value: [] })),
+      this.request<{
+        value: { id: number; status?: string; isDeleted?: boolean; threadContext?: { filePath?: string; rightFileStart?: { line: number } }; comments: { content?: string; commentType?: string; author: { displayName: string }; publishedDate: string }[] }[];
+      }>('GET', `${base}/threads?${API}`).catch(() => ({ value: [] })),
+    ]);
+    const vote = (v: number): PullRequestDetails['reviewers'][number]['vote'] =>
+      v >= 10 ? 'approved' : v >= 5 ? 'suggestions' : v <= -10 ? 'rejected' : v < 0 ? 'waiting' : 'none';
+    return {
+      pr: this.toPullRequest(pr, me, mine),
+      status: pr.status,
+      description: pr.description,
+      mergeStatus: pr.mergeStatus,
+      reviewers: (pr.reviewers ?? []).map((r) => ({ name: r.displayName, vote: vote(r.vote), required: r.isRequired })),
+      workItems: items.value.map((w) => ({ id: String(w.id), url: this.ticketUrl(w.id) })),
+      commits: commits.value.map((c) => ({ sha: c.commitId, subject: (c.comment ?? '').split('\n')[0], author: c.author?.name ?? '', date: Date.parse(c.author?.date ?? '') })),
+      comments: threads.value
+        .filter((t) => !t.isDeleted)
+        .flatMap((t) =>
+          t.comments
+            .filter((c) => c.commentType === 'text' && c.content)
+            .map((c) => ({ author: c.author.displayName, date: Date.parse(c.publishedDate), body: c.content!, file: t.threadContext?.filePath })),
+        )
+        .sort((a, b) => a.date - b.date),
+      threads: threads.value
+        .filter((t) => !t.isDeleted && t.comments.some((c) => c.commentType === 'text' && c.content))
+        .map((t) => ({
+          id: String(t.id),
+          status: t.status,
+          file: t.threadContext?.filePath,
+          line: t.threadContext?.rightFileStart?.line,
+          comments: t.comments
+            .filter((c) => c.commentType === 'text' && c.content)
+            .map((c) => ({ author: c.author.displayName, date: Date.parse(c.publishedDate), body: c.content! })),
+        })),
+      myVote: (() => {
+        const mine = pr.reviewers?.find((r) => r.id === me);
+        return mine ? vote(mine.vote) : undefined;
+      })(),
+      amReviewer: !!pr.reviewers?.some((r) => mine.has(r.id)),
+      lastSourceCommit: pr.lastMergeSourceCommit?.commitId,
+    };
+  }
+
+  private repoId?: Promise<string>;
+  /** Repository GUID (the build API filters by it). */
+  private repositoryId(): Promise<string> {
+    this.repoId ??= this.request<{ id: string }>('GET', `${this.repoApi}?${API}`).then((r) => r.id);
+    this.repoId.catch(() => (this.repoId = undefined));
+    return this.repoId;
+  }
+
+  async pipelineRuns(o: { prId?: string; max?: number }): Promise<PipelineRun[]> {
+    const repositoryId = await this.repositoryId();
+    const q = o.prId ? `&branchName=${e(`refs/pull/${o.prId}/merge`)}` : '';
+    const data = await this.request<{
+      value: { definition: { name: string }; status: string; result?: string; sourceVersion: string; sourceBranch: string; finishTime?: string; _links: { web: { href: string } } }[];
+    }>('GET', `${this.projectUrl}/_apis/build/builds?repositoryId=${e(repositoryId)}&repositoryType=TfsGit&$top=${o.max ?? 60}&queryOrder=queueTimeDescending${q}&${API}`);
+    return data.value.map((b) => ({
+      name: b.definition.name,
+      state:
+        b.status === 'inProgress' ? 'running'
+        : b.status === 'notStarted' || b.status === 'postponed' ? 'queued'
+        : b.result === 'succeeded' ? 'succeeded'
+        : b.result === 'partiallySucceeded' ? 'partial'
+        : b.result === 'canceled' ? 'canceled'
+        : 'failed',
+      url: b._links.web.href,
+      sha: b.sourceVersion,
+      branch: stripHeads(b.sourceBranch),
+      finished: b.finishTime ? Date.parse(b.finishTime) : undefined,
+    }));
+  }
+
+  async votePullRequest(id: string, vote: ReviewVote, comment?: string): Promise<void> {
+    const me = await this.currentUserId();
+    const value = { approve: 10, suggestions: 5, reset: 0, wait: -5, reject: -10 }[vote];
+    await this.request('PUT', `${this.repoApi}/pullRequests/${e(id)}/reviewers/${e(me)}?${API}`, { vote: value });
+    if (comment?.trim()) {
+      await this.commentPullRequest(id, comment);
+    }
+  }
+
+  async requestMyReview(id: string): Promise<void> {
+    const me = await this.currentUserId();
+    await this.request('PUT', `${this.repoApi}/pullRequests/${e(id)}/reviewers/${e(me)}?${API}`, { vote: 0, isRequired: false });
+  }
+
+  async commentPullRequest(id: string, text: string, threadId?: string): Promise<void> {
+    if (threadId) {
+      await this.request('POST', `${this.repoApi}/pullRequests/${e(id)}/threads/${e(threadId)}/comments?${API}`, { content: text, parentCommentId: 1, commentType: 1 });
+    } else {
+      await this.request('POST', `${this.repoApi}/pullRequests/${e(id)}/threads?${API}`, { comments: [{ parentCommentId: 0, content: text, commentType: 1 }], status: 'active' });
+    }
+  }
+
+  async resolveThread(id: string, threadId: string, resolved: boolean): Promise<void> {
+    await this.request('PATCH', `${this.repoApi}/pullRequests/${e(id)}/threads/${e(threadId)}?${API}`, { status: resolved ? 'fixed' : 'active' });
+  }
+
+  async updatePullRequest(
+    id: string,
+    change: { publish?: boolean; abandon?: boolean; complete?: { strategy: 'squash' | 'noFastForward' | 'rebase' | 'rebaseMerge'; deleteSourceBranch: boolean; lastSourceCommit: string; message?: string; transitionWorkItems?: boolean } },
+  ): Promise<void> {
+    const body = change.publish
+      ? { isDraft: false }
+      : change.abandon
+        ? { status: 'abandoned' }
+        : {
+            status: 'completed',
+            lastMergeSourceCommit: { commitId: change.complete!.lastSourceCommit },
+            completionOptions: {
+              mergeStrategy: change.complete!.strategy,
+              deleteSourceBranch: change.complete!.deleteSourceBranch,
+              mergeCommitMessage: change.complete!.message,
+              transitionWorkItems: !!change.complete!.transitionWorkItems,
+            },
+          };
+    await this.request('PATCH', `${this.repoApi}/pullrequests/${e(id)}?${API}`, body);
+  }
+
   async createPullRequest(o: CreatePullRequestOptions): Promise<PullRequest> {
+    const me = o.addMeAsReviewer ? await this.currentUserId().catch(() => '') : '';
     const pr = await this.request<AzPullRequest>('POST', `${this.repoApi}/pullrequests?${API}`, {
       sourceRefName: `refs/heads/${o.source}`,
       targetRefName: `refs/heads/${o.target}`,
@@ -389,6 +730,7 @@ export class AzureDevOpsProvider implements Provider {
       description: o.description,
       isDraft: o.draft,
       workItemRefs: o.ticketIds.map((id) => ({ id })),
+      reviewers: me ? [{ id: me, isRequired: false }] : undefined,
     });
     return this.toPullRequest(pr, pr.createdBy.id);
   }
