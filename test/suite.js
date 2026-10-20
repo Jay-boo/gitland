@@ -17,8 +17,8 @@ async function step(name, fn) {
 
 exports.run = async function () {
   const ws = process.env.GITLAND_TEST_WORKSPACE;
-  const ext = vscode.extensions.getExtension('jayboo.gitland');
-  await step('extension is present', () => assert.ok(ext, 'jayboo.gitland not found'));
+  const ext = vscode.extensions.getExtension('jay-boo.gitland');
+  await step('extension is present', () => assert.ok(ext, 'jay-boo.gitland not found'));
   await step('extension activates', async () => {
     await ext.activate();
     assert.ok(ext.isActive);

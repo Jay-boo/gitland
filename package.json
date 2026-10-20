@@ -3,11 +3,11 @@
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets → branches and pull requests for Azure DevOps & GitHub.",
   "version": "0.23.2",
-  "publisher": "jayboo",
+  "publisher": "jay-boo",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jayboo/gitland"
+    "url": "https://github.com/Jay-boo/gitland.git"
   },
   "engines": {
     "vscode": "^1.85.0"

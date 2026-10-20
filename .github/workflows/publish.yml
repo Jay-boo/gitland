@@ -1,0 +1,48 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'push'
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+
+      # npm test launches a real VS Code against a local workspace, so CI only builds.
+      - run: npm run build
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Publish to Open VSX
+        run: npx ovsx publish *.vsix -p "${{ secrets.OVSX_PAT }}"
+
+      - name: Publish to VS Code Marketplace
+        run: npx vsce publish --packagePath *.vsix -p "${{ secrets.VSCE_PAT }}"
+
+      - name: Upload .vsix as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: '*.vsix'
