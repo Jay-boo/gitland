@@ -38,6 +38,7 @@
     "onWebviewPanel:gitland.compare",
     "onWebviewPanel:gitland.history",
     "onWebviewPanel:gitland.dashboard",
+    "onWebviewPanel:gitland.settings",
     "onWebviewPanel:gitland.cleanup",
     "onWebviewPanel:gitland.newPullRequest",
     "onWebviewPanel:gitland.newRelease",
@@ -49,6 +50,12 @@
   ],
   "contributes": {
     "commands": [
+      {
+        "command": "gitland.settings",
+        "title": "Settings",
+        "category": "Gitland",
+        "icon": "$(settings-gear)"
+      },
       {
         "command": "gitland.showGraph",
         "title": "Show Commit Graph",
@@ -386,6 +393,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "gitland.settings",
+          "when": "view == gitland.changesView",
+          "group": "navigation@9"
+        },
         {
           "command": "gitland.tickets.startWorkById",
           "when": "view == gitland.tickets",

@@ -19,6 +19,7 @@ import { PrPanel } from './views/prPanel';
 import { NewPrPanel } from './views/newPrPanel';
 import { ReleasesView } from './views/releasesView';
 import { PipelinesView } from './views/pipelinesView';
+import { SettingsPanel } from './views/settingsPanel';
 import { NewReleasePanel } from './views/newReleasePanel';
 import { RebasePanel } from './views/rebasePanel';
 import { CleanupPanel } from './views/cleanupPanel';
@@ -101,6 +102,7 @@ export function activate(context: vscode.ExtensionContext): void {
       return repo && HistoryPanel.show(context, repos, avatars, repo, r.rel as string, r.range as { start: number; end: number } | undefined);
     },
     'gitland.dashboard': () => DashboardPanel.show(context, repos, avatars),
+    'gitland.settings': () => SettingsPanel.show(context),
     'gitland.changes': () => showChangesInEditor(),
     'gitland.cleanup': async (r) => {
       const repo = await repoFor(r.repoRoot as string);
@@ -336,6 +338,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     command('gitland.dashboard', () => DashboardPanel.show(context, repos, avatars)),
+    command('gitland.settings', () => SettingsPanel.show(context)),
     command('gitland.branches.cleanup', async () => {
       const repo = await repoFor();
       if (repo) {

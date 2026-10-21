@@ -1,0 +1,23 @@
+/* Settings page: ticket.css header card + one card per group. */
+
+#page { max-width: 920px; }
+.set-filter { width: 280px; max-width: 100%; }
+.set-group { margin-bottom: 12px; padding: 12px 14px 4px; }
+.set-group h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.set-group h3 .n { font-size: 11px; font-weight: normal; color: var(--gl-muted); padding: 0 7px; border-radius: 999px; background: var(--gl-inset); line-height: 16px; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 6px 18px; align-items: start; padding: 10px 0; border-top: 1px dashed var(--gl-line-strong); }
+.set-group h3 + .set-row { border-top: 0; }
+.set-row.changed .set-title { color: var(--gl-link); }
+.set-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-weight: 600; }
+.set-title .link { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: normal; color: var(--muted); cursor: pointer; }
+.set-title .link:hover { color: var(--fg); }
+.set-title .key { font-family: var(--gl-mono); color: var(--faint); }
+.set-desc { margin-top: 2px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.set-desc p { margin: 0; }
+.set-ctl { display: flex; justify-content: flex-end; }
+.set-ctl .gl-input { width: 100%; height: 26px; padding: 0 8px; font: inherit; font-size: 12px; outline: none; }
+.set-ctl .gl-input.num { width: 110px; }
+.set-ctl .gl-composer { width: 100%; padding: 6px 8px; }
+.set-ctl textarea { font-size: 12px; }
+@media (max-width: 640px) { .set-row { grid-template-columns: 1fr; } .set-ctl { justify-content: flex-start; } }
+.set-filter input { flex: 1; min-width: 0; font: inherit; color: var(--vscode-input-foreground, var(--fg)); background: transparent; border: none; outline: none; }

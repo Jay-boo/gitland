@@ -146,7 +146,7 @@ body.list { padding-bottom: 8px; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
 .switch .track { position: relative; width: 26px; height: 14px; border-radius: 999px; background: var(--gl-inset); box-shadow: inset 0 0 0 1px var(--gl-line-strong); transition: background 0.15s; }
 .switch .knob { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s; }
-.switch input:checked + .track { background: var(--vscode-button-background, var(--gl-link)); box-shadow: none; }
+.switch input:checked + .track { background: var(--vscode-button-background, var(--gl-link)); box-shadow: none; outline: 1px solid var(--vscode-contrastActiveBorder, transparent); }
 .switch input:checked + .track .knob { transform: translateX(12px); background: var(--vscode-button-foreground, white); }
 .switch input:checked ~ span:last-child { color: var(--fg); }
 .switch input:focus-visible + .track { outline: 1px solid var(--accent); outline-offset: 2px; }
