@@ -11,7 +11,16 @@
   /** Narrow view (sidebar): compact lanes and one badge per row, like GitLens. */
   const isCompact = () => window.innerWidth < 600;
   // Same order as src/graph/colors.ts: main, dev, feature, fix, hotfix, release, chore, then other names.
-  const COLORS = ['#6f9fd0', '#6fb293', '#a08cc8', '#c792ab', '#c98585', '#c6ab6e', '#94a3b8', '#8c96cc', '#9db573', '#c99a74', '#b59ac9'];
+  // Lane colours from the theme (--gl-lane-* in base.css), resolved to rgb() so SVG attributes can use them.
+  const probe = document.createElement('i');
+  probe.hidden = true;
+  document.documentElement.appendChild(probe);
+  const laneColors = () =>
+    /** @type {any} */ (window).gl.themeColors((/** @type {string} */ n) => {
+      probe.style.color = `var(${n})`;
+      return getComputedStyle(probe).color;
+    });
+  let COLORS = laneColors();
   const WORKTREE = 'WORKTREE';
 
   /** @type {any} */
@@ -358,6 +367,16 @@
       })
       .join('') + more;
   }
+
+  // VS Code swaps the theme variables (on <html>) and the body class when the theme changes.
+  const themeWatch = new MutationObserver(() => {
+    const next = laneColors();
+    if (next.join() === COLORS.join()) return;
+    COLORS = next;
+    if (data) render();
+  });
+  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+  themeWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   function render() {
     if (!data) return;

@@ -52,3 +52,9 @@ test('cards, lists, pills and pop-overs show the high-contrast border', () => {
     assert.match(rule[0], /--gl-border/, `${sel} uses --gl-border`);
   }
 });
+
+test('graph lanes come from the theme, not hex literals', () => {
+  const js = read(path.join(media, 'graph.js'));
+  assert.deepStrictEqual(js.match(/'#[0-9a-fA-F]{3,8}'/g) || [], []);
+  assert.match(js, /gl\.themeColors|themeColors\(/);
+});
