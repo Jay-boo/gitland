@@ -160,7 +160,15 @@ for (const view of views) {
       for (const m of msgs) await page.evaluate((x) => window.postMessage(x, '*'), m);
       await page.waitForTimeout(400);
       const r = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: innerWidth, csp: window.__csp || [] }));
-      if (r.sw > r.w + 1) errors.push(`horizontal overflow: scrollWidth ${r.sw} > ${r.w}`);
+      if (r.sw > r.w + 1) {
+        const wide = await page.evaluate(() =>
+          [...document.querySelectorAll('body *')]
+            .filter((e) => e.getBoundingClientRect().right > innerWidth + 1)
+            .slice(0, 3)
+            .map((e) => `${e.tagName.toLowerCase()}${e.id ? `#${e.id}` : ''}${e.className && typeof e.className === 'string' ? `.${e.className.trim().split(/\s+/).join('.')}` : ''}`),
+        );
+        errors.push(`horizontal overflow: scrollWidth ${r.sw} > ${r.w} (${wide.join(', ')})`);
+      }
       for (const c of r.csp) errors.push(`CSP: ${c}`);
       await page.screenshot({ path: path.join(outDir, `${name}-${t}-${w}.png`), fullPage: true });
       shots++;
