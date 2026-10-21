@@ -1,4 +1,4 @@
-import { createPanel, pageIcon, restoreScript } from '../views/webviewHtml';
+import { createPanel, pageIcon, webviewHtml } from '../views/webviewHtml';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { applyNumstat, Commit, DiffPreview, Repo, WORKTREE_SHA } from '../git/repo';
@@ -15,6 +15,7 @@ import { ChangesBadge } from '../views/changesBadge';
 import { ComparePanel } from '../views/comparePanel';
 import { explainHistory } from '../commitMessage';
 import { mentionedContext } from '../views/historyPanel';
+import { capture } from '../devCapture';
 
 type WebviewMessage =
   | { type: 'ready'; filters?: GraphFilters }
@@ -179,8 +180,7 @@ export class GraphController implements vscode.Disposable {
     this.repo = repo;
     this.max = config('graph.maxCommits', 400);
     this.pendingSelect = selectSha;
-    const media = vscode.Uri.joinPath(context.extensionUri, 'media');
-    host.webview.html = this.html(media);
+    host.webview.html = this.html(context.extensionUri);
     this.disposables.push(
       host.webview.onDidReceiveMessage((m: WebviewMessage) => this.onMessage(m)),
       repos.onDidChangeRepo((r) => {
@@ -227,6 +227,7 @@ export class GraphController implements vscode.Disposable {
   }
 
   private post(message: unknown): Thenable<boolean> {
+    capture('graph', 'message', message);
     return this.host.webview.postMessage(message);
   }
 
@@ -347,6 +348,13 @@ export class GraphController implements vscode.Disposable {
         me: email,
         authors: authorList(commits),
       });
+      if (process.env.GITLAND_CAPTURE_DIR) {
+        // Dev capture: a sample details reply for test/render (it answers hover / details requests).
+        const sample = list.find((c) => c.sha !== WORKTREE_SHA && c.refs.length) ?? list.find((c) => c.sha !== WORKTREE_SHA);
+        if (sample) {
+          await this.sendDetails(sample.sha);
+        }
+      }
       this.pendingSelect = undefined;
       this.pendingFocus = undefined;
       this.sendPullRequests(repo);
@@ -818,31 +826,14 @@ export class GraphController implements vscode.Disposable {
     await this.load();
   }
 
-  private html(media: vscode.Uri): string {
-    const webview = this.host.webview;
-    const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
-    const uri = (...p: string[]) => webview.asWebviewUri(vscode.Uri.joinPath(media, ...p));
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="${uri('vendor', 'codicon.css')}">
-<link rel="stylesheet" href="${uri('graph.css')}">
-<style>
-@font-face { font-family: 'Gitland Geist'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist.woff2')}') format('woff2'); }
-@font-face { font-family: 'Gitland Geist Mono'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist-mono.woff2')}') format('woff2'); }
-</style>
-<title>Git Graph</title>
-</head>
-<body>
-${GRAPH_BODY}
-${restoreScript({ kind: 'graph', repoRoot: this.repo?.root }, nonce)}
-<script nonce="${nonce}" src="${uri('diffpreview.js')}"></script>
-<script nonce="${nonce}" src="${uri('graph.js')}"></script>
-</body>
-</html>`;
+  private html(extensionUri: vscode.Uri): string {
+    return webviewHtml(this.host.webview, extensionUri, {
+      view: 'graph',
+      title: 'Git Graph',
+      body: GRAPH_BODY,
+      script: ['diffpreview.js', 'graph.js'],
+      restore: { kind: 'graph', repoRoot: this.repo?.root },
+    });
   }
 
   /** Immediate avatar URLs per email; better pictures are looked up in the background. */
@@ -874,7 +865,7 @@ export const GRAPH_BODY = `<header id="toolbar">
     <span id="remoteName" class="remote"></span>
   </div>
   <div class="tools">
-    <span class="seg" id="scope" title="What the graph shows">
+    <span class="seg gl-seg" id="scope" title="What the graph shows">
       <button data-scope="all" title="All branches"><i class="codicon codicon-repo-forked"></i><span class="label">All</span></button>
       <button data-scope="branch" title="Only the history of one branch (the current one, or the one you focus)"><i class="codicon codicon-git-branch"></i><span class="label">Branch</span></button>
       <button data-scope="timeline" title="Timeline: the main line of the branch, one row per merged branch / pull request"><i class="codicon codicon-history"></i><span class="label">Timeline</span></button>
@@ -903,9 +894,9 @@ export const GRAPH_BODY = `<header id="toolbar">
   </div>
   <section id="details" hidden></section>
 </main>
-<div id="card" class="card" hidden></div>
-<div id="picker" class="picker" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
-<div id="menu" class="menu" hidden></div>
+<div id="card" class="card gl-pop" hidden></div>
+<div id="picker" class="picker gl-pop" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
+<div id="menu" class="menu gl-pop" hidden></div>
 <div id="error" hidden></div>`;
 
 /**

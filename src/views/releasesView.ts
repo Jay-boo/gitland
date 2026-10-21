@@ -7,6 +7,7 @@ import { errorMessage } from '../util';
 import { webviewHtml, webviewOptions } from './webviewHtml';
 import { ComparePanel } from './comparePanel';
 import { LIST_BODY } from './ticketsView';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'newRelease' | 'compareUnreleased' }
@@ -37,6 +38,7 @@ export class ReleasesView implements vscode.WebviewViewProvider, vscode.Disposab
     this.view = view;
     view.webview.options = webviewOptions(this.context.extensionUri);
     view.webview.html = webviewHtml(view.webview, this.context.extensionUri, {
+      view: 'releases',
       title: 'Releases',
       body: LIST_BODY('Filter releases'),
       script: 'releases.js',
@@ -52,6 +54,7 @@ export class ReleasesView implements vscode.WebviewViewProvider, vscode.Disposab
   }
 
   private post(m: unknown): void {
+    capture('releases', 'message', m);
     this.view?.webview.postMessage(m);
   }
 

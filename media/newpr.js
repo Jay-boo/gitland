@@ -1,13 +1,11 @@
 // @ts-check
 (function () {
+  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // @ts-ignore
   const { markdown } = window.gitlandRich;
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   /** @type {any} */
   let init = null;
   /** @type {any} */
@@ -18,12 +16,6 @@
 
   const $ = (/** @type {string} */ id) => /** @type {any} */ (document.getElementById(id));
 
-  function relTime(ts) {
-    const s = (Date.now() - ts) / 1000;
-    if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h`;
-    return `${Math.floor(s / 86400)}d`;
-  }
 
   function renderPage() {
     page.innerHTML = `
@@ -111,7 +103,7 @@
     }`;
     $('summary').innerHTML = `<h3>Changes <span class="n">${info.commits.length} commit${info.commits.length === 1 ? '' : 's'}</span></h3>
       <div class="stats"><span>${info.files} file${info.files === 1 ? '' : 's'}</span>${info.added ? `<span class="plus">+${info.added}</span>` : ''}${info.deleted ? `<span class="minus">−${info.deleted}</span>` : ''}</div>
-      ${info.commits.slice(0, 30).map((c) => `<div class="commit-row" title="${esc(c.subject)}"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span><span class="k">${esc(relTime(c.date))}</span></div>`).join('')}
+      ${info.commits.slice(0, 30).map((c) => `<div class="commit-row" title="${esc(c.subject)}"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span><span class="k">${esc(relShort(c.date))}</span></div>`).join('')}
       ${info.commits.length ? '' : `<div class="none">No commit ahead of ${esc(info.target)}.</div>`}`;
     $('pushInfo').innerHTML = info.needsPush ? `${icon('cloud-upload')} ${esc(init.source)} will be pushed first` : `${icon('check')} ${esc(init.source)} is pushed`;
     autosize();

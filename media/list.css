@@ -1,6 +1,7 @@
-/* Sidebar lists (My Tickets, Pull Requests, Changes files): extends graph.css. */
+/* Sidebar lists (My Tickets, Pull Requests, Releases) and shared list bits: base.css components. */
 
-body.list, body.changes { overflow-y: auto; overflow-x: hidden; background: var(--vscode-sideBar-background, var(--bg)); }
+body.list, body.changes { --gl-bg: var(--vscode-sideBar-background, var(--vscode-editor-background)); overflow-y: auto; overflow-x: hidden; background: var(--gl-bg); }
+body.list { padding-bottom: 8px; }
 .grow { flex: 1; }
 
 .lv-head {
@@ -10,36 +11,41 @@ body.list, body.changes { overflow-y: auto; overflow-x: hidden; background: var(
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
-  background: var(--vscode-sideBar-background, var(--bg));
-  border-bottom: 1px solid var(--line);
+  padding: 8px 8px 4px;
+  background: var(--gl-bg);
 }
-.lv-head .search { flex: 1; width: auto; max-width: none; height: 24px; margin: 0; }
+.lv-head .search { flex: 1; width: auto; max-width: none; height: 26px; margin: 0; }
 .lv-head input { flex: 1; min-width: 0; font: inherit; color: var(--vscode-input-foreground, var(--fg)); background: transparent; border: none; outline: none; }
 .lv-head input::-webkit-search-cancel-button { display: none; }
 
 /* ---------- group headers ---------- */
 
-.grp { margin-top: 2px; }
+.grp { margin: 10px 8px 0; }
+.grp:first-child { margin-top: 6px; }
 .gh {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   height: 24px;
-  padding: 0 8px 0 6px;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--muted);
+  padding: 0 4px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
   cursor: pointer;
   user-select: none;
 }
-.gh:hover { background: var(--hover); }
+.gh:hover .gt { text-decoration: underline; text-decoration-color: var(--gl-line-strong); }
 .gh > .codicon { font-size: 12px; color: var(--faint); }
-.gh .gt { text-transform: lowercase; color: var(--fg); }
-.gh .n { min-width: 16px; height: 15px; padding: 0 4px; border-radius: 8px; text-align: center; line-height: 15px; font-size: 9.5px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); }
+.gh .gt { color: var(--fg); }
+.gh .n { min-width: 18px; height: 16px; padding: 0 6px; border-radius: 999px; text-align: center; line-height: 16px; font-size: 11px; font-weight: normal; color: var(--gl-muted); background: var(--gl-inset); }
 .gh .ga { display: none; }
 .gh:hover .ga { display: inline-flex; }
 .grp.collapsed .gb { display: none; }
+/* Each group's items sit in one rounded card. */
+.gb { padding: 4px 0; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); overflow: hidden; }
+#list > .gb { margin: 6px 8px 0; }
+.gb .state { margin: 0; padding: 10px; background: none; border: 0; }
 
 /* ---------- items ---------- */
 
@@ -48,18 +54,18 @@ body.list, body.changes { overflow-y: auto; overflow-x: hidden; background: var(
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 38px;
+  min-height: 40px;
   padding: 4px 8px 4px 10px;
   cursor: pointer;
 }
-.item:hover { background: var(--hover); }
-.item.current { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.item:hover { background: var(--gl-hover); }
+.item.current { background: color-mix(in srgb, var(--gl-link) 9%, transparent); box-shadow: inset 2px 0 0 var(--gl-link); }
 .item .body { flex: 1; min-width: 0; line-height: 1.35; }
 .item .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item .meta { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 1px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); white-space: nowrap; overflow: hidden; }
+.item .meta { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; }
 .item .meta > span { overflow: hidden; text-overflow: ellipsis; }
-.item .meta .pill { overflow: visible; height: 15px; line-height: 15px; padding: 0 5px; font-size: 9.5px; }
-.item .meta .id { color: var(--muted); flex: none; }
+.item .meta .pill { overflow: visible; }
+.item .meta .id { color: var(--muted); flex: none; font-family: var(--mono); }
 .item .meta .br { color: var(--muted); }
 .item .meta .codicon { font-size: 10px; vertical-align: -1px; }
 .item .acts { display: none; flex: none; gap: 0; }
@@ -73,94 +79,96 @@ body.list, body.changes { overflow-y: auto; overflow-x: hidden; background: var(
 .glyph {
   --g: var(--faint);
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--g);
   background: color-mix(in srgb, var(--g) 15%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 25%, transparent);
+  border: 1px solid var(--gl-border);
 }
 .glyph .codicon { font-size: 12px; }
-.g-bug { --g: #c98585; }
-.g-task { --g: #c6ab6e; }
-.g-story { --g: #6f9fd0; }
-.g-feature { --g: #a08cc8; }
-.g-epic { --g: #c99a74; }
-.g-issue { --g: #94a3b8; }
-.g-approved { --g: #6fb293; }
-.g-changes { --g: #c792ab; }
-.g-waiting { --g: #6f9fd0; }
+.g-bug { --g: var(--gl-err); }
+.g-task { --g: var(--gl-ai); }
+.g-story { --g: var(--gl-main); }
+.g-feature { --g: var(--gl-feature); }
+.g-epic { --g: var(--gl-orange); }
+.g-issue { --g: var(--gl-chore); }
+.g-approved { --g: var(--gl-ok); }
+.g-changes { --g: var(--gl-pink); }
+.g-waiting { --g: var(--gl-main); }
 .g-draft { --g: var(--faint); }
 
 /* State pill */
 .pill {
   --p: var(--faint);
   flex: none;
+  display: inline-flex;
+  align-items: center;
   height: 16px;
-  padding: 0 6px;
-  border-radius: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  line-height: 16px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--gl-border);
+  font-size: 10.5px;
+  line-height: 1;
   color: var(--p);
-  background: color-mix(in srgb, var(--p) 13%, transparent);
+  background: color-mix(in srgb, var(--p) 15%, transparent);
 }
 .p-new { --p: var(--muted); }
-.p-active { --p: #6f9fd0; }
-.p-done { --p: #6fb293; }
-.p-blocked { --p: #c98585; }
-.p-approved { --p: #6fb293; }
-.p-changes { --p: #c792ab; }
-.p-waiting { --p: #6f9fd0; }
+.p-active { --p: var(--gl-main); }
+.p-done { --p: var(--gl-ok); }
+.p-blocked { --p: var(--gl-err); }
+.p-approved { --p: var(--gl-ok); }
+.p-changes { --p: var(--gl-pink); }
+.p-waiting { --p: var(--gl-main); }
 .p-draft { --p: var(--faint); }
-.cur-chip { font-family: var(--mono); font-size: 9.5px; color: var(--accent); flex: none; }
+.cur-chip { font-size: 10.5px; color: var(--gl-link); flex: none; }
 
 /* ---------- states ---------- */
 
-.state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 18px; text-align: center; color: var(--faint); }
+.state { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px; padding: 24px 16px; text-align: center; color: var(--faint); background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
 .state > .codicon { font-size: 22px; margin-bottom: 2px; }
-.state b { color: var(--muted); font-weight: 500; }
-.state span { font-family: var(--mono); font-size: 10.5px; max-width: 280px; word-break: break-word; }
+.state b { color: var(--fg); font-weight: 600; }
+.state span { font-size: 11.5px; max-width: 280px; word-break: break-word; }
 .state button { margin-top: 6px; }
-.state.error > .codicon { color: var(--deleted); }
-.state.signin > .codicon { color: var(--accent); }
-.state.done > .codicon { color: var(--added); }
-.skeleton { padding: 6px 10px; }
-.skeleton div { height: 30px; margin: 6px 0; border-radius: 6px; background: var(--surface-2); animation: pulse 1s ease-in-out infinite alternate; }
-.foot { display: flex; gap: 6px; padding: 10px; }
-.item .age { flex: none; min-width: 22px; text-align: right; font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.state.error > .codicon { color: var(--gl-err); }
+.state.signin > .codicon { color: var(--gl-link); }
+.state.done > .codicon { color: var(--gl-ok); }
+.skeleton { padding: 6px 8px; }
+.skeleton div { height: 34px; margin: 6px 0; border-radius: var(--gl-radius-card); background: linear-gradient(90deg, var(--gl-card), var(--gl-card-hover), var(--gl-card)); background-size: 200% 100%; animation: gl-shimmer 1.2s ease-in-out infinite; }
+.foot { display: flex; gap: 6px; padding: 8px 8px 0; }
+.item .age { flex: none; min-width: 22px; text-align: right; font-size: 11px; color: var(--faint); }
 
 /* Switch (Amend, compare options…) */
 .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
-.switch .track { position: relative; width: 24px; height: 13px; border-radius: 7px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); transition: background 0.15s; }
-.switch .knob { position: absolute; top: 2px; left: 2px; width: 9px; height: 9px; border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s; }
-.switch input:checked + .track { background: color-mix(in srgb, #c6ab6e 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #c6ab6e 60%, transparent); }
-.switch input:checked + .track .knob { transform: translateX(11px); background: #c6ab6e; }
-.switch input:checked ~ span:last-child { color: #c6ab6e; }
+.switch .track { position: relative; width: 26px; height: 14px; border-radius: 999px; background: var(--gl-inset); box-shadow: inset 0 0 0 1px var(--gl-line-strong); transition: background 0.15s; }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s; }
+.switch input:checked + .track { background: var(--vscode-button-background, var(--gl-link)); box-shadow: none; }
+.switch input:checked + .track .knob { transform: translateX(12px); background: var(--vscode-button-foreground, white); }
+.switch input:checked ~ span:last-child { color: var(--fg); }
 .switch input:focus-visible + .track { outline: 1px solid var(--accent); outline-offset: 2px; }
 
 
 /* ---------- releases ---------- */
 .rel .ver { font-family: var(--mono); font-weight: 600; margin-right: 6px; }
 .rel .title { display: flex; align-items: center; gap: 6px; }
-.rel .title .pill { height: 15px; line-height: 15px; font-size: 9.5px; }
-.item.latest .glyph { box-shadow: inset 0 0 0 1px var(--g), 0 0 0 2px color-mix(in srgb, var(--g) 25%, transparent); }
+
+.item.latest .glyph { border-color: var(--g); }
 .unreleased {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px dashed color-mix(in srgb, #c6ab6e 55%, transparent);
-  background: color-mix(in srgb, #c6ab6e 6%, transparent);
+  margin: 6px 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--gl-radius-card);
+  border: 1px dashed color-mix(in srgb, var(--gl-ai) 55%, transparent);
+  background: color-mix(in srgb, var(--gl-ai) 7%, var(--gl-card));
   cursor: pointer;
 }
 .unreleased .body { flex: 1; min-width: 0; line-height: 1.35; }
 .unreleased .title b { font-weight: 600; }
-.unreleased .meta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.unreleased .meta { font-size: 11px; color: var(--faint); }
 .unreleased button { flex: none; height: 24px; }

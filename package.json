@@ -1,8 +1,8 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets → branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.0.2",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
+  "version": "0.1.0",
   "publisher": "jay-boo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -79,7 +79,7 @@
       },
       {
         "command": "gitland.tickets.sources",
-        "title": "Ticket Sources…",
+        "title": "Ticket Sources\u2026",
         "category": "Gitland",
         "icon": "$(settings)"
       },
@@ -97,7 +97,7 @@
       },
       {
         "command": "gitland.tickets.startWorkById",
-        "title": "Start Work From Ticket…",
+        "title": "Start Work From Ticket\u2026",
         "category": "Gitland",
         "icon": "$(add)"
       },
@@ -223,13 +223,13 @@
       },
       {
         "command": "gitland.compare",
-        "title": "Compare Branches or Tags…",
+        "title": "Compare Branches or Tags\u2026",
         "category": "Gitland",
         "icon": "$(git-compare)"
       },
       {
         "command": "gitland.releases.create",
-        "title": "Create Release…",
+        "title": "Create Release\u2026",
         "category": "Gitland",
         "icon": "$(tag)"
       },
@@ -241,19 +241,19 @@
       },
       {
         "command": "gitland.rebase.interactive",
-        "title": "Interactive Rebase…",
+        "title": "Interactive Rebase\u2026",
         "category": "Gitland",
         "icon": "$(list-ordered)"
       },
       {
         "command": "gitland.branches.cleanup",
-        "title": "Clean Up Branches…",
+        "title": "Clean Up Branches\u2026",
         "category": "Gitland",
         "icon": "$(trash)"
       },
       {
         "command": "gitland.worktrees",
-        "title": "Worktrees…",
+        "title": "Worktrees\u2026",
         "category": "Gitland",
         "icon": "$(window)"
       },
@@ -275,7 +275,7 @@
       },
       {
         "command": "gitland.search",
-        "title": "Search Everywhere…",
+        "title": "Search Everywhere\u2026",
         "category": "Gitland",
         "icon": "$(search)"
       },
@@ -581,7 +581,7 @@
         },
         "gitland.blame.inline.format": {
           "type": "string",
-          "default": "${author}, ${ago} • ${message}",
+          "default": "${author}, ${ago} \u2022 ${message}",
           "description": "Inline blame format. Placeholders: ${author}, ${ago}, ${date}, ${message}, ${sha}."
         },
         "gitland.blame.statusBar.enabled": {
@@ -630,12 +630,12 @@
         "gitland.changes.commitMessageInstructions": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Extra instructions for the ✨ generated commit messages, e.g. `Write in French` or `Use Conventional Commits`."
+          "markdownDescription": "Extra instructions for the \u2728 generated commit messages, e.g. `Write in French` or `Use Conventional Commits`."
         },
         "gitland.changes.commitMessageModel": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Language model family for the ✨ commit messages (e.g. `gpt-4o-mini`, `claude-sonnet-4`). Empty: a fast Copilot model."
+          "markdownDescription": "Language model family for the \u2728 commit messages (e.g. `gpt-4o-mini`, `claude-sonnet-4`). Empty: a fast Copilot model."
         },
         "gitland.changes.pullRebase": {
           "type": "boolean",
@@ -645,7 +645,7 @@
         "gitland.tickets.sources": {
           "type": "array",
           "default": [],
-          "markdownDescription": "Azure DevOps projects the tickets come from, when they are not in the repository's project (e.g. a shared backlog). Empty = the repository's project. Easiest with **Gitland: Ticket Sources…** (⚙ in the Tickets view).",
+          "markdownDescription": "Azure DevOps projects the tickets come from, when they are not in the repository's project (e.g. a shared backlog). Empty = the repository's project. Easiest with **Gitland: Ticket Sources\u2026** (\u2699 in the Tickets view).",
           "items": {
             "type": "object",
             "required": [
@@ -779,41 +779,41 @@
             "mp"
           ],
           "enumDescriptions": [
-            "Symmetric 5×5 identicon, drawn locally",
+            "Symmetric 5\u00d75 identicon, drawn locally",
             "Bauhaus shapes, drawn locally",
             "Soft blurred blobs, drawn locally",
             "Concentric arcs, drawn locally",
             "Initials on a color, drawn locally",
-            "DiceBear “notionists”",
-            "DiceBear “notionists-neutral” (face only, calmer)",
-            "DiceBear “lorelei”",
-            "DiceBear “lorelei-neutral” (face only, calmer)",
-            "DiceBear “avataaars”",
-            "DiceBear “avataaars-neutral” (face only, calmer)",
-            "DiceBear “adventurer”",
-            "DiceBear “adventurer-neutral” (face only, calmer)",
-            "DiceBear “big-ears”",
-            "DiceBear “big-ears-neutral” (face only, calmer)",
-            "DiceBear “big-smile”",
-            "DiceBear “micah”",
-            "DiceBear “open-peeps”",
-            "DiceBear “personas”",
-            "DiceBear “dylan”",
-            "DiceBear “miniavs”",
-            "DiceBear “croodles”",
-            "DiceBear “croodles-neutral” (face only, calmer)",
-            "DiceBear “fun-emoji”",
-            "DiceBear “thumbs”",
-            "DiceBear “bottts”",
-            "DiceBear “bottts-neutral” (face only, calmer)",
-            "DiceBear “pixel-art”",
-            "DiceBear “pixel-art-neutral” (face only, calmer)",
-            "DiceBear “icons”",
-            "DiceBear “identicon”",
-            "DiceBear “initials”",
-            "DiceBear “rings”",
-            "DiceBear “shapes”",
-            "DiceBear “glass”",
+            "DiceBear \u201cnotionists\u201d",
+            "DiceBear \u201cnotionists-neutral\u201d (face only, calmer)",
+            "DiceBear \u201clorelei\u201d",
+            "DiceBear \u201clorelei-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cavataaars\u201d",
+            "DiceBear \u201cavataaars-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cadventurer\u201d",
+            "DiceBear \u201cadventurer-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cbig-ears\u201d",
+            "DiceBear \u201cbig-ears-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cbig-smile\u201d",
+            "DiceBear \u201cmicah\u201d",
+            "DiceBear \u201copen-peeps\u201d",
+            "DiceBear \u201cpersonas\u201d",
+            "DiceBear \u201cdylan\u201d",
+            "DiceBear \u201cminiavs\u201d",
+            "DiceBear \u201ccroodles\u201d",
+            "DiceBear \u201ccroodles-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cfun-emoji\u201d",
+            "DiceBear \u201cthumbs\u201d",
+            "DiceBear \u201cbottts\u201d",
+            "DiceBear \u201cbottts-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cpixel-art\u201d",
+            "DiceBear \u201cpixel-art-neutral\u201d (face only, calmer)",
+            "DiceBear \u201cicons\u201d",
+            "DiceBear \u201cidenticon\u201d",
+            "DiceBear \u201cinitials\u201d",
+            "DiceBear \u201crings\u201d",
+            "DiceBear \u201cshapes\u201d",
+            "DiceBear \u201cglass\u201d",
             "Robots from Gravatar (GitLens default)",
             "Gravatar identicon",
             "Gravatar retro pixels",
@@ -865,12 +865,12 @@
         "gitland.pr.descriptionInstructions": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Extra instructions for the ✨ generated pull request title and description, e.g. `Write in French`."
+          "markdownDescription": "Extra instructions for the \u2728 generated pull request title and description, e.g. `Write in French`."
         },
         "gitland.releases.notesInstructions": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Extra instructions for the ✨ release notes, e.g. `Write in French`."
+          "markdownDescription": "Extra instructions for the \u2728 release notes, e.g. `Write in French`."
         },
         "gitland.graph.pipelines": {
           "type": "boolean",
@@ -885,7 +885,7 @@
         "gitland.ai.explainInstructions": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Extra instructions for ✨ Explain, e.g. `Answer in French`."
+          "markdownDescription": "Extra instructions for \u2728 Explain, e.g. `Answer in French`."
         }
       }
     }
@@ -896,7 +896,9 @@
     "typecheck": "tsc --noEmit",
     "package": "npm run typecheck && npx -y node@20 node_modules/@vscode/vsce/vsce package --no-dependencies",
     "vscode:prepublish": "node esbuild.mjs --production",
-    "test": "npm run build && node test/runTest.js"
+    "test": "npm run build && node test/runTest.js",
+    "render": "node test/render/render.mjs",
+    "test:unit": "node --test test/unit/"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
@@ -904,6 +906,7 @@
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.24.0",
+    "playwright-core": "^1.47.2",
     "typescript": "^5.6.0"
   }
 }

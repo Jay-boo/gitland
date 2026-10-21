@@ -3,3 +3,7 @@ dist
 out
 *.vsix
 .vscode-test
+.superpowers/
+test/render/out/
+test/render/before/
+test/render/fixtures/

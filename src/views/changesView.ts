@@ -8,6 +8,7 @@ import { config, errorMessage } from '../util';
 import { generateCommitMessage } from '../commitMessage';
 import { webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { ChangesBadge } from './changesBadge';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' }
@@ -99,6 +100,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
   }
 
   private post(m: unknown): void {
+    capture('changes', 'message', m);
     this.view?.webview.postMessage(m);
   }
 
@@ -465,6 +467,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
 
   private html(webview: vscode.Webview, inEditor = false): string {
     return webviewHtml(webview, this.context.extensionUri, {
+      view: 'changes',
       title: 'Changes',
       body: CHANGES_BODY,
       script: ['diffpreview.js', 'changes.js'],

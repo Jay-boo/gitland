@@ -9,6 +9,7 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { suggestVersions } from './releasesView';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'stopGenerate' }
@@ -42,6 +43,7 @@ export class NewReleasePanel {
     private readonly target: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'newrelease',
       title: 'New release',
       body: '<main id="page"></main>',
       script: ['md.js', 'newrelease.js'],
@@ -59,6 +61,7 @@ export class NewReleasePanel {
   }
 
   private post(m: unknown): void {
+    capture('newrelease', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

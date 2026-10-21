@@ -8,3 +8,5 @@ esbuild.mjs
 *.vsix
 test/**
 .vscode-test/**
+docs/**
+.superpowers/**

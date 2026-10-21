@@ -1,5 +1,6 @@
 // @ts-check
 (function () {
+  const { esc, icon } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // Report webview errors to the "Gitland" output channel.
@@ -10,7 +11,16 @@
   /** Narrow view (sidebar): compact lanes and one badge per row, like GitLens. */
   const isCompact = () => window.innerWidth < 600;
   // Same order as src/graph/colors.ts: main, dev, feature, fix, hotfix, release, chore, then other names.
-  const COLORS = ['#6f9fd0', '#6fb293', '#a08cc8', '#c792ab', '#c98585', '#c6ab6e', '#94a3b8', '#8c96cc', '#9db573', '#c99a74', '#b59ac9'];
+  // Lane colours from the theme (--gl-lane-* in base.css), resolved to rgb() so SVG attributes can use them.
+  const probe = document.createElement('i');
+  probe.hidden = true;
+  document.documentElement.appendChild(probe);
+  const laneColors = () =>
+    /** @type {any} */ (window).gl.themeColors((/** @type {string} */ n) => {
+      probe.style.color = `var(${n})`;
+      return getComputedStyle(probe).color;
+    });
+  let COLORS = laneColors();
   const WORKTREE = 'WORKTREE';
 
   /** @type {any} */
@@ -32,14 +42,11 @@
   const cardEl = $('card');
   const searchEl = /** @type {HTMLInputElement} */ ($('search'));
 
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
   const color = (/** @type {number} */ i) => COLORS[i % COLORS.length];
-  const icon = (/** @type {string} */ name) => `<i class="codicon codicon-${name}"></i>`;
   const plural = (/** @type {number} */ n, /** @type {string} */ w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
   /** "just now", "5m ago", "3h ago", "2d ago", then "Sep 21" / "Sep 21, 2024". */
-  function relTime(ts) {
+  function graphTime(ts) {
     if (!ts) return '';
     const s = (Date.now() - ts) / 1000;
     if (s < 60) return 'just now';
@@ -361,6 +368,17 @@
       .join('') + more;
   }
 
+  // VS Code swaps the theme variables and the body class (vscode-dark / -light / -high-contrast) together.
+  // Only the class is watched: the graph itself writes --graph-w / --w-* on <html style> while rendering
+  // and resizing columns.
+  const themeWatch = new MutationObserver(() => {
+    const next = laneColors();
+    if (next.join() === COLORS.join()) return;
+    COLORS = next;
+    if (data) render();
+  });
+  themeWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
   function render() {
     if (!data) return;
     const compact = isCompact();
@@ -381,7 +399,7 @@
   <div class="c-graph">${svgFor(c, h)}${graphAvatar(c, h)}</div>
   <div class="c-msg">${c.sha === WORKTREE ? changesBubble() : refBadges(c, compact ? 1 : 0)}${c.mergedFrom ? `<span class="merged-chip" style="--c:${color(c.mergedColor ?? 6)}" data-merge="${c.sha}" title="Merge of ${esc(c.mergedFrom)} — click to see what it brought">${icon('git-merge')}${esc(c.mergedFrom)}</span>` : ''}<span class="subject${c.mergedTitle ? ' mtitle' : ''}">${mdInline(esc(c.mergedTitle || c.subject), false)}</span></div>
   <div class="c-author">${c.sha === WORKTREE || !data.showAvatars ? '' : avatarImg(c.email, c.author, 16, 'small')}<span>${esc(c.author)}</span></div>
-  <div class="c-date">${esc(relTime(c.ts))}</div>
+  <div class="c-date">${esc(graphTime(c.ts))}</div>
   <div class="c-sha">${ciDot(c.sha)}${esc(c.short)}</div>
 </div>`,
       )
@@ -449,7 +467,7 @@
       : `<div class="shas">
     <span><span class="k">commit</span><span class="chip" data-act="copySha" title="Copy ${esc(d.sha)}">${d.sha.slice(0, 10)}${icon('copy')}</span></span>
     ${parents ? `<span><span class="k">${d.parents.length > 1 ? 'parents' : 'parent'}</span>${parents}</span>` : ''}
-    <span title="${esc(d.authorDate)}">${esc(relTime(d.authorTs))} · ${esc(d.authorDate)}</span>
+    <span title="${esc(d.authorDate)}">${esc(graphTime(d.authorTs))} · ${esc(d.authorDate)}</span>
     ${ci.has(d.sha) ? ci.get(d.sha).map((r) => `<span class="ci-label ci-${CI_ICON[r.state][1]}" data-url="${esc(r.url)}" title="Open the run">${icon(CI_ICON[r.state][0])}${esc(r.name)}</span>`).join('') : ''}
     ${sigChip(d.signature)}
     <span class="rel-chip${d.release ? '' : ' none'}" title="${d.release ? `First release that contains this commit: ${esc(d.release)}` : 'Not in any release (tag) yet'}">${d.release ? `${icon('tag')}${esc(d.release)}` : 'not released yet'}</span>
@@ -498,7 +516,7 @@
     cardEl.style.setProperty('--lane', lane);
     const head = isWt
       ? `<div class="hd"><div class="who"><b>${icon('edit')} Working tree</b><span>Changes not committed yet</span></div></div>`
-      : `<div class="hd">${data.showAvatars ? avatarImg(c.email, c.author, 28, '') : ''}<div class="who"><b>${esc(c.author)}</b><span>${esc(c.email)}</span></div><div class="when"><b>${esc(relTime(c.ts))}</b><span>${esc(c.date)}</span></div></div>`;
+      : `<div class="hd">${data.showAvatars ? avatarImg(c.email, c.author, 28, '') : ''}<div class="who"><b>${esc(c.author)}</b><span>${esc(c.email)}</span></div><div class="when"><b>${esc(graphTime(c.ts))}</b><span>${esc(c.date)}</span></div></div>`;
     return `${head}
 <div class="msg"><div class="s">${mdInline(esc(subject))}</div>${body ? `<div class="b md">${markdown(body)}</div>` : ''}</div>
 ${c.refs.length ? `<div class="refs">${refBadges(c)}</div>` : ''}
@@ -763,7 +781,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       const ic = r.type === 'tag' ? 'tag' : r.type === 'stash' ? 'archive' : r.type === 'remote' ? 'cloud' : 'git-branch';
       const on = focus && focus.name === r.name ? ' focused' : '';
       const off = r.loaded ? '' : ' unloaded';
-      html += `<div class="pick${on}${off}" data-i="${i}" data-ref="${esc(r.name)}" data-reftype="${r.type}" data-sha="${esc(r.sha)}" data-loaded="${r.loaded ? 1 : 0}" style="--c:${r.color}" title="${r.loaded ? '' : 'Older than the loaded commits: picking it loads more history'}">${icon(ic)}<span class="nm">${esc(r.name)}</span>${r.current ? '<span class="cur">current</span>' : ''}${r.loaded ? '' : `<span class="cur">${icon('cloud-download')}</span>`}<span class="k">${esc(relTime(r.ts))}</span></div>`;
+      html += `<div class="pick${on}${off}" data-i="${i}" data-ref="${esc(r.name)}" data-reftype="${r.type}" data-sha="${esc(r.sha)}" data-loaded="${r.loaded ? 1 : 0}" style="--c:${r.color}" title="${r.loaded ? '' : 'Older than the loaded commits: picking it loads more history'}">${icon(ic)}<span class="nm">${esc(r.name)}</span>${r.current ? '<span class="cur">current</span>' : ''}${r.loaded ? '' : `<span class="cur">${icon('cloud-download')}</span>`}<span class="k">${esc(graphTime(r.ts))}</span></div>`;
     });
     const legend = ['main', 'dev', 'feature', 'fix', 'hotfix', 'release', 'chore']
       .map((n, i) => `<span><i style="background:${COLORS[i]}"></i>${n}</span>`)
@@ -894,7 +912,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     const cb = data.commits.find((c) => c.sha === m.b);
     const st = fileStats(m.files);
     const side = (c, sha) =>
-      `<div class="cmp-side"><span class="chip" data-goto="${sha}">${icon('git-commit')}${sha.slice(0, 7)}</span><span class="cmp-msg">${c ? mdInline(esc(c.subject), false) : ''}</span><span class="k">${c ? esc(relTime(c.ts)) : ''}</span></div>`;
+      `<div class="cmp-side"><span class="chip" data-goto="${sha}">${icon('git-commit')}${sha.slice(0, 7)}</span><span class="cmp-msg">${c ? mdInline(esc(c.subject), false) : ''}</span><span class="k">${c ? esc(graphTime(c.ts)) : ''}</span></div>`;
     detailsEl.style.setProperty('--lane', 'var(--accent)');
     detailsEl.innerHTML = `
 <div class="resizer"></div>

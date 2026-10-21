@@ -6,6 +6,7 @@ import { Repo } from '../git/repo';
 import { log } from '../log';
 import { errorMessage } from '../util';
 import { webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
+import { capture } from '../devCapture';
 
 type Action = 'pick' | 'reword' | 'squash' | 'fixup' | 'edit' | 'drop';
 type Step = { sha: string; action: Action; message?: string };
@@ -43,6 +44,7 @@ export class RebasePanel {
     private readonly base: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'rebase',
       title: 'Interactive rebase',
       body: '<main id="page"></main>',
       script: 'rebase.js',
@@ -54,6 +56,7 @@ export class RebasePanel {
   }
 
   private post(m: unknown): void {
+    capture('rebase', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

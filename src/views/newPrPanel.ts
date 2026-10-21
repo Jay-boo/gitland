@@ -11,6 +11,7 @@ import { log } from '../log';
 import { config, errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { PrPanel } from './prPanel';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'stopGenerate' }
@@ -76,6 +77,7 @@ export class NewPrPanel {
     private readonly branch: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'newpr',
       title: 'New pull request',
       body: '<main id="page"></main>',
       script: ['md.js', 'newpr.js'],
@@ -93,6 +95,7 @@ export class NewPrPanel {
   }
 
   private post(m: unknown): void {
+    capture('newpr', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

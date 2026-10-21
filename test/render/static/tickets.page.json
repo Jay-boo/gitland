@@ -1,0 +1,11 @@
+{
+ "title": "tickets",
+ "body": "<header class=\"lv-head\">\n  <label class=\"search\"><i class=\"codicon codicon-filter\"></i><input id=\"filter\" type=\"search\" placeholder=\"Filter tickets\" spellcheck=\"false\" /></label>\n</header>\n<main id=\"list\"></main>",
+ "script": [
+  "tickets.js"
+ ],
+ "styles": [
+  "list.css"
+ ],
+ "bodyClass": "list"
+}

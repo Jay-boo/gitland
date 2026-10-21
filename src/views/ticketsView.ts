@@ -5,6 +5,7 @@ import { AuthError, Ticket } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
 import { webviewHtml, webviewOptions } from './webviewHtml';
+import { capture } from '../devCapture';
 
 /** What the ticket commands receive (from the webview, or the command palette). */
 export interface TicketItem {
@@ -44,6 +45,7 @@ export class TicketsView implements vscode.WebviewViewProvider, vscode.Disposabl
     this.view = view;
     view.webview.options = webviewOptions(this.context.extensionUri);
     view.webview.html = webviewHtml(view.webview, this.context.extensionUri, {
+      view: 'tickets',
       title: 'My Tickets',
       body: LIST_BODY('Filter tickets'),
       script: 'tickets.js',
@@ -59,6 +61,7 @@ export class TicketsView implements vscode.WebviewViewProvider, vscode.Disposabl
   }
 
   private post(m: unknown): void {
+    capture('tickets', 'message', m);
     this.view?.webview.postMessage(m);
   }
 

@@ -2,6 +2,8 @@
 
 A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHub).
 
+Every Gitland view follows your VS Code theme (colours and font): rounded cards, pills and compact lists that look at home in dark, light and high-contrast themes.
+
 ## Features
 
 | | |
@@ -45,5 +47,5 @@ Tokens are stored in VS Code's secret storage.
 npm install
 npm run watch        # then F5 in VS Code ("Run Gitland")
 npm run package      # builds gitland-x.y.z.vsix
-code --install-extension gitland-0.1.0.vsix
+code --install-extension gitland-0.1.0.vsix   # version from package.json
 ```

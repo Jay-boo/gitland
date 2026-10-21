@@ -1,0 +1,13 @@
+{
+ "title": "#18342",
+ "body": "<main id=\"page\"></main>",
+ "script": [
+  "md.js",
+  "ticket.js"
+ ],
+ "styles": [
+  "list.css",
+  "ticket.css"
+ ],
+ "bodyClass": "ticket-page"
+}

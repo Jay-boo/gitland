@@ -1,15 +1,15 @@
-.cl-group { margin-top: 18px; }
+.cl-group { margin-top: 12px; padding: 12px 14px 8px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
 .cl-group h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font); font-size: 13px; font-weight: 600; text-transform: none; color: var(--fg); }
-.cl-group h3 .n { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--muted); padding: 0 5px; border-radius: 7px; border: 1px solid var(--line); }
-.cl-group h3 button { height: 22px; font-size: 11px; font-weight: 400; }
-.cl-group .hint { margin: 2px 0 6px 26px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
-.cl-row { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; margin: 0 -8px; border-radius: 5px; cursor: pointer; }
-.cl-row:hover { background: var(--hover); }
-.cl-row input { margin: 0; accent-color: var(--deleted); }
+.cl-group h3 .n { font-size: 11px; font-weight: 400; color: var(--gl-muted); padding: 0 7px; border-radius: 999px; background: var(--gl-inset); line-height: 16px; }
+.cl-group h3 button { height: 24px; font-size: 12px; font-weight: 400; }
+.cl-group .hint { margin: 2px 0 6px 26px; font-size: 11.5px; color: var(--faint); }
+.cl-row { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; }
+.cl-row:hover { background: var(--gl-hover); }
+.cl-row input { margin: 0; accent-color: var(--gl-err); }
 .cl-row .nm { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cl-row .nm .codicon { font-size: 12px; color: var(--muted); }
-.cl-row .up { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.cl-row .up { font-size: 11px; color: var(--faint); }
 .cl-row .a { font-size: 11.5px; color: var(--muted); }
-.cl-row .k { width: 70px; text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
-.t-actions .k { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
-.danger-btn { background: var(--vscode-inputValidation-errorBackground, #8f2d2d) !important; color: #fff !important; }
+.cl-row .k { width: 70px; text-align: right; font-size: 11px; color: var(--faint); }
+.t-actions .k { font-size: 12px; color: var(--faint); }
+.danger-btn { background: color-mix(in srgb, var(--gl-err) 85%, black) !important; color: white !important; }

@@ -1,0 +1,14 @@
+{
+ "title": "PR 4821",
+ "body": "<main id=\"page\"></main>",
+ "script": [
+  "md.js",
+  "pr.js"
+ ],
+ "styles": [
+  "list.css",
+  "ticket.css",
+  "pr.css"
+ ],
+ "bodyClass": "ticket-page"
+}

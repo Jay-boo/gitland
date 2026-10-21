@@ -10,6 +10,7 @@ import { findLinks } from '../links';
 import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'explain' | 'stopExplain' }
@@ -55,6 +56,7 @@ export class HistoryPanel {
     private autoExplain: boolean,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'history',
       title: 'History',
       body: '<main id="page"></main>',
       script: ['md.js', 'history.js'],
@@ -67,6 +69,7 @@ export class HistoryPanel {
   }
 
   private post(m: unknown): void {
+    capture('history', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

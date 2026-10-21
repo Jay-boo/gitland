@@ -1,23 +1,13 @@
 // @ts-check
 (function () {
+  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const listEl = /** @type {HTMLElement} */ (document.getElementById('list'));
   const filterEl = /** @type {HTMLInputElement} */ (document.getElementById('filter'));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   /** @type {any} */
   let data = null;
 
-  function relTime(ts) {
-    const s = (Date.now() - ts) / 1000;
-    if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h`;
-    if (s < 86400 * 30) return `${Math.floor(s / 86400)}d`;
-    if (s < 86400 * 365) return `${Math.floor(s / 86400 / 30)}mo`;
-    return `${Math.floor(s / 86400 / 365)}y`;
-  }
 
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
@@ -40,6 +30,7 @@
     }
     listEl.innerHTML =
       unreleased +
+      '<div class="gb">' +
       list
         .map((r, i) => {
           const pre = /-/.test(r.name);
@@ -49,7 +40,7 @@
     <div class="title"><span class="ver">${esc(r.name)}</span>${i === 0 && !q ? '<span class="cur-chip">latest</span>' : ''}${pre ? '<span class="pill p-draft">pre-release</span>' : ''}</div>
     <div class="meta"><span>${plural(r.commits, 'commit')}</span>${r.pullRequests ? `<span>${icon('git-pull-request')} ${r.pullRequests}</span>` : ''}${r.previous ? `<span>since ${esc(r.previous)}</span>` : ''}</div>
   </div>
-  <span class="age side">${esc(relTime(r.date))}</span>
+  <span class="age side">${esc(relShort(r.date))}</span>
   <span class="acts">
     <button class="icon" data-act="notes" title="Release notes (AI)">${icon('sparkle')}</button>
     <button class="icon" data-act="checkout" title="Checkout this release">${icon('target')}</button>
@@ -59,6 +50,7 @@
 </div>`;
         })
         .join('') +
+      '</div>' +
       `<div class="foot"><button class="ghost" data-act="newRelease">${icon('add')}New release…</button></div>`;
   }
 

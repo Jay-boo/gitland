@@ -13,14 +13,14 @@ const workspace = args.find((a) => !a.startsWith('--')) || '/home/jayboo/project
 const root = path.resolve(__dirname, '..');
 
 const launchArgs = real
-  ? [workspace, '--extensions-dir', path.join(process.env.HOME, '.vscode-server/extensions'), '--user-data-dir', path.join(root, '.vscode-test/user-data-real')]
+  ? [workspace, '--extensions-dir', path.join(process.env.HOME, '.vscode-server/extensions'), '--disable-extension', 'jayboo.gitland', '--user-data-dir', path.join(root, '.vscode-test/user-data-real')]
   : [workspace, '--disable-extensions', '--user-data-dir', path.join(root, '.vscode-test/user-data')];
 
 runTests({
   extensionDevelopmentPath: root,
   extensionTestsPath: path.join(__dirname, 'suite.js'),
   launchArgs,
-  extensionTestsEnv: { GITLAND_TEST_WORKSPACE: workspace, GITLAND_TEST_PYFILE: process.env.GITLAND_TEST_PYFILE, GITLAND_TEST_HOLD: process.env.GITLAND_TEST_HOLD },
+  extensionTestsEnv: { GITLAND_TEST_WORKSPACE: workspace, GITLAND_TEST_PYFILE: process.env.GITLAND_TEST_PYFILE, GITLAND_TEST_HOLD: process.env.GITLAND_TEST_HOLD, GITLAND_CAPTURE_DIR: process.env.GITLAND_CAPTURE_DIR },
 }).catch((e) => {
   console.error('Tests failed', e);
   process.exit(1);

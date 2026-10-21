@@ -1,22 +1,13 @@
 // @ts-check
 (function () {
+  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   /** @type {any} */
   let data = null;
   const checked = new Set();
 
-  function relTime(ts) {
-    const d = (Date.now() - ts) / 86400e3;
-    if (d < 1) return 'today';
-    if (d < 30) return `${Math.floor(d)}d ago`;
-    if (d < 365) return `${Math.floor(d / 30)}mo ago`;
-    return `${Math.floor(d / 365)}y ago`;
-  }
 
   function groups() {
     const b = data.branches;
@@ -49,7 +40,7 @@ ${gs
         (b) => `<label class="cl-row"><input type="checkbox" data-name="${esc(b.name)}"${checked.has(b.name) ? ' checked' : ''}>
       <span class="nm">${icon(b.remote ? 'cloud' : 'git-branch')}${esc(b.name)}</span>
       ${b.upstream && !b.remote ? `<span class="up">${b.gone ? `${esc(b.upstream)} (deleted)` : esc(b.upstream)}</span>` : ''}
-      <span class="grow"></span><span class="a">${esc(b.author)}</span><span class="k">${esc(relTime(b.date))}</span></label>`,
+      <span class="grow"></span><span class="a">${esc(b.author)}</span><span class="k">${esc(relShort(b.date))}</span></label>`,
       )
       .join('')}
   </section>`,

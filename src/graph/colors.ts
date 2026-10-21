@@ -1,7 +1,8 @@
 /**
  * Branch colors that mean something, instead of one color per lane in order of appearance:
  * main = blue, dev = green, feature = violet, fix = rose, hotfix = red, release = amber, chore = slate;
- * any other name always gets the same color. Indexes into COLORS in media/graph.js.
+ * any other name always gets the same color. Indexes --gl-lane-0 … --gl-lane-10 (media/base.css), which
+ * take the colours of the VS Code theme.
  */
 export const BRANCH_COLORS = 11;
 const OTHER_FIRST = 7;

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Repo } from '../git/repo';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
+import { capture } from '../devCapture';
 
 type Message = { type: 'ready' | 'prune' } | { type: 'delete'; branches: { name: string; remote: boolean; force: boolean }[] };
 
@@ -29,6 +30,7 @@ export class CleanupPanel {
     private readonly repo: Repo,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'cleanup',
       title: 'Branch cleanup',
       body: '<main id="page"></main>',
       script: 'cleanup.js',
@@ -41,6 +43,7 @@ export class CleanupPanel {
   }
 
   private post(m: unknown): void {
+    capture('cleanup', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

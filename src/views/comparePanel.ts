@@ -8,6 +8,7 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { generateReleaseNotes, insertIntoChangelog } from '../commitMessage';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'swap' | 'refresh' }
@@ -97,6 +98,7 @@ export class ComparePanel {
     private to: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'compare',
       title: 'Compare',
       body: '<main id="page"></main>',
       script: ['diffpreview.js', 'compare.js'],
@@ -116,6 +118,7 @@ export class ComparePanel {
   }
 
   private post(m: unknown): void {
+    capture('compare', 'message', m);
     this.panel.webview.postMessage(m);
   }
 
