@@ -30,7 +30,7 @@
 .tl-head .acts { display: none; }
 .tl-head:hover .acts { display: inline-flex; }
 .tl-head:hover .a, .tl-head:hover .k { display: none; }
-.hchip { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; cursor: pointer; }
+.hchip { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; cursor: pointer; border: 1px solid var(--gl-border); }
 .hchip .codicon { font-size: 11px; }
 .hchip.pr { color: var(--gl-feature); background: color-mix(in srgb, var(--gl-feature) 15%, transparent); }
 .hchip.tk { color: var(--gl-ok); background: color-mix(in srgb, var(--gl-ok) 15%, transparent); }

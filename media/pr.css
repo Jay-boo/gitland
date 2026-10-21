@@ -5,7 +5,7 @@
 .glyph.small .codicon { font-size: 11px; }
 .rev { display: flex; align-items: center; gap: 8px; min-height: 26px; }
 .rev .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.rev .req { font-size: 10.5px; padding: 0 7px; border-radius: 999px; color: var(--gl-link); background: color-mix(in srgb, var(--gl-link) 15%, transparent); }
+.rev .req { font-size: 10.5px; padding: 0 7px; border-radius: 999px; color: var(--gl-link); background: color-mix(in srgb, var(--gl-link) 15%, transparent); border: 1px solid var(--gl-border); }
 .rev .k { font-size: 11px; color: var(--faint); }
 .comment .file { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comment .file .codicon { font-size: 10px; }

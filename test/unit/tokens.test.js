@@ -66,3 +66,28 @@ test('editor blame hover uses theme colours', () => {
   }
   assert.doesNotMatch(ts, /\$\{c\}26/, 'pills do not append a hex alpha to a colour');
 });
+
+test('graph theme watcher ignores the graph writing its own <html style> vars', () => {
+  const js = read(path.join(media, 'graph.js'));
+  assert.doesNotMatch(js, /themeWatch\.observe\(document\.documentElement/);
+  assert.match(js, /themeWatch\.observe\(document\.body, \{ attributes: true, attributeFilter: \['class'\] \}\)/);
+});
+
+test('every tinted chip shows the high-contrast border', () => {
+  const rules = [
+    ['graph.css', '.rel-chip'], ['graph.css', '.ci-label'], ['graph.css', '.sig-chip'],
+    ['history.css', '.hchip'], ['compare.css', '.pr-chip'], ['pr.css', '.rev .req'], ['ticket.css', '.cur-chip.big'],
+  ];
+  for (const [file, sel] of rules) {
+    const css = read(path.join(media, file));
+    const esc = sel.replace(/[.]/g, '\\.').replace(/ /g, '\\s+');
+    const rule = css.match(new RegExp(`(^|\\n)${esc}\\s*\\{[^}]*\\}`));
+    assert.ok(rule, `${file} ${sel} exists`);
+    assert.match(rule[0], /--gl-border/, `${file} ${sel} uses --gl-border`);
+  }
+});
+
+test('the active segment is outlined in high contrast', () => {
+  assert.match(read(path.join(media, 'base.css')), /\.gl-seg > button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
+  assert.match(read(path.join(media, 'graph.css')), /\.seg button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
+});

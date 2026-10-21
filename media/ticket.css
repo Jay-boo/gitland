@@ -17,7 +17,7 @@ body.ticket-page { overflow-y: auto; background: var(--bg); }
 /* Form pages have no action bar under the header: close the card. */
 .t-head:not(:has(+ .t-actions)) { border-bottom: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); padding-bottom: 16px; margin-bottom: 16px; }
 .t-actions button { height: 28px; }
-.cur-chip.big { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--gl-link) 15%, transparent); }
+.cur-chip.big { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--gl-link) 15%, transparent); border: 1px solid var(--gl-border); }
 
 .t-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
 @media (max-width: 760px) { .t-grid { grid-template-columns: 1fr; } }

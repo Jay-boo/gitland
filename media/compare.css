@@ -39,7 +39,7 @@ body.compare-page { overflow-y: auto; background: var(--bg); }
 .c-row .a { flex: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--muted); }
 .c-row .k { flex: none; min-width: 70px; text-align: right; white-space: nowrap; font-size: 11px; color: var(--faint); }
 .c-row .sha { flex: none; font-family: var(--mono); font-size: 11px; color: var(--faint); }
-.pr-chip { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; color: var(--gl-feature); background: color-mix(in srgb, var(--gl-feature) 15%, transparent); }
+.pr-chip { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; color: var(--gl-feature); background: color-mix(in srgb, var(--gl-feature) 15%, transparent); border: 1px solid var(--gl-border); }
 .pr-chip .codicon { font-size: 11px; }
 .pr-chip:hover { background: color-mix(in srgb, var(--gl-feature) 26%, transparent); }
 

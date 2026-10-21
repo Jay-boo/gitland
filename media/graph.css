@@ -511,6 +511,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .seg { height: 26px; margin-right: 2px; }
 .seg button { gap: 4px; }
 .seg button .codicon { font-size: 12px; }
+.seg button.on { outline: 1px solid var(--vscode-contrastActiveBorder, transparent); outline-offset: -1px; }
 .seg button.on .codicon { color: inherit; }
 
 /* Timeline: the branch a merge brought in */
@@ -535,7 +536,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .merged-chip .codicon { font-size: 11px; color: var(--c); }
 .merged-chip:hover { background: color-mix(in srgb, var(--c) 26%, transparent); }
 .commit.merge .subject.mtitle { color: var(--fg); }
-.rel-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; font-size: 11px; color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 15%, transparent); }
+.rel-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; font-size: 11px; color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 15%, transparent); border: 1px solid var(--gl-border); }
 .rel-chip .codicon { font-size: 11px; }
 .rel-chip.none { color: var(--muted); background: var(--gl-inset); }
 .pick-foot { display: flex; gap: 12px; padding: 8px 8px 2px; margin-top: 4px; border-top: 1px dashed var(--gl-line-strong); }
@@ -551,7 +552,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .ci-warn { color: var(--gl-warn); }
 .ci-run { color: var(--gl-main); }
 .ci-off { color: var(--faint); }
-.ci-label { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--gl-inset); font-size: 11px; cursor: pointer; }
+.ci-label { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--gl-inset); font-size: 11px; cursor: pointer; border: 1px solid var(--gl-border); }
 
 #details .gen-btn { color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 14%, transparent); }
 .explain-card { margin-top: 10px; padding: 10px 12px; border-radius: var(--gl-radius-card); border: 1px solid color-mix(in srgb, var(--gl-ai) 30%, transparent); background: color-mix(in srgb, var(--gl-ai) 6%, transparent); }
@@ -560,7 +561,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .explain-card .ex-stop { display: none; cursor: pointer; color: var(--muted); }
 .explain-card.busy .ex-stop { display: inline-flex; }
 .explain-card .ex-stop { margin-left: auto; }
-.sig-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--gl-inset); font-size: 11px; }
+.sig-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--gl-inset); font-size: 11px; border: 1px solid var(--gl-border); }
 .sig-chip .codicon { font-size: 11px; }
 
 /* Hover preview of a file's diff (media/diffpreview.js). */

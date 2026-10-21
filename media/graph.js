@@ -368,14 +368,15 @@
       .join('') + more;
   }
 
-  // VS Code swaps the theme variables (on <html>) and the body class when the theme changes.
+  // VS Code swaps the theme variables and the body class (vscode-dark / -light / -high-contrast) together.
+  // Only the class is watched: the graph itself writes --graph-w / --w-* on <html style> while rendering
+  // and resizing columns.
   const themeWatch = new MutationObserver(() => {
     const next = laneColors();
     if (next.join() === COLORS.join()) return;
     COLORS = next;
     if (data) render();
   });
-  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
   themeWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   function render() {
