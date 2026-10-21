@@ -90,7 +90,7 @@
 body {
   --gl-card: color-mix(in srgb, var(--gl-fg) 8%, var(--gl-bg));
   --gl-card-hover: color-mix(in srgb, var(--gl-fg) 12%, var(--gl-bg));
-  --gl-inset: color-mix(in srgb, black 18%, var(--gl-card));
+  --gl-inset: color-mix(in srgb, var(--gl-bg) 60%, var(--gl-card));
   --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
   --surface-2: var(--gl-card);
 }
