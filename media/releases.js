@@ -30,6 +30,7 @@
     }
     listEl.innerHTML =
       unreleased +
+      '<div class="gb">' +
       list
         .map((r, i) => {
           const pre = /-/.test(r.name);
@@ -49,6 +50,7 @@
 </div>`;
         })
         .join('') +
+      '</div>' +
       `<div class="foot"><button class="ghost" data-act="newRelease">${icon('add')}New release…</button></div>`;
   }
 

@@ -88,8 +88,8 @@
 /* Surfaces derived from the page background: declared on body so a page can set its own --gl-bg
    (e.g. the sidebar background) on body and get matching cards. */
 body {
-  --gl-card: color-mix(in srgb, var(--gl-fg) 6%, var(--gl-bg));
-  --gl-card-hover: color-mix(in srgb, var(--gl-fg) 10%, var(--gl-bg));
+  --gl-card: color-mix(in srgb, var(--gl-fg) 8%, var(--gl-bg));
+  --gl-card-hover: color-mix(in srgb, var(--gl-fg) 12%, var(--gl-bg));
   --gl-inset: color-mix(in srgb, black 18%, var(--gl-card));
   --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
   --surface-2: var(--gl-card);
