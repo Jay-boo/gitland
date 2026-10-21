@@ -164,6 +164,22 @@ export class GitHubProvider implements Provider {
     };
   }
 
+  async ticketStates(): Promise<{ name: string }[]> {
+    return [{ name: 'open' }, { name: 'closed' }];
+  }
+
+  async setTicketState(id: string, state: string): Promise<void> {
+    await this.request('PATCH', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}`, { state: state === 'closed' ? 'closed' : 'open' });
+  }
+
+  async assignTicketToMe(id: string): Promise<void> {
+    await this.request('POST', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}/assignees`, { assignees: [await this.me()] });
+  }
+
+  async commentTicket(id: string, text: string): Promise<void> {
+    await this.request('POST', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}/comments`, { body: text });
+  }
+
   async getTicket(id: string): Promise<Ticket | undefined> {
     try {
       const i = await this.request<GhIssue>('GET', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}`);

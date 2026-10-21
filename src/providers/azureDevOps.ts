@@ -526,10 +526,77 @@ export class AzureDevOpsProvider implements Provider {
   }
 
   async activateTicket(id: string, org = this.org): Promise<void> {
+    await this.setTicketState(id, 'Active', org);
+  }
+
+  async setTicketState(id: string, state: string, org = this.org): Promise<void> {
+    await this.patchWorkItem(id, '/fields/System.State', state, org);
+  }
+
+  async assignTicketToMe(id: string, org = this.org): Promise<void> {
+    const me = await this.request<{ authenticatedUser: { properties?: { Account?: { $value?: string } }; providerDisplayName?: string } }>(
+      'GET',
+      `https://dev.azure.com/${e(org)}/_apis/connectionData`,
+      undefined,
+      'application/json',
+      org,
+    );
+    const user = me.authenticatedUser.properties?.Account?.$value ?? me.authenticatedUser.providerDisplayName;
+    if (!user) {
+      throw new Error('Azure DevOps: could not tell who you are.');
+    }
+    await this.patchWorkItem(id, '/fields/System.AssignedTo', user, org);
+  }
+
+  /** The states of the ticket's work item type, in the process order. */
+  async ticketStates(id: string, org = this.org): Promise<{ name: string; category?: string }[]> {
+    const w = await this.request<{ fields: Record<string, unknown> }>(
+      'GET',
+      `https://dev.azure.com/${e(org)}/_apis/wit/workitems/${e(id)}?fields=System.WorkItemType,System.TeamProject&${API}`,
+      undefined,
+      'application/json',
+      org,
+    );
+    const project = String(w.fields['System.TeamProject']);
+    const type = String(w.fields['System.WorkItemType']);
+    const data = await this.request<{ value: { name: string; category?: string }[] }>(
+      'GET',
+      `https://dev.azure.com/${e(org)}/${e(project)}/_apis/wit/workitemtypes/${e(type)}/states?${API}`,
+      undefined,
+      'application/json',
+      org,
+    );
+    return data.value.map((s) => ({ name: s.name, category: s.category }));
+  }
+
+  /** Adds a comment (plain text, shown as HTML paragraphs). */
+  async commentTicket(id: string, text: string, org = this.org): Promise<void> {
+    const w = await this.request<{ fields: Record<string, unknown> }>(
+      'GET',
+      `https://dev.azure.com/${e(org)}/_apis/wit/workitems/${e(id)}?fields=System.TeamProject&${API}`,
+      undefined,
+      'application/json',
+      org,
+    );
+    const html = text
+      .trim()
+      .split(/\n{2,}/)
+      .map((p) => `<p>${p.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c).replace(/\n/g, '<br>')}</p>`)
+      .join('');
+    await this.request(
+      'POST',
+      `https://dev.azure.com/${e(org)}/${e(String(w.fields['System.TeamProject']))}/_apis/wit/workItems/${e(id)}/comments?api-version=7.1-preview.4`,
+      { text: html },
+      'application/json',
+      org,
+    );
+  }
+
+  private async patchWorkItem(id: string, field: string, value: string, org: string): Promise<void> {
     await this.request(
       'PATCH',
       `https://dev.azure.com/${e(org)}/_apis/wit/workitems/${e(id)}?${API}`,
-      [{ op: 'add', path: '/fields/System.State', value: 'Active' }],
+      [{ op: 'add', path: field, value }],
       'application/json-patch+json',
       org,
     );

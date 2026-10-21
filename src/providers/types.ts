@@ -111,6 +111,11 @@ export interface Provider {
   getTicket(id: string): Promise<Ticket | undefined>;
   getTicketDetails?(id: string, org?: string): Promise<TicketDetails | undefined>;
   activateTicket?(id: string, org?: string): Promise<void>;
+  /** States the ticket can move to (Azure DevOps: its work item type's states; GitHub: open / closed). */
+  ticketStates?(id: string, org?: string): Promise<{ name: string; category?: string }[]>;
+  setTicketState?(id: string, state: string, org?: string): Promise<void>;
+  assignTicketToMe?(id: string, org?: string): Promise<void>;
+  commentTicket?(id: string, text: string, org?: string): Promise<void>;
   /** Where tickets are read from, for the Tickets view title (e.g. "Backlog"). */
   readonly ticketSourceLabel?: string;
   listPullRequests(): Promise<PullRequest[]>;
