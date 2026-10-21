@@ -348,6 +348,13 @@ export class GraphController implements vscode.Disposable {
         me: email,
         authors: authorList(commits),
       });
+      if (process.env.GITLAND_CAPTURE_DIR) {
+        // Dev capture: a sample details reply for test/render (it answers hover / details requests).
+        const sample = list.find((c) => c.sha !== WORKTREE_SHA && c.refs.length) ?? list.find((c) => c.sha !== WORKTREE_SHA);
+        if (sample) {
+          await this.sendDetails(sample.sha);
+        }
+      }
       this.pendingSelect = undefined;
       this.pendingFocus = undefined;
       this.sendPullRequests(repo);
@@ -858,7 +865,7 @@ export const GRAPH_BODY = `<header id="toolbar">
     <span id="remoteName" class="remote"></span>
   </div>
   <div class="tools">
-    <span class="seg" id="scope" title="What the graph shows">
+    <span class="seg gl-seg" id="scope" title="What the graph shows">
       <button data-scope="all" title="All branches"><i class="codicon codicon-repo-forked"></i><span class="label">All</span></button>
       <button data-scope="branch" title="Only the history of one branch (the current one, or the one you focus)"><i class="codicon codicon-git-branch"></i><span class="label">Branch</span></button>
       <button data-scope="timeline" title="Timeline: the main line of the branch, one row per merged branch / pull request"><i class="codicon codicon-history"></i><span class="label">Timeline</span></button>
@@ -887,9 +894,9 @@ export const GRAPH_BODY = `<header id="toolbar">
   </div>
   <section id="details" hidden></section>
 </main>
-<div id="card" class="card" hidden></div>
-<div id="picker" class="picker" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
-<div id="menu" class="menu" hidden></div>
+<div id="card" class="card gl-pop" hidden></div>
+<div id="picker" class="picker gl-pop" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
+<div id="menu" class="menu gl-pop" hidden></div>
 <div id="error" hidden></div>`;
 
 /**

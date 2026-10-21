@@ -22,6 +22,32 @@ const only = arg('--only')?.split(',');
 const outDir = path.resolve(arg('--out') || path.join(here, 'out'));
 
 const SIDEBAR = new Set(['changes', 'tickets', 'prs', 'releases']);
+/** Captured messages that answer a page's request instead of being replayed at load: request type → reply type. */
+const REPLIES = { graph: { select: 'details', hover: 'hover' } };
+/** Extra shots after an interaction: [suffix, async (page) => …]. */
+const INTERACTIONS = {
+  graph: [
+    ['hover', async (page) => {
+      const row = page.locator('#rows .commit').nth(3);
+      await row.hover();
+      await page.waitForTimeout(700);
+    }],
+    ['details', async (page) => {
+      const row = page.locator('#rows .commit').nth(3);
+      const box = await row.boundingBox();
+      await row.click({ position: { x: box.width - 12, y: box.height / 2 } });
+      await page.waitForTimeout(300);
+    }],
+    ['branches', async (page) => {
+      await page.locator('#btnBranches').click();
+      await page.waitForTimeout(200);
+    }],
+    ['menu', async (page) => {
+      await page.locator('#rows .commit').nth(3).click({ button: 'right' });
+      await page.waitForTimeout(200);
+    }],
+  ],
+};
 const widths = (view) => (view === 'graph' ? [320, 1000] : SIDEBAR.has(view) ? [220, 320] : [1000]);
 const THEMES = ['dark_modern', 'light_modern', 'hc_black'];
 
@@ -73,7 +99,12 @@ function prepare(html, theme, view) {
   const stub = `<script nonce="${nonce}">
 window.__posted = [];
 let __state = undefined;
-window.acquireVsCodeApi = () => ({ postMessage: (m) => window.__posted.push(m), getState: () => __state, setState: (s) => { __state = s; return s; } });
+window.__replies = {};
+const __reply = (m) => {
+  const r = m && window.__replies[m.type];
+  if (r) setTimeout(() => window.postMessage({ ...r, sha: m.sha ?? r.sha, details: r.details && { ...r.details, sha: m.sha ?? r.sha } }, '*'), 30);
+};
+window.acquireVsCodeApi = () => ({ postMessage: (m) => { window.__posted.push(m); __reply(m); }, getState: () => __state, setState: (s) => { __state = s; return s; } });
 document.addEventListener('securitypolicyviolation', (e) => { (window.__csp = window.__csp || []).push(e.violatedDirective + ' ' + (e.blockedURI || 'inline')); });
 </script>`;
   return html
@@ -101,7 +132,14 @@ for (const view of views) {
   const html = fs.existsSync(captured)
     ? fs.readFileSync(captured, 'utf8')
     : pageFromStatic(JSON.parse(fs.readFileSync(path.join(statics, `${view}.page.json`), 'utf8')));
-  const msgs = messages(view);
+  const all = messages(view);
+  const map = REPLIES[view] || {};
+  const replyTypes = Object.values(map);
+  const msgs = all.filter((m) => !replyTypes.includes(m.type));
+  // A captured 'details' message stands in for any reply type ('hover' has the same shape).
+  const sample = all.find((m) => replyTypes.includes(m.type));
+  const replies = {};
+  for (const [req, type] of Object.entries(map)) if (sample) replies[req] = { ...sample, type };
   for (const t of THEMES) {
     const theme = JSON.parse(fs.readFileSync(path.join(here, 'themes', `${t}.json`), 'utf8'));
     const file = path.join(tmp, `${view}-${t}.html`);
@@ -112,6 +150,7 @@ for (const view of views) {
       page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
       await page.goto(pathToFileURL(file).href);
       await page.waitForTimeout(150);
+      await page.evaluate((r) => { window.__replies = r; }, replies);
       for (const m of msgs) await page.evaluate((x) => window.postMessage(x, '*'), m);
       await page.waitForTimeout(400);
       const r = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: innerWidth, csp: window.__csp || [] }));
@@ -119,6 +158,14 @@ for (const view of views) {
       for (const c of r.csp) errors.push(`CSP: ${c}`);
       await page.screenshot({ path: path.join(outDir, `${view}-${t}-${w}.png`), fullPage: true });
       shots++;
+      for (const [suffix, act] of INTERACTIONS[view] || []) {
+        await act(page);
+        await page.screenshot({ path: path.join(outDir, `${view}-${t}-${w}-${suffix}.png`) });
+        shots++;
+        await page.mouse.move(1, 1);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(150);
+      }
       if (errors.length) failures.push(`${view} ${t} ${w}px: ${errors.join(' | ')}`);
       await page.close();
     }
