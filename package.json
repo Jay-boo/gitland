@@ -359,6 +359,14 @@
           "icon": "media/activity.svg",
           "visibility": "collapsed",
           "initialSize": 1
+        },
+        {
+          "type": "webview",
+          "id": "gitland.pipelines",
+          "name": "Pipelines",
+          "icon": "media/activity.svg",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "gitlandPanel": [

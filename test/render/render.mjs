@@ -22,11 +22,17 @@ const arg = (name) => {
 const only = arg('--only')?.split(',');
 const outDir = path.resolve(arg('--out') || path.join(here, 'out'));
 
-const SIDEBAR = new Set(['changes', 'tickets', 'prs', 'releases']);
+const SIDEBAR = new Set(['changes', 'tickets', 'prs', 'releases', 'pipelines']);
 /** Captured messages that answer a page's request instead of being replayed at load: request type → reply type. */
-const REPLIES = { graph: { select: 'details', hover: 'hover' } };
+const REPLIES = { graph: { select: 'details', hover: 'hover' }, pipelines: { expand: 'jobs' } };
 /** Extra shots after an interaction: [suffix, async (page) => …]. */
 const INTERACTIONS = {
+  pipelines: [
+    ['expand', async (page) => {
+      await page.locator('.run[data-id="411"]').click({ position: { x: 60, y: 12 } });
+      await page.waitForTimeout(300);
+    }],
+  ],
   graph: [
     ['hover', async (page) => {
       const row = page.locator('#rows .commit').nth(3);

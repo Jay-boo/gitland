@@ -18,6 +18,7 @@ import { ComparePanel } from './views/comparePanel';
 import { PrPanel } from './views/prPanel';
 import { NewPrPanel } from './views/newPrPanel';
 import { ReleasesView } from './views/releasesView';
+import { PipelinesView } from './views/pipelinesView';
 import { NewReleasePanel } from './views/newReleasePanel';
 import { RebasePanel } from './views/rebasePanel';
 import { CleanupPanel } from './views/cleanupPanel';
@@ -79,6 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const tickets = new TicketsView(context, repos, secrets);
   const prs = new PullRequestsView(context, repos, secrets);
   const releases = new ReleasesView(context, repos, avatars);
+  const pipelines = new PipelinesView(context, repos);
 
   let lastRoot: string | undefined;
   const repoFor = async (root?: string) => (root ? repos.getRepo(vscode.Uri.file(root)) : repos.activeRepo());
@@ -315,6 +317,7 @@ export function activate(context: vscode.ExtensionContext): void {
     prStatusBar(repos, secrets),
     ciStatusBar(repos, secrets),
     releases,
+    pipelines,
     command('gitland.releases.refresh', () => releases.refresh()),
     command('gitland.rebase.interactive', async (base?: string) => {
       const repo = await repoFor();

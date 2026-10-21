@@ -1,0 +1,25 @@
+/* Pipelines view: list.css items + the expanded jobs of a run. */
+
+.run.open { background: var(--gl-hover); }
+.jobs { padding: 4px 10px 10px 43px; border-bottom: 1px dashed var(--gl-line-strong); }
+.jobs .job { display: flex; align-items: center; gap: 7px; min-height: 22px; font-size: 12px; }
+.jobs .job.step { padding-left: 18px; color: var(--muted); }
+.jobs .job.failed { color: var(--gl-err); font-weight: 600; }
+.jobs .job .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs .glyph.small { width: 18px; height: 18px; border-radius: 5px; }
+.jobs .glyph.small .codicon { font-size: 11px; }
+.jobs .log {
+  max-height: 240px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--gl-radius-input);
+  border: 1px solid var(--gl-border);
+  background: var(--gl-inset);
+  font-family: var(--gl-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.jobs .none { padding: 4px 0; }
