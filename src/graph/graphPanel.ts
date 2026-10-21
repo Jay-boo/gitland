@@ -24,6 +24,7 @@ type WebviewMessage =
   | { type: 'loadMore' }
   | { type: 'select'; sha: string }
   | { type: 'hover'; sha: string }
+  | { type: 'mergeBase'; sha: string }
   | { type: 'openUrl'; url: string }
   | { type: 'filters'; filters: GraphFilters }
   | { type: 'listRefs' }
@@ -388,6 +389,11 @@ export class GraphController implements vscode.Disposable {
         case 'hover':
           await this.sendDetails(m.sha, 'hover');
           break;
+        case 'mergeBase': {
+          const base = (await this.currentRepo.exec(['merge-base', m.sha, 'HEAD']).catch(() => '')).trim();
+          await this.post(base ? { type: 'jump', sha: base } : { type: 'notice', text: 'No common ancestor with HEAD.' });
+          break;
+        }
         case 'openUrl':
           if (/^https:\/\//.test(m.url)) {
             await vscode.env.openExternal(vscode.Uri.parse(m.url));
@@ -831,7 +837,7 @@ export class GraphController implements vscode.Disposable {
       view: 'graph',
       title: 'Git Graph',
       body: GRAPH_BODY,
-      script: ['diffpreview.js', 'graph.js'],
+      script: ['diffpreview.js', 'graphKeys.js', 'graph.js'],
       restore: { kind: 'graph', repoRoot: this.repo?.root },
     });
   }
@@ -877,6 +883,7 @@ export const GRAPH_BODY = `<header id="toolbar">
     <button id="btnMinimap" class="icon" title="Toggle activity minimap"><i class="codicon codicon-pulse"></i></button>
     <button id="btnFetch" class="icon" title="Fetch from remotes"><i class="codicon codicon-cloud-download"></i><span class="label">Fetch</span></button>
     <button id="btnRefresh" class="icon" title="Refresh"><i class="codicon codicon-refresh"></i></button>
+    <button id="btnKeys" class="icon" title="Keyboard shortcuts (?)"><i class="codicon codicon-keyboard"></i></button>
   </div>
 </header>
 <div id="minimap" hidden></div>
@@ -897,7 +904,22 @@ export const GRAPH_BODY = `<header id="toolbar">
 <div id="card" class="card gl-pop" hidden></div>
 <div id="picker" class="picker gl-pop" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
 <div id="menu" class="menu gl-pop" hidden></div>
-<div id="error" hidden></div>`;
+<div id="error" hidden></div>
+<div id="notice" class="gl-pill c-link" hidden></div>
+<div id="keysCard" class="gl-pop" hidden>
+  <div class="kc-h"><i class="codicon codicon-keyboard"></i>Keyboard</div>
+  <dl>
+    <dt><kbd>↑</kbd><kbd>↓</kbd> <kbd>k</kbd><kbd>j</kbd></dt><dd>Previous / next commit</dd>
+    <dt><kbd>Home</kbd><kbd>End</kbd></dt><dd>First / last commit</dd>
+    <dt><kbd>PgUp</kbd><kbd>PgDn</kbd></dt><dd>One screen up / down</dd>
+    <dt><kbd>Enter</kbd><kbd>Space</kbd></dt><dd>Show / hide the details</dd>
+    <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Parent / child</dd>
+    <dt><kbd>m</kbd></dt><dd>Merge base with the current branch</dd>
+    <dt><kbd>c</kbd></dt><dd>Compare with the next commit you pick</dd>
+    <dt><kbd>Ctrl</kbd><kbd>F</kbd></dt><dd>Search</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Close / clear the focus</dd>
+  </dl>
+</div>`;
 
 /**
  * How a merge reads in the timeline: the chip (branch, or "PR 12" for Azure DevOps "Merged PR 12: title")

@@ -43,6 +43,15 @@ const INTERACTIONS = {
       await page.locator('#btnBranches').click();
       await page.waitForTimeout(200);
     }],
+    ['keys', async (page) => {
+      await page.keyboard.press('?');
+      await page.waitForTimeout(150);
+    }],
+    ['jkeys', async (page) => {
+      await page.keyboard.press('Escape');
+      for (const k of ['j', 'j', 'j', 'Enter']) await page.keyboard.press(k);
+      await page.waitForTimeout(300);
+    }],
     ['menu', async (page) => {
       await page.locator('#rows .commit').nth(3).click({ button: 'right' });
       await page.waitForTimeout(200);

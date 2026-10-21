@@ -1214,6 +1214,11 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     if ((e.ctrlKey || e.metaKey) && selected && selected !== row.dataset.sha && row.dataset.sha !== WORKTREE && selected !== WORKTREE) {
       return startCompare(selected, /** @type {string} */ (row.dataset.sha));
     }
+    if (compareArm && compareArm !== row.dataset.sha && row.dataset.sha !== WORKTREE) {
+      const a = compareArm;
+      compareArm = null;
+      return startCompare(a, /** @type {string} */ (row.dataset.sha));
+    }
     select(row.dataset.sha, false);
   });
 
@@ -1371,20 +1376,90 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       return;
     }
     if (e.key === 'Escape') {
-      if (!menuEl.hidden) menuEl.hidden = true;
+      if (compareArm) compareArm = null;
+      if (!$('keysCard').hidden) $('keysCard').hidden = true;
+      else if (!menuEl.hidden) menuEl.hidden = true;
       else if (!pickerEl.hidden) closePicker();
       else if (focus) clearFocus();
       else closeDetails();
       return;
     }
-    if (!data || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+    if (!data) return;
+    const t = /** @type {HTMLElement} */ (e.target);
+    const inInput = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+    const action = keys.keyAction(e, inInput);
+    if (!action) return;
     e.preventDefault();
-    const i = data.commits.findIndex((c) => c.sha === selected);
-    const next = Math.max(0, Math.min(data.commits.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-    const row = rowsEl.children[next];
-    select(data.commits[next].sha, false);
-    row && row.scrollIntoView({ block: 'nearest' });
+    onKeyAction(action);
   });
+
+  // ---------- keyboard navigation (media/graphKeys.js) ----------
+
+  // @ts-ignore
+  const keys = window.glKeys;
+  /** Commit picked with "c": the next commit chosen (click or Enter) is compared with it. */
+  let compareArm = /** @type {string | null} */ (null);
+
+  function goTo(/** @type {number} */ i) {
+    if (i < 0) return false;
+    const sha = data.commits[i].sha;
+    select(sha, false);
+    const row = rowsEl.querySelector(`.commit[data-sha="${sha}"]`);
+    row && row.scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+
+  function onKeyAction(/** @type {string} */ action) {
+    const commits = data.commits;
+    const i = commits.findIndex((/** @type {any} */ c) => c.sha === selected);
+    switch (action) {
+      case 'help':
+        return toggleKeysCard();
+      case 'parent':
+        if (i >= 0 && !goTo(keys.parentIndex(commits, i))) notice('The parent is not loaded: scroll down to load more history.');
+        return;
+      case 'child':
+        if (i >= 0 && !goTo(keys.childIndex(commits, i))) notice('No child of this commit in the graph.');
+        return;
+      case 'mergeBase':
+        if (selected && selected !== WORKTREE) vscode.postMessage({ type: 'mergeBase', sha: selected });
+        return;
+      case 'compare':
+        if (!selected || selected === WORKTREE) return;
+        compareArm = selected;
+        notice('Compare: pick the second commit (click it, or move to it and press Enter).');
+        return;
+      case 'toggleDetails':
+        if (!selected) return void goTo(0);
+        if (compareArm && compareArm !== selected) {
+          const a = compareArm;
+          compareArm = null;
+          return startCompare(a, selected);
+        }
+        if (!detailsEl.hidden) detailsEl.hidden = true;
+        else select(selected, false);
+        return;
+      default:
+        goTo(keys.moveIndex(action, i, commits.length, Math.floor(listEl.clientHeight / rowH())));
+    }
+  }
+
+  /** Short message over the list (a target that is not loaded, compare mode…). */
+  let noticeTimer = 0;
+  function notice(/** @type {string} */ text) {
+    const el = $('notice');
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = /** @type {any} */ (setTimeout(() => (el.hidden = true), 3000));
+  }
+
+  function toggleKeysCard() {
+    const card = $('keysCard');
+    card.hidden = !card.hidden;
+  }
+  $('btnKeys').addEventListener('click', toggleKeysCard);
+  $('keysCard').addEventListener('click', () => ($('keysCard').hidden = true));
 
   // Hover a changed file in the details pane: preview of its diff (in this commit, or between the compared commits).
   // @ts-ignore
@@ -1483,6 +1558,14 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
           placeCard();
         }
       }
+    } else if (m.type === 'jump') {
+      const i = data ? data.commits.findIndex((/** @type {any} */ c) => c.sha === m.sha) : -1;
+      if (i >= 0) {
+        select(m.sha, true);
+        notice(`Merge base with HEAD: ${m.sha.slice(0, 7)}`);
+      } else notice(`Merge base ${m.sha.slice(0, 7)} is older than the loaded commits.`);
+    } else if (m.type === 'notice') {
+      notice(m.text);
     } else if (m.type === 'error') {
       $('error').hidden = false;
       $('error').textContent = m.message;

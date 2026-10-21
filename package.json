@@ -898,7 +898,7 @@
     "vscode:prepublish": "node esbuild.mjs --production",
     "test": "npm run build && node test/runTest.js",
     "render": "node test/render/render.mjs",
-    "test:unit": "node --test test/unit/"
+    "test:unit": "node test/unit/build.mjs && node --test test/unit/"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
