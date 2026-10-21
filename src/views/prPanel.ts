@@ -9,6 +9,7 @@ import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { ComparePanel } from './comparePanel';
 import { TicketPanel } from './ticketPanel';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'checkout' | 'open' | 'copy' | 'files' }
@@ -49,6 +50,7 @@ export class PrPanel {
     private readonly id: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'pr',
       title: `PR ${id}`,
       body: '<main id="page"></main>',
       script: ['md.js', 'pr.js'],
@@ -61,6 +63,7 @@ export class PrPanel {
   }
 
   private post(m: unknown): void {
+    capture('pr', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

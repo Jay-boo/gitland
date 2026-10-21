@@ -15,6 +15,7 @@ import { ChangesBadge } from '../views/changesBadge';
 import { ComparePanel } from '../views/comparePanel';
 import { explainHistory } from '../commitMessage';
 import { mentionedContext } from '../views/historyPanel';
+import { capture } from '../devCapture';
 
 type WebviewMessage =
   | { type: 'ready'; filters?: GraphFilters }
@@ -227,6 +228,7 @@ export class GraphController implements vscode.Disposable {
   }
 
   private post(message: unknown): Thenable<boolean> {
+    capture('graph', 'message', message);
     return this.host.webview.postMessage(message);
   }
 
@@ -822,7 +824,7 @@ export class GraphController implements vscode.Disposable {
     const webview = this.host.webview;
     const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
     const uri = (...p: string[]) => webview.asWebviewUri(vscode.Uri.joinPath(media, ...p));
-    return `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -843,6 +845,8 @@ ${restoreScript({ kind: 'graph', repoRoot: this.repo?.root }, nonce)}
 <script nonce="${nonce}" src="${uri('graph.js')}"></script>
 </body>
 </html>`;
+    capture('graph', 'html', html);
+    return html;
   }
 
   /** Immediate avatar URLs per email; better pictures are looked up in the background. */

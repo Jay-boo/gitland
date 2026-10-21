@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { capture } from '../devCapture';
 
 /**
  * Page of a Gitland webview: graph.css tokens + fonts + codicons, then the view's own
@@ -7,13 +8,13 @@ import * as vscode from 'vscode';
 export function webviewHtml(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
-  opts: { title: string; body: string; script: string | string[]; styles?: string[]; bodyClass?: string; restore?: RestoreInfo },
+  opts: { view: string; title: string; body: string; script: string | string[]; styles?: string[]; bodyClass?: string; restore?: RestoreInfo },
 ): string {
   const media = vscode.Uri.joinPath(extensionUri, 'media');
   const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
   const uri = (...p: string[]) => webview.asWebviewUri(vscode.Uri.joinPath(media, ...p));
   const styles = ['graph.css', ...(opts.styles ?? [])].map((s) => `<link rel="stylesheet" href="${uri(s)}">`).join('\n');
-  return `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -33,6 +34,8 @@ ${opts.restore ? restoreScript(opts.restore, nonce) : ''}
 ${(Array.isArray(opts.script) ? opts.script : [opts.script]).map((s) => `<script nonce="${nonce}" src="${uri(s)}"></script>`).join('\n')}
 </body>
 </html>`;
+  capture(opts.view, 'html', html);
+  return html;
 }
 
 export function webviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {

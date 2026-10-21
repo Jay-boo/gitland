@@ -6,6 +6,7 @@ import { Ticket, TicketDetails } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'start' | 'open' | 'copy' }
@@ -44,6 +45,7 @@ export class TicketPanel {
     private readonly org?: string,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'ticket',
       title: `#${id}`,
       body: '<main id="page"></main>',
       script: ['md.js', 'ticket.js'],
@@ -56,6 +58,7 @@ export class TicketPanel {
   }
 
   private post(m: unknown): void {
+    capture('ticket', 'message', m);
     this.panel.webview.postMessage(m);
   }
 

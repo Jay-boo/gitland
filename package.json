@@ -896,7 +896,9 @@
     "typecheck": "tsc --noEmit",
     "package": "npm run typecheck && npx -y node@20 node_modules/@vscode/vsce/vsce package --no-dependencies",
     "vscode:prepublish": "node esbuild.mjs --production",
-    "test": "npm run build && node test/runTest.js"
+    "test": "npm run build && node test/runTest.js",
+    "render": "node test/render/render.mjs",
+    "test:unit": "node --test test/unit/"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
@@ -904,6 +906,7 @@
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^2.24.0",
     "esbuild": "^0.24.0",
+    "playwright-core": "^1.47.2",
     "typescript": "^5.6.0"
   }
 }

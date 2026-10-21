@@ -6,6 +6,7 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { webviewHtml, webviewOptions } from './webviewHtml';
 import { LIST_BODY } from './ticketsView';
+import { capture } from '../devCapture';
 
 /** What the pull request commands receive (from the webview). */
 export interface PullRequestItem {
@@ -34,6 +35,7 @@ export class PullRequestsView implements vscode.WebviewViewProvider, vscode.Disp
     this.view = view;
     view.webview.options = webviewOptions(this.context.extensionUri);
     view.webview.html = webviewHtml(view.webview, this.context.extensionUri, {
+      view: 'prs',
       title: 'Pull Requests',
       body: LIST_BODY('Filter pull requests'),
       script: 'prs.js',
@@ -49,6 +51,7 @@ export class PullRequestsView implements vscode.WebviewViewProvider, vscode.Disp
   }
 
   private post(m: unknown): void {
+    capture('prs', 'message', m);
     this.view?.webview.postMessage(m);
   }
 

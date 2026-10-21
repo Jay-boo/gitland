@@ -9,6 +9,7 @@ import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { PrPanel } from './prPanel';
 import { TicketPanel } from './ticketPanel';
+import { capture } from '../devCapture';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'newPr' | 'signIn' }
@@ -44,6 +45,7 @@ export class DashboardPanel {
     private readonly panel: vscode.WebviewPanel,
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
+      view: 'dashboard',
       title: 'Dashboard',
       body: '<main id="page"></main>',
       script: 'dashboard.js',
@@ -60,6 +62,7 @@ export class DashboardPanel {
   }
 
   private post(m: unknown): void {
+    capture('dashboard', 'message', m);
     this.panel.webview.postMessage(m);
   }
 
