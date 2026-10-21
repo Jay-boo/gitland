@@ -73,3 +73,10 @@ body.ticket-page { overflow-y: auto; background: var(--bg); }
 .create-bar .k .codicon { font-size: 12px; vertical-align: -2px; }
 button.big { height: 32px; padding: 0 18px; font-weight: 600; }
 button.big:disabled { opacity: 0.45; cursor: default; }
+
+/* Ticket quick actions: state picker and comment box. */
+.state-pick { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: var(--gl-radius-btn); color: var(--muted); background: var(--vscode-button-secondaryBackground, var(--gl-card)); border: 1px solid var(--gl-border); }
+.state-pick select { height: 22px; padding: 0 6px; font: inherit; color: var(--fg); border-radius: 5px; outline: none; }
+.new-comment.gl-composer { margin-top: 10px; padding: 8px 10px; }
+.new-comment textarea { min-height: 54px; }
+.new-comment .rb-bar { display: flex; gap: 6px; margin-top: 6px; }

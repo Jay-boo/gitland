@@ -65,6 +65,10 @@
         d.comments.length
           ? d.comments.map((c) => `<div class="comment"><div class="ch"><b>${esc(c.author)}</b><span>${esc(relTime(c.date))}</span></div><div class="rich">${rich(d.format, c.body)}</div></div>`).join('')
           : '<div class="none">No comments.</div>'
+      }${
+        m.canComment
+          ? `<div class="new-comment gl-composer"><textarea id="newComment" rows="3" placeholder="Write a comment · Ctrl+Enter to send"></textarea><div class="rb-bar"><span class="grow"></span><button class="primary" data-send="1">${icon('comment')}Comment</button></div></div>`
+          : ''
       }</section>`,
     ];
     page.innerHTML = `
@@ -79,6 +83,8 @@
   ${current ? `<span class="cur-chip big">${icon('git-branch')} you are working on it</span>` : `<button class="primary" data-act="start">${icon('git-branch')}Start work</button>`}
   <button data-act="open">${icon('link-external')}Open in the browser</button>
   <button data-act="copy" title="Copy ${esc(ref)}">${icon('copy')}${esc(ref)}</button>
+  ${m.states && m.states.length ? `<label class="state-pick" title="Change the state">${icon('circle-large-outline')}<select id="state" class="gl-input">${(m.states.includes(t.state) ? m.states : [t.state, ...m.states]).map((x) => `<option${x === t.state ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}
+  ${m.canAssign ? `<button data-act="assign" title="Assign the ${esc(m.noun || 'ticket')} to you">${icon('person-add')}Assign to me</button>` : ''}
   <span class="grow"></span>
   <button class="icon" data-act="refresh" title="Refresh">${icon('refresh')}</button>
 </div>
@@ -87,13 +93,31 @@
 
   page.addEventListener('click', (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
-    const el = /** @type {HTMLElement | null} */ (t.closest('[data-act],[data-url],[data-sha],[data-checkout],[data-ticket]'));
+    const el = /** @type {HTMLElement | null} */ (t.closest('[data-act],[data-url],[data-sha],[data-checkout],[data-ticket],[data-send]'));
     if (!el) return;
     if (el.dataset.act) return vscode.postMessage({ type: el.dataset.act });
+    if (el.dataset.send) return sendComment();
     if (el.dataset.url) return vscode.postMessage({ type: 'openUrl', url: el.dataset.url });
     if (el.dataset.sha) return vscode.postMessage({ type: 'showCommit', sha: el.dataset.sha });
     if (el.dataset.checkout) return vscode.postMessage({ type: 'checkout', branch: el.dataset.checkout });
     if (el.dataset.ticket) return vscode.postMessage({ type: 'showTicket', id: el.dataset.ticket });
+  });
+
+  function sendComment() {
+    const box = /** @type {HTMLTextAreaElement | null} */ (document.getElementById('newComment'));
+    if (!box || !box.value.trim()) return;
+    vscode.postMessage({ type: 'comment', text: box.value });
+    box.disabled = true;
+  }
+  page.addEventListener('change', (e) => {
+    const t = /** @type {HTMLSelectElement} */ (e.target);
+    if (t.id === 'state') vscode.postMessage({ type: 'setState', state: t.value });
+  });
+  page.addEventListener('keydown', (e) => {
+    if (/** @type {HTMLElement} */ (e.target).id === 'newComment' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      sendComment();
+    }
   });
 
   window.addEventListener('message', (e) => {
