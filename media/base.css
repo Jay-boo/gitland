@@ -18,9 +18,6 @@
   --gl-muted: var(--vscode-descriptionForeground, #9d9d9d);
   --gl-faint: color-mix(in srgb, var(--gl-fg) 45%, transparent);
   --gl-bg: var(--vscode-editor-background, #1f1f1f);
-  --gl-card: color-mix(in srgb, var(--gl-fg) 6%, var(--gl-bg));
-  --gl-card-hover: color-mix(in srgb, var(--gl-fg) 10%, var(--gl-bg));
-  --gl-inset: color-mix(in srgb, black 18%, var(--gl-card));
   --gl-line: color-mix(in srgb, var(--gl-fg) 10%, transparent);
   --gl-line-strong: color-mix(in srgb, var(--gl-fg) 18%, transparent);
   --gl-border: var(--vscode-contrastBorder, transparent);
@@ -77,8 +74,6 @@
   --faint: var(--gl-faint);
   --line: var(--gl-line);
   --line-strong: var(--gl-line-strong);
-  --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
-  --surface-2: var(--gl-card);
   --hover: var(--gl-hover);
   --selected: color-mix(in srgb, var(--gl-fg) 9%, transparent);
   --accent: var(--gl-accent);
@@ -88,6 +83,16 @@
   --renamed: var(--gl-renamed);
   --match: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.3));
   --shadow: var(--gl-shadow);
+}
+
+/* Surfaces derived from the page background: declared on body so a page can set its own --gl-bg
+   (e.g. the sidebar background) on body and get matching cards. */
+body {
+  --gl-card: color-mix(in srgb, var(--gl-fg) 6%, var(--gl-bg));
+  --gl-card-hover: color-mix(in srgb, var(--gl-fg) 10%, var(--gl-bg));
+  --gl-inset: color-mix(in srgb, black 18%, var(--gl-card));
+  --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
+  --surface-2: var(--gl-card);
 }
 
 * { box-sizing: border-box; }

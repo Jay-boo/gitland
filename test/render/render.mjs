@@ -2,7 +2,8 @@
 // theme variables, replaying the messages captured from a real VS Code run.
 //   npm run render [-- --only graph,changes] [-- --out dir]
 // Pages:    test/render/fixtures/<view>.html (captured, git-ignored) or static/<view>.page.json
-// Messages: test/render/static/<view>.jsonl (hand-written, wins) or fixtures/<view>.jsonl
+// Messages: test/render/static/<view>.jsonl (hand-written, wins) or fixtures/<view>.jsonl;
+//           static/<view>@<variant>.jsonl adds a variant shot of the same page.
 // Themes:   test/render/themes/<theme>.json (dumped by test/suite.js)
 // Fails (exit 1) on a page error, a CSP violation or horizontal overflow.
 import fs from 'fs';
@@ -112,11 +113,14 @@ document.addEventListener('securitypolicyviolation', (e) => { (window.__csp = wi
     .split(CSP_SOURCE).join('file:')
     .replace(/<html([^>]*)>/, `<html$1 style="${vars.replace(/"/g, '&quot;')}; background: ${bg};">`)
     .replace(/<head>/, `<head>\n${stub}\n${DEFAULT_STYLES}`)
-    .replace(/<body([^>]*?)(?: class="([^"]*)")?>/, (_, a, c) => `<body${a} class="${[c, theme.bodyClass].filter(Boolean).join(' ')}">`);
+    // Sidebar views are rendered as the sidebar, even when the capture came from their editor tab.
+    .replace(/<body([^>]*?)(?: class="([^"]*)")?>/, (_, a, c) => `<body${a} class="${[SIDEBAR.has(view) ? (c || '').replace(/\bin-editor\b/, '').trim() : c, theme.bodyClass].filter(Boolean).join(' ')}">`);
 }
 
-function messages(view) {
-  const f = [path.join(statics, `${view}.jsonl`), path.join(fixtures, `${view}.jsonl`)].find((x) => fs.existsSync(x));
+function messages(view, variant) {
+  const f = variant
+    ? path.join(statics, `${view}@${variant}.jsonl`)
+    : [path.join(statics, `${view}.jsonl`), path.join(fixtures, `${view}.jsonl`)].find((x) => fs.existsSync(x));
   return f ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
 }
 
@@ -132,7 +136,9 @@ for (const view of views) {
   const html = fs.existsSync(captured)
     ? fs.readFileSync(captured, 'utf8')
     : pageFromStatic(JSON.parse(fs.readFileSync(path.join(statics, `${view}.page.json`), 'utf8')));
-  const all = messages(view);
+  for (const variant of [undefined, ...ls(statics, '.jsonl').filter((f) => f.startsWith(`${view}@`)).map((f) => f.slice(view.length + 1))]) {
+  const name = variant ? `${view}@${variant}` : view;
+  const all = messages(view, variant);
   const map = REPLIES[view] || {};
   const replyTypes = Object.values(map);
   const msgs = all.filter((m) => !replyTypes.includes(m.type));
@@ -142,7 +148,7 @@ for (const view of views) {
   for (const [req, type] of Object.entries(map)) if (sample) replies[req] = { ...sample, type };
   for (const t of THEMES) {
     const theme = JSON.parse(fs.readFileSync(path.join(here, 'themes', `${t}.json`), 'utf8'));
-    const file = path.join(tmp, `${view}-${t}.html`);
+    const file = path.join(tmp, `${name}-${t}.html`);
     fs.writeFileSync(file, prepare(html, theme, view));
     for (const w of widths(view)) {
       const page = await browser.newPage({ viewport: { width: w, height: 760 }, deviceScaleFactor: 1 });
@@ -156,19 +162,20 @@ for (const view of views) {
       const r = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: innerWidth, csp: window.__csp || [] }));
       if (r.sw > r.w + 1) errors.push(`horizontal overflow: scrollWidth ${r.sw} > ${r.w}`);
       for (const c of r.csp) errors.push(`CSP: ${c}`);
-      await page.screenshot({ path: path.join(outDir, `${view}-${t}-${w}.png`), fullPage: true });
+      await page.screenshot({ path: path.join(outDir, `${name}-${t}-${w}.png`), fullPage: true });
       shots++;
       for (const [suffix, act] of INTERACTIONS[view] || []) {
         await act(page);
-        await page.screenshot({ path: path.join(outDir, `${view}-${t}-${w}-${suffix}.png`) });
+        await page.screenshot({ path: path.join(outDir, `${name}-${t}-${w}-${suffix}.png`) });
         shots++;
         await page.mouse.move(1, 1);
         await page.keyboard.press('Escape');
         await page.waitForTimeout(150);
       }
-      if (errors.length) failures.push(`${view} ${t} ${w}px: ${errors.join(' | ')}`);
+      if (errors.length) failures.push(`${name} ${t} ${w}px: ${errors.join(' | ')}`);
       await page.close();
     }
+  }
   }
 }
 await browser.close();
