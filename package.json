@@ -637,6 +637,11 @@
           "default": "",
           "markdownDescription": "Language model family for the \u2728 commit messages (e.g. `gpt-4o-mini`, `claude-sonnet-4`). Empty: a fast Copilot model."
         },
+        "gitland.changes.ticketReminder": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before committing on a branch that has no ticket, offer to link one (main, dev, release/* and hotfix/* are never asked about)."
+        },
         "gitland.changes.pullRebase": {
           "type": "boolean",
           "default": false,

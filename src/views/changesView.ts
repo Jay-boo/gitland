@@ -9,6 +9,8 @@ import { generateCommitMessage } from '../commitMessage';
 import { webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { ChangesBadge } from './changesBadge';
 import { capture } from '../devCapture';
+import { needsTicketReminder, withTicketRef } from '../tickets/reminder.pure';
+import { pickTicket } from '../commands/work';
 
 type Message =
   | { type: 'ready' }
@@ -151,6 +153,45 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
       log.error('Changes: status failed', e);
       this.post({ type: 'error', message: errorMessage(e) });
     }
+  }
+
+  /**
+   * Before committing on a branch with no ticket: offer to link one (gitland.changes.ticketReminder).
+   * Returns the message to commit (with the reference added when a ticket was linked), or undefined to cancel.
+   */
+  private async remindTicket(repo: Repo, message: string): Promise<string | undefined> {
+    const branch = await repo.currentBranch();
+    const [linked, skipped, provider] = await Promise.all([
+      branch ? repo.getConfig(`branch.${branch}.gitlandTicket`) : undefined,
+      branch ? repo.getConfig(`branch.${branch}.gitlandNoTicket`) : undefined,
+      getProvider(repo, this.context.secrets).catch(() => undefined),
+    ]);
+    const prefix = provider?.kind === 'github' ? '#' : 'AB#';
+    if (!provider || !needsTicketReminder({ enabled: config('changes.ticketReminder', true), branch, linkedTicket: linked, skipped: skipped === 'true', message, prefix })) {
+      return message;
+    }
+    const link = 'Link a ticket…';
+    const anyway = 'Commit anyway';
+    const never = "Don't ask for this branch";
+    const choice = await vscode.window.showWarningMessage(`${branch} has no ticket. Link one so this commit shows up on it?`, link, anyway, never);
+    if (choice === anyway) {
+      return message;
+    }
+    if (choice === never) {
+      await repo.setConfig(`branch.${branch}.gitlandNoTicket`, 'true');
+      return message;
+    }
+    if (choice !== link) {
+      return undefined;
+    }
+    const ticket = await pickTicket(provider);
+    if (!ticket) {
+      return undefined;
+    }
+    await repo.setConfig(`branch.${branch}.gitlandTicket`, ticket.id);
+    await repo.setConfig(`branch.${branch}.gitlandTicketTitle`, ticket.title);
+    void this.refresh();
+    return withTicketRef(message, `${prefix}${ticket.id}`);
   }
 
   /** Ticket linked to the current branch by "Start work" (branch.<name>.gitlandTicket). */
@@ -371,6 +412,13 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     }
     if (!message.trim() && !amend) {
       throw new Error('Write a commit message first.');
+    }
+    if (!amend) {
+      const linked = await this.remindTicket(repo, message);
+      if (linked === undefined) {
+        return;
+      }
+      message = linked;
     }
     if (!status.staged.length && !amend) {
       if (!status.unstaged.length) {
