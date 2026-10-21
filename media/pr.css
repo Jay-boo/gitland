@@ -15,10 +15,10 @@
 .review-bar .k b { color: var(--fg); }
 .vote { --v: var(--muted); height: 24px; gap: 5px; font-size: 11.5px; }
 .vote .codicon { color: var(--v); font-size: 13px; }
-.vote.v-approved { --v: #6fb293; }
-.vote.v-changes { --v: #c792ab; }
+.vote.v-approved { --v: var(--gl-ok); }
+.vote.v-changes { --v: var(--gl-pink); }
 .vote.on { border-color: var(--v); background: color-mix(in srgb, var(--v) 14%, transparent); }
-.complete-btn { border-color: color-mix(in srgb, #6fb293 55%, transparent); color: #6fb293; }
+.complete-btn { border-color: color-mix(in srgb, var(--gl-ok) 55%, transparent); color: var(--gl-ok); }
 .complete-btn:disabled { opacity: 0.45; }
 .thread .th-file { margin: -2px 0 6px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
 .thread .th-file .codicon { font-size: 10px; }

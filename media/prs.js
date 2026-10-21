@@ -1,11 +1,9 @@
 // @ts-check
 (function () {
+  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   const listEl = $('list');
   const filterEl = /** @type {HTMLInputElement} */ ($('filter'));
   const state = Object.assign({ collapsed: {} }, vscode.getState() || {});
@@ -25,14 +23,6 @@
     waiting: ['waiting', 'git-pull-request', 'in review'],
   };
 
-  function relTime(ts) {
-    if (!ts) return '';
-    const s = (Date.now() - ts) / 1000;
-    if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h`;
-    if (s < 86400 * 30) return `${Math.floor(s / 86400)}d`;
-    return `${Math.floor(s / 86400 / 30)}mo`;
-  }
 
   function render() {
     if (!data) return;
@@ -71,7 +61,7 @@
     <button class="icon" data-act="checkout" title="Check out the branch">${icon('git-branch')}</button>
     <button class="icon" data-act="open" title="Open in the browser">${icon('link-external')}</button>
   </span>
-  <span class="age side">${current ? '<span class="cur-chip" title="Your current branch">●</span>' : esc(relTime(p.created))}</span>
+  <span class="age side">${current ? '<span class="cur-chip" title="Your current branch">●</span>' : esc(relShort(p.created))}</span>
 </div>`;
   }
 

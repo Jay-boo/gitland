@@ -38,7 +38,7 @@ body.is-busy .split { opacity: 0.6; }
 .msgwrap { position: relative; }
 .msgwrap #msg { padding-right: 30px; }
 button.gen { position: absolute; top: 4px; right: 4px; height: 22px; padding: 0 4px; color: var(--muted); }
-button.gen:hover { color: #c6ab6e; }
+button.gen:hover { color: var(--gl-ai); }
 button.gen.on { color: var(--deleted); }
 body.is-generating #msg { color: var(--muted); }
 body.is-generating .msgwrap::after {
@@ -47,7 +47,7 @@ body.is-generating .msgwrap::after {
   left: 1px; right: 1px; bottom: 1px;
   height: 2px;
   border-radius: 0 0 5px 5px;
-  background: linear-gradient(90deg, transparent, #c6ab6e, transparent);
+  background: linear-gradient(90deg, transparent, var(--gl-ai), transparent);
   background-size: 50% 100%;
   background-repeat: no-repeat;
   animation: gen 1.2s ease-in-out infinite;
@@ -82,17 +82,17 @@ body.is-generating .msgwrap::after {
   height: 18px;
   padding: 0 6px 0 4px;
   border-radius: 3px;
-  border: 1px dashed color-mix(in srgb, #6fb293 60%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--gl-ok) 60%, transparent);
   font-family: var(--mono);
   font-size: 10.5px;
-  color: #6fb293;
+  color: var(--gl-ok);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
 }
 .ticket .codicon { font-size: 11px; vertical-align: 0; }
 .ticket .tt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
-.ticket.on { border-style: solid; background: color-mix(in srgb, #6fb293 12%, transparent); }
+.ticket.on { border-style: solid; background: color-mix(in srgb, var(--gl-ok) 12%, transparent); }
 .counter { font-family: var(--mono); font-size: 10px; color: var(--faint); }
 .counter.long { color: var(--modified); }
 .counter.over { color: var(--deleted); }
@@ -116,15 +116,15 @@ body.is-generating .msgwrap::after {
   background: transparent;
   font-weight: 600;
 }
-.split button:hover:not(:disabled) { background: color-mix(in srgb, #fff 10%, transparent); }
-.split button:active:not(:disabled) { background: color-mix(in srgb, #000 12%, transparent); }
+.split button:hover:not(:disabled) { background: color-mix(in srgb, white 10%, transparent); }
+.split button:active:not(:disabled) { background: color-mix(in srgb, black 12%, transparent); }
 .split .main { flex: 1; justify-content: center; }
 .split .alt {
   flex: none;
   padding: 0 11px;
   gap: 5px;
-  background: color-mix(in srgb, #000 14%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--vscode-button-foreground, #fff) 22%, transparent);
+  background: color-mix(in srgb, black 14%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--vscode-button-foreground, white) 22%, transparent);
   font-weight: 500;
 }
 .split .alt .codicon { font-size: 12px; }
@@ -192,10 +192,10 @@ body.is-generating .msgwrap::after {
 .meta:has(#ticket[hidden]) + .row-options { margin-top: 6px; }
 
 /* ---------- merge / rebase in progress ---------- */
-.op-banner { margin: 8px; padding: 9px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, #6f9fd0 45%, transparent); background: color-mix(in srgb, #6f9fd0 8%, transparent); }
+.op-banner { margin: 8px; padding: 9px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--gl-main) 45%, transparent); background: color-mix(in srgb, var(--gl-main) 8%, transparent); }
 .op-banner.conflicted { border-color: color-mix(in srgb, var(--deleted) 50%, transparent); background: color-mix(in srgb, var(--deleted) 7%, transparent); }
 .op-top { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-.op-top .codicon { color: #6f9fd0; }
+.op-top .codicon { color: var(--gl-main); }
 .op-banner.conflicted .op-top .codicon { color: var(--deleted); }
 .op-top b { font-family: var(--mono); font-weight: 600; font-size: 11.5px; }
 .op-sub { margin: 2px 0 8px 20px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }

@@ -1,11 +1,9 @@
 // @ts-check
 (function () {
+  const { esc, icon } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   const listEl = $('list');
   const filterEl = /** @type {HTMLInputElement} */ ($('filter'));
   const state = Object.assign({ collapsed: {} }, vscode.getState() || {});

@@ -1,4 +1,4 @@
-import { createPanel, pageIcon, restoreScript } from '../views/webviewHtml';
+import { createPanel, pageIcon, webviewHtml } from '../views/webviewHtml';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { applyNumstat, Commit, DiffPreview, Repo, WORKTREE_SHA } from '../git/repo';
@@ -180,8 +180,7 @@ export class GraphController implements vscode.Disposable {
     this.repo = repo;
     this.max = config('graph.maxCommits', 400);
     this.pendingSelect = selectSha;
-    const media = vscode.Uri.joinPath(context.extensionUri, 'media');
-    host.webview.html = this.html(media);
+    host.webview.html = this.html(context.extensionUri);
     this.disposables.push(
       host.webview.onDidReceiveMessage((m: WebviewMessage) => this.onMessage(m)),
       repos.onDidChangeRepo((r) => {
@@ -820,33 +819,14 @@ export class GraphController implements vscode.Disposable {
     await this.load();
   }
 
-  private html(media: vscode.Uri): string {
-    const webview = this.host.webview;
-    const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
-    const uri = (...p: string[]) => webview.asWebviewUri(vscode.Uri.joinPath(media, ...p));
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:;">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="${uri('vendor', 'codicon.css')}">
-<link rel="stylesheet" href="${uri('graph.css')}">
-<style>
-@font-face { font-family: 'Gitland Geist'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist.woff2')}') format('woff2'); }
-@font-face { font-family: 'Gitland Geist Mono'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist-mono.woff2')}') format('woff2'); }
-</style>
-<title>Git Graph</title>
-</head>
-<body>
-${GRAPH_BODY}
-${restoreScript({ kind: 'graph', repoRoot: this.repo?.root }, nonce)}
-<script nonce="${nonce}" src="${uri('diffpreview.js')}"></script>
-<script nonce="${nonce}" src="${uri('graph.js')}"></script>
-</body>
-</html>`;
-    capture('graph', 'html', html);
-    return html;
+  private html(extensionUri: vscode.Uri): string {
+    return webviewHtml(this.host.webview, extensionUri, {
+      view: 'graph',
+      title: 'Git Graph',
+      body: GRAPH_BODY,
+      script: ['diffpreview.js', 'graph.js'],
+      restore: { kind: 'graph', repoRoot: this.repo?.root },
+    });
   }
 
   /** Immediate avatar URLs per email; better pictures are looked up in the background. */

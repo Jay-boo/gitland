@@ -45,8 +45,8 @@ const CSP_SOURCE = `'self' https://*.vscode-cdn.net`;
 function pageFromStatic(p) {
   const nonce = 'static0nonce';
   const uri = (...s) => `https://file%2B.vscode-resource.vscode-cdn.net${path.join(media, ...s)}`;
-  const styles = (p.base || ['graph.css']).concat(p.styles || []).map((s) => `<link rel="stylesheet" href="${uri(s)}">`).join('\n');
-  const scripts = (p.common || []).concat(p.script || []).map((s) => `<script nonce="${nonce}" src="${uri(s)}"></script>`).join('\n');
+  const styles = (p.base || ['base.css', 'graph.css']).concat(p.styles || []).map((s) => `<link rel="stylesheet" href="${uri(s)}">`).join('\n');
+  const scripts = (p.common || ['common.js']).concat(p.script || []).map((s) => `<script nonce="${nonce}" src="${uri(s)}"></script>`).join('\n');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

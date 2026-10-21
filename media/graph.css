@@ -1,76 +1,6 @@
-:root {
-  --row-h: 22px;
-  --radius: 5px;
-  --font: 'Gitland Geist', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  --mono: 'Gitland Geist Mono', ui-monospace, 'Cascadia Code', monospace;
-  --fg: var(--vscode-foreground);
-  --bg: var(--vscode-editor-background);
-  --muted: var(--vscode-descriptionForeground);
-  --faint: color-mix(in srgb, var(--fg) 42%, transparent);
-  --line: color-mix(in srgb, var(--fg) 8%, transparent);
-  --line-strong: color-mix(in srgb, var(--fg) 14%, transparent);
-  --surface: color-mix(in srgb, var(--fg) 2.5%, var(--bg));
-  --surface-2: color-mix(in srgb, var(--fg) 5.5%, var(--bg));
-  --hover: color-mix(in srgb, var(--fg) 4%, transparent);
-  --selected: color-mix(in srgb, var(--fg) 8%, transparent);
-  --accent: var(--vscode-focusBorder, #5b8def);
-  --added: #7fb58f;
-  --modified: #c8b27a;
-  --deleted: #c98686;
-  --renamed: #7ea4c9;
-  --match: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.3));
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-}
-
-* { box-sizing: border-box; }
-/* `hidden` must win over the display rules below (e.g. buttons are inline-flex). */
-[hidden] { display: none !important; }
-
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font);
-  font-size: 12px;
-  -webkit-font-smoothing: antialiased;
-}
+/* Commit graph. Tokens, buttons and shared components: base.css. */
 
 body { display: flex; flex-direction: column; }
-
-.codicon { font-size: 13px; line-height: 1; vertical-align: -2px; }
-.mono { font-family: var(--mono); }
-
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.25)); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.45)); }
-
-button {
-  font: inherit;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-  color: var(--fg);
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  padding: 0 8px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-button:hover { background: var(--hover); }
-button.primary { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: transparent; }
-button.primary:hover { background: var(--vscode-button-hoverBackground); }
-button.icon { padding: 0 5px; border-color: transparent; color: var(--muted); }
-button.icon:hover { color: var(--fg); }
-button.icon.on { color: var(--fg); background: var(--selected); }
-button.ghost { border-color: transparent; color: var(--muted); }
-
-.muted { color: var(--muted); }
 
 /* ---------- toolbar ---------- */
 
@@ -457,7 +387,7 @@ body.compact .card .ft .hint { display: none; }
 .menu .item .codicon { width: 14px; color: var(--faint); }
 .menu .item:hover { background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground)); color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground)); }
 .menu .item:hover .codicon { color: inherit; }
-.menu .item.danger, .menu .item.danger .codicon { color: var(--vscode-errorForeground, #c98686); }
+.menu .item.danger, .menu .item.danger .codicon { color: var(--vscode-errorForeground, var(--gl-err)); }
 .menu .sep { height: 1px; margin: 3px 4px; background: var(--vscode-menu-separatorBackground, var(--line)); }
 .menu .label { padding: 4px 8px 2px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
 
@@ -572,7 +502,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--vscode-activityBarBadge-foreground, #fff);
+  color: var(--vscode-activityBarBadge-foreground, white);
   background: var(--vscode-activityBarBadge-background, var(--accent));
 }
 .wt-detail { flex: none; font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-right: 4px; }
@@ -617,7 +547,7 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .merged-chip .codicon { font-size: 11px; color: var(--c); }
 .merged-chip:hover { color: var(--fg); background: color-mix(in srgb, var(--c) 14%, transparent); }
 .commit.merge .subject.mtitle { color: var(--fg); }
-.rel-chip { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 10.5px; color: #c6ab6e; }
+.rel-chip { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 10.5px; color: var(--gl-ai); }
 .rel-chip .codicon { font-size: 11px; }
 .rel-chip.none { color: var(--faint); }
 .pick-foot { display: flex; gap: 12px; padding: 6px 8px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
@@ -631,14 +561,14 @@ body.dragging .ref[draggable='true'] { outline: 1px dashed color-mix(in srgb, va
 .ci-ok { color: var(--added); }
 .ci-bad { color: var(--deleted); }
 .ci-warn { color: var(--modified); }
-.ci-run { color: #6f9fd0; }
+.ci-run { color: var(--gl-main); }
 .ci-off { color: var(--faint); }
 .ci-label { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 10.5px; cursor: pointer; }
 
-#details .gen-btn { border-color: color-mix(in srgb, #c6ab6e 50%, transparent); color: #c6ab6e; background: color-mix(in srgb, #c6ab6e 10%, transparent); }
-.explain-card { margin-top: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid color-mix(in srgb, #c6ab6e 35%, transparent); background: color-mix(in srgb, #c6ab6e 5%, transparent); }
+#details .gen-btn { border-color: color-mix(in srgb, var(--gl-ai) 50%, transparent); color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 10%, transparent); }
+.explain-card { margin-top: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--gl-ai) 35%, transparent); background: color-mix(in srgb, var(--gl-ai) 5%, transparent); }
 .explain-card[hidden] { display: none; }
-.explain-card .ex-h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11.5px; font-weight: 600; color: #c6ab6e; }
+.explain-card .ex-h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11.5px; font-weight: 600; color: var(--gl-ai); }
 .explain-card .ex-stop { display: none; cursor: pointer; color: var(--muted); }
 .explain-card.busy .ex-stop { display: inline-flex; }
 .explain-card .ex-stop { margin-left: auto; }

@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import { capture } from '../devCapture';
 
 /**
- * Page of a Gitland webview: graph.css tokens + fonts + codicons, then the view's own
- * stylesheet(s) and script (all from media/).
+ * Page of a Gitland webview: codicons, base.css (theme tokens + shared components), graph.css,
+ * then the view's own stylesheet(s); common.js (window.gl helpers) before the view's script(s).
  */
 export function webviewHtml(
   webview: vscode.Webview,
@@ -13,7 +13,7 @@ export function webviewHtml(
   const media = vscode.Uri.joinPath(extensionUri, 'media');
   const nonce = [...Array(32)].map(() => Math.random().toString(36)[2]).join('');
   const uri = (...p: string[]) => webview.asWebviewUri(vscode.Uri.joinPath(media, ...p));
-  const styles = ['graph.css', ...(opts.styles ?? [])].map((s) => `<link rel="stylesheet" href="${uri(s)}">`).join('\n');
+  const styles = ['base.css', 'graph.css', ...(opts.styles ?? [])].map((s) => `<link rel="stylesheet" href="${uri(s)}">`).join('\n');
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,16 +22,12 @@ export function webviewHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${uri('vendor', 'codicon.css')}">
 ${styles}
-<style>
-@font-face { font-family: 'Gitland Geist'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist.woff2')}') format('woff2'); }
-@font-face { font-family: 'Gitland Geist Mono'; font-weight: 100 900; font-display: block; src: url('${uri('vendor', 'geist-mono.woff2')}') format('woff2'); }
-</style>
 <title>${opts.title}</title>
 </head>
 <body class="${opts.bodyClass ?? ''}">
 ${opts.body}
 ${opts.restore ? restoreScript(opts.restore, nonce) : ''}
-${(Array.isArray(opts.script) ? opts.script : [opts.script]).map((s) => `<script nonce="${nonce}" src="${uri(s)}"></script>`).join('\n')}
+${['common.js', ...(Array.isArray(opts.script) ? opts.script : [opts.script])].map((s) => `<script nonce="${nonce}" src="${uri(s)}"></script>`).join('\n')}
 </body>
 </html>`;
   capture(opts.view, 'html', html);

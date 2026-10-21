@@ -12,4 +12,4 @@
 .cl-row .a { font-size: 11.5px; color: var(--muted); }
 .cl-row .k { width: 70px; text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
 .t-actions .k { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
-.danger-btn { background: var(--vscode-inputValidation-errorBackground, #8f2d2d) !important; color: #fff !important; }
+.danger-btn { background: var(--vscode-inputValidation-errorBackground, var(--gl-err)) !important; color: white !important; }

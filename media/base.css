@@ -1,0 +1,267 @@
+/*
+ * Gitland base: theme tokens + shared components, loaded first by every webview.
+ * Colours come only from the VS Code theme (--vscode-*); the fallbacks are for pages rendered
+ * outside VS Code. Components are prefixed gl- (view stylesheets already use .card, .row, .pill…).
+ */
+
+:root {
+  /* type */
+  --gl-font: var(--vscode-font-family, system-ui, -apple-system, 'Segoe UI', sans-serif);
+  --gl-mono: var(--vscode-editor-font-family, ui-monospace, 'Cascadia Code', monospace);
+  --gl-radius-card: 10px;
+  --gl-radius-input: 8px;
+  --gl-radius-btn: 6px;
+  --gl-row-h: 22px;
+
+  /* surfaces */
+  --gl-fg: var(--vscode-foreground, #cccccc);
+  --gl-muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --gl-faint: color-mix(in srgb, var(--gl-fg) 45%, transparent);
+  --gl-bg: var(--vscode-editor-background, #1f1f1f);
+  --gl-card: color-mix(in srgb, var(--gl-fg) 6%, var(--gl-bg));
+  --gl-card-hover: color-mix(in srgb, var(--gl-fg) 10%, var(--gl-bg));
+  --gl-inset: color-mix(in srgb, black 18%, var(--gl-card));
+  --gl-line: color-mix(in srgb, var(--gl-fg) 10%, transparent);
+  --gl-line-strong: color-mix(in srgb, var(--gl-fg) 18%, transparent);
+  --gl-border: var(--vscode-contrastBorder, transparent);
+  --gl-shadow: 0 6px 20px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  --gl-accent: var(--vscode-focusBorder, #0078d4);
+  --gl-link: var(--vscode-textLink-foreground, #4daafc);
+  --gl-hover: var(--vscode-list-hoverBackground, color-mix(in srgb, var(--gl-fg) 6%, transparent));
+  --gl-selected: var(--vscode-list-activeSelectionBackground, #04395e);
+  --gl-selected-fg: var(--vscode-list-activeSelectionForeground, var(--gl-fg, #ffffff));
+
+  /* meaning */
+  --gl-main: var(--vscode-charts-blue, #3794ff);
+  --gl-dev: var(--vscode-charts-green, #89d185);
+  --gl-feature: var(--vscode-charts-purple, #b180d7);
+  --gl-fix: color-mix(in srgb, var(--vscode-charts-red, #f14c4c) 70%, var(--gl-fg));
+  --gl-hotfix: var(--vscode-charts-red, #f14c4c);
+  --gl-release: var(--vscode-charts-yellow, #cca700);
+  --gl-chore: var(--vscode-descriptionForeground, #9d9d9d);
+  --gl-orange: var(--vscode-charts-orange, #d18616);
+  --gl-teal: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 50%, var(--vscode-charts-green, #89d185));
+  --gl-pink: color-mix(in srgb, var(--vscode-charts-red, #f14c4c) 55%, var(--vscode-charts-purple, #b180d7));
+  --gl-lime: color-mix(in srgb, var(--vscode-charts-yellow, #cca700) 50%, var(--vscode-charts-green, #89d185));
+  --gl-ai: var(--vscode-charts-yellow, #cca700);
+  --gl-ok: var(--vscode-testing-iconPassed, #73c991);
+  --gl-warn: var(--vscode-editorWarning-foreground, #cca700);
+  --gl-err: var(--vscode-errorForeground, #f85149);
+  --gl-added: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  --gl-modified: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+  --gl-deleted: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+  --gl-renamed: var(--vscode-gitDecoration-renamedResourceForeground, #73c991);
+  --gl-conflict: var(--vscode-gitDecoration-conflictingResourceForeground, #e4676b);
+
+  /* graph lanes: indexes of src/graph/colors.ts (0 main … 6 chore, 7–10 other names) */
+  --gl-lane-0: var(--gl-main, #3794ff);
+  --gl-lane-1: var(--gl-dev, #89d185);
+  --gl-lane-2: var(--gl-feature, #b180d7);
+  --gl-lane-3: var(--gl-fix, #e88);
+  --gl-lane-4: var(--gl-hotfix, #f14c4c);
+  --gl-lane-5: var(--gl-release, #cca700);
+  --gl-lane-6: var(--gl-chore, #9d9d9d);
+  --gl-lane-7: var(--gl-orange, #d18616);
+  --gl-lane-8: var(--gl-teal, #60b1c2);
+  --gl-lane-9: var(--gl-pink, #d366ac);
+  --gl-lane-10: var(--gl-lime, #abbc43);
+
+  /* names the view stylesheets use */
+  --font: var(--gl-font);
+  --mono: var(--gl-mono);
+  --radius: 6px;
+  --row-h: var(--gl-row-h);
+  --fg: var(--gl-fg);
+  --bg: var(--gl-bg);
+  --muted: var(--gl-muted);
+  --faint: var(--gl-faint);
+  --line: var(--gl-line);
+  --line-strong: var(--gl-line-strong);
+  --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
+  --surface-2: var(--gl-card);
+  --hover: var(--gl-hover);
+  --selected: color-mix(in srgb, var(--gl-fg) 9%, transparent);
+  --accent: var(--gl-accent);
+  --added: var(--gl-added);
+  --modified: var(--gl-modified);
+  --deleted: var(--gl-deleted);
+  --renamed: var(--gl-renamed);
+  --match: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.3));
+  --shadow: var(--gl-shadow);
+}
+
+* { box-sizing: border-box; }
+/* `hidden` must win over the display rules below (e.g. buttons are inline-flex). */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--gl-bg);
+  color: var(--gl-fg);
+  font-family: var(--gl-font);
+  font-size: var(--vscode-font-size, 13px);
+  -webkit-font-smoothing: antialiased;
+}
+
+.codicon { font-size: 13px; line-height: 1; vertical-align: -2px; }
+.mono { font-family: var(--gl-mono); }
+.muted { color: var(--gl-muted); }
+kbd { font-family: var(--gl-mono); font-size: 10px; color: var(--gl-faint); padding: 0 4px; border-radius: 4px; border: 1px solid var(--gl-line-strong); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.25)); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground, rgba(128, 128, 128, 0.45)); }
+
+:focus { outline: none; }
+:focus-visible { outline: 1px solid var(--vscode-focusBorder, #0078d4); outline-offset: -1px; }
+
+/* ---------- buttons ---------- */
+
+button {
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  color: var(--vscode-button-secondaryForeground, var(--gl-fg));
+  background: var(--vscode-button-secondaryBackground, var(--gl-card));
+  border: 1px solid var(--vscode-button-border, var(--gl-border));
+  border-radius: var(--gl-radius-btn);
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover { background: var(--vscode-button-secondaryHoverBackground, var(--gl-card-hover)); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { color: var(--vscode-button-foreground, white); background: var(--vscode-button-background, #0078d4); }
+button.primary:hover:not(:disabled) { background: var(--vscode-button-hoverBackground, #026ec1); }
+button.secondary { color: var(--vscode-button-secondaryForeground, var(--gl-fg)); background: var(--vscode-button-secondaryBackground, var(--gl-card)); }
+button.icon, button.ghost { background: transparent; border-color: transparent; color: var(--gl-muted); }
+button.icon { padding: 0 4px; height: 22px; min-width: 22px; }
+button.icon:hover, button.ghost:hover { color: var(--gl-fg); background: var(--vscode-toolbar-hoverBackground, var(--gl-hover)); }
+button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBackground, var(--selected)); }
+
+/* Two equal buttons side by side (Commit | Commit & Push). */
+.gl-btn-pair { display: flex; gap: 8px; }
+.gl-btn-pair > button { flex: 1 1 0; min-width: 0; height: 28px; font-weight: 500; }
+
+/* ---------- cards & lists ---------- */
+
+.gl-card {
+  background: var(--gl-card);
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius-card);
+  padding: 10px 12px;
+}
+
+/* One rounded card holding dense rows. */
+.gl-list {
+  background: var(--gl-card);
+  border: 1px solid var(--gl-border);
+  border-radius: var(--gl-radius-card);
+  padding: 4px 0;
+  overflow: hidden;
+}
+.gl-row { display: flex; align-items: center; gap: 8px; min-height: var(--gl-row-h); padding: 0 10px; cursor: pointer; }
+.gl-row:hover { background: var(--gl-hover); }
+.gl-row.sel, .gl-row[aria-selected='true'] { background: var(--gl-selected); color: var(--gl-selected-fg); }
+
+/* Section header: icon + bold title + count. */
+.gl-sec { display: flex; align-items: center; gap: 6px; min-height: 24px; margin: 10px 2px 6px; font-weight: 600; }
+.gl-sec > .codicon { color: var(--gl-muted); font-weight: normal; }
+.gl-sec .n { padding: 0 7px; border-radius: 999px; background: var(--gl-inset); color: var(--gl-muted); font-size: 11px; font-weight: normal; line-height: 16px; }
+
+/* ---------- pills & segmented switch ---------- */
+
+.gl-pill {
+  --c: var(--gl-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 8px;
+  border: 1px solid var(--gl-border);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+}
+.gl-pill .codicon { font-size: 11px; vertical-align: 0; }
+.gl-pill.neutral { color: var(--gl-muted); background: var(--gl-inset); }
+.gl-pill.c-main { --c: var(--gl-main); }
+.gl-pill.c-dev { --c: var(--gl-dev); }
+.gl-pill.c-feature { --c: var(--gl-feature); }
+.gl-pill.c-fix { --c: var(--gl-fix); }
+.gl-pill.c-hotfix { --c: var(--gl-hotfix); }
+.gl-pill.c-release { --c: var(--gl-release); }
+.gl-pill.c-chore { --c: var(--gl-chore); }
+.gl-pill.c-ok { --c: var(--gl-ok); }
+.gl-pill.c-warn { --c: var(--gl-warn); }
+.gl-pill.c-err { --c: var(--gl-err); }
+.gl-pill.c-ai { --c: var(--gl-ai); }
+.gl-pill.c-link { --c: var(--gl-link); }
+
+.gl-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--gl-radius-btn); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.gl-seg > button { height: 20px; padding: 0 9px; border: none; border-radius: 4px; background: transparent; color: var(--gl-muted); font-size: 11.5px; }
+.gl-seg > button:hover { color: var(--gl-fg); background: transparent; }
+.gl-seg > button[aria-pressed='true'], .gl-seg > button.on { color: var(--vscode-button-foreground, white); background: var(--vscode-button-background, #0078d4); }
+
+/* ---------- separators ---------- */
+
+/* Dashed line with a label and tiny outlined actions (Sixth's "Checkpoint · Compare · Restore"). */
+.gl-sep { display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; color: var(--gl-faint); font-size: 11px; }
+.gl-sep::after { content: ''; flex: 1; order: 1; border-top: 1px dashed var(--gl-line-strong); }
+.gl-sep .gl-sep-act { order: 2; height: 16px; padding: 0 5px; border: 1px dashed var(--gl-line-strong); border-radius: 4px; background: transparent; color: var(--gl-faint); font-size: 10.5px; }
+.gl-sep .gl-sep-act:hover { color: var(--gl-fg); border-style: solid; }
+
+/* ---------- floating: hover cards, menus, pickers ---------- */
+
+.gl-pop {
+  background: var(--vscode-editorHoverWidget-background, var(--gl-card));
+  color: var(--vscode-editorHoverWidget-foreground, var(--gl-fg));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--gl-border));
+  border-radius: var(--gl-radius-card);
+  box-shadow: var(--gl-shadow);
+}
+.gl-pop.menu { padding: 4px; border-radius: 8px; background: var(--vscode-menu-background, var(--gl-card)); color: var(--vscode-menu-foreground, var(--gl-fg)); border-color: var(--vscode-menu-border, var(--gl-border)); }
+.gl-pop .gl-mi { display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.gl-pop .gl-mi:hover, .gl-pop .gl-mi.active { background: var(--vscode-menu-selectionBackground, var(--gl-selected)); color: var(--vscode-menu-selectionForeground, var(--gl-selected-fg)); }
+.gl-pop hr { border: 0; border-top: 1px solid var(--vscode-menu-separatorBackground, var(--gl-line)); margin: 4px 2px; }
+
+/* ---------- inputs ---------- */
+
+.gl-input, .gl-composer {
+  background: var(--vscode-input-background, var(--gl-inset));
+  color: var(--vscode-input-foreground, var(--gl-fg));
+  border: 1px solid var(--vscode-input-border, var(--gl-line));
+  border-radius: var(--gl-radius-input);
+}
+.gl-input:focus-within, .gl-composer:focus-within { border-color: var(--gl-accent); }
+.gl-composer { position: relative; padding: 6px 10px; }
+.gl-composer textarea { display: block; width: 100%; resize: none; padding: 0; font: inherit; color: inherit; background: transparent; border: none; outline: none; }
+.gl-composer textarea::placeholder { color: var(--vscode-input-placeholderForeground, var(--gl-faint)); }
+
+/* ---------- states ---------- */
+
+.gl-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 16px; text-align: center; color: var(--gl-muted); }
+.gl-empty > .codicon { font-size: 22px; color: var(--gl-faint); }
+.gl-empty b { color: var(--gl-fg); font-weight: 600; }
+
+.gl-skeleton { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.gl-skeleton > div { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--gl-card), var(--gl-card-hover), var(--gl-card)); background-size: 200% 100%; animation: gl-shimmer 1.2s ease-in-out infinite; }
+.gl-skeleton > div:nth-child(2n) { width: 70%; }
+@keyframes gl-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* ---------- editor tab header ---------- */
+
+.gl-tab-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 20px 10px; }
+.gl-tab-head .th-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; font-weight: 600; }
+.gl-tab-head .th-title .id { font-family: var(--gl-mono); font-weight: normal; color: var(--gl-muted); font-size: 12px; }
+.gl-tab-head .th-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; }

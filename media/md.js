@@ -1,8 +1,7 @@
 // @ts-check
 // Shared by the ticket, pull request and new pull request pages: safe rich text rendering.
 (function () {
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+  const { esc } = /** @type {any} */ (window).gl;
   // ---------- rich text ----------
 
   const ALLOWED = new Set(['P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'DEL', 'UL', 'OL', 'LI', 'A', 'CODE', 'PRE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'HR', 'DIV', 'SPAN', 'SUB', 'SUP']);

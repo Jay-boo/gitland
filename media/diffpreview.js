@@ -8,8 +8,7 @@
  * only resting on another row for a moment does.
  */
 (function () {
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
+  const { esc } = /** @type {any} */ (window).gl;
 
   /**
    * @param {{ vscode: any, root: HTMLElement, selector: string, request: (row: HTMLElement) => any, reserveRight?: number }} o

@@ -1,23 +1,14 @@
 // @ts-check
 (function () {
+  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
-  const esc = (/** @type {string} */ s) =>
-    String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-  const icon = (/** @type {string} */ n) => `<i class="codicon codicon-${n}"></i>`;
   /** @type {any} */
   let local = null;
   /** @type {any} */
   let remote = null;
 
-  function relTime(ts) {
-    const s = (Date.now() - ts) / 1000;
-    if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h`;
-    if (s < 86400 * 30) return `${Math.floor(s / 86400)}d`;
-    return `${Math.floor(s / 86400 / 30)}mo`;
-  }
   function kind(type) {
     const t = String(type).toLowerCase();
     if (t.includes('bug')) return ['bug', 'bug'];
@@ -64,7 +55,7 @@
     const prRow = (p) => {
       const rv = REV[p.isDraft ? 'waiting' : p.review || 'waiting'];
       return `<div class="drow" data-pr="${esc(p.id)}"><span class="glyph g-${p.isDraft ? 'draft' : rv[0]}">${icon(p.isDraft ? 'git-pull-request-draft' : rv[1])}</span><div class="body"><div class="title">${esc(p.title)}</div>
-        <div class="meta"><span class="id">${esc(p.label)}</span><span class="pill p-${p.isDraft ? 'draft' : rv[0]}">${p.isDraft ? 'draft' : rv[2]}</span><span>${esc(p.sourceBranch)} → ${esc(p.targetBranch)}</span>${p.group === 'review' ? `<span>${icon('account')} ${esc(p.author)}</span>` : ''}</div></div>${ciHtml(p.ci)}<span class="k">${p.created ? esc(relTime(p.created)) : ''}</span></div>`;
+        <div class="meta"><span class="id">${esc(p.label)}</span><span class="pill p-${p.isDraft ? 'draft' : rv[0]}">${p.isDraft ? 'draft' : rv[2]}</span><span>${esc(p.sourceBranch)} → ${esc(p.targetBranch)}</span>${p.group === 'review' ? `<span>${icon('account')} ${esc(p.author)}</span>` : ''}</div></div>${ciHtml(p.ci)}<span class="k">${p.created ? esc(relShort(p.created)) : ''}</span></div>`;
     };
     const branchRow = (x) => {
       const flags = [
@@ -77,7 +68,7 @@
       const pr = r && r.prs.find((p) => p.sourceBranch === x.name);
       return `<div class="drow branch${x.current ? ' current' : ''}"><span class="glyph g-story">${icon('git-branch')}</span><div class="body"><div class="title mono">${esc(x.name)}${x.current ? ' <span class="cur-chip">● current</span>' : ''}</div>
         <div class="meta">${flags.join('')}${x.ticket ? `<span class="link-t" data-ticket="${esc(x.ticket)}">${icon('issues')}#${esc(x.ticket)}</span>` : ''}${pr ? `<span class="link-t" data-pr="${esc(pr.id)}">${icon('git-pull-request')}${esc(pr.label)}</span>` : ''}<span>${esc(x.subject)}</span></div></div>
-        ${r ? ciHtml(r.branchCi[x.name]) : ''}<span class="k">${esc(relTime(x.date))}</span>
+        ${r ? ciHtml(r.branchCi[x.name]) : ''}<span class="k">${esc(relShort(x.date))}</span>
         <span class="acts">${x.current ? '' : `<button class="icon" data-branch="checkout" data-name="${esc(x.name)}" title="Checkout">${icon('check')}</button>`}
           ${!x.upstream || x.ahead > 0 ? `<button class="icon" data-branch="push" data-name="${esc(x.name)}" title="Push">${icon('arrow-up')}</button>` : ''}
           ${!pr && !x.merged && !x.isDefault ? `<button class="icon" data-branch="pr" data-name="${esc(x.name)}" title="Create a pull request">${icon('git-pull-request-create')}</button>` : ''}
