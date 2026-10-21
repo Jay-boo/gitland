@@ -78,12 +78,26 @@ export interface PullRequestDetails {
 
 /** A CI run (Azure Pipelines build, GitHub check). */
 export interface PipelineRun {
+  /** Build id (Azure DevOps) / workflow run id (GitHub). */
+  id: string;
+  definitionId?: string;
   name: string;
   state: 'succeeded' | 'failed' | 'running' | 'queued' | 'canceled' | 'partial';
   url: string;
   sha?: string;
   branch?: string;
   finished?: number;
+  started?: number;
+}
+
+/** A job of a pipeline run, with its steps (Azure DevOps timeline Job → Task records; GitHub jobs → steps). */
+export interface PipelineJob {
+  id: string;
+  name: string;
+  state: PipelineRun['state'];
+  /** Azure DevOps log id; GitHub: the job id. */
+  logId?: string;
+  steps?: PipelineJob[];
 }
 
 export type ReviewVote = 'approve' | 'suggestions' | 'wait' | 'reject' | 'reset';
@@ -121,7 +135,11 @@ export interface Provider {
   listPullRequests(): Promise<PullRequest[]>;
   getPullRequestDetails?(id: string): Promise<PullRequestDetails>;
   /** Latest CI runs of the repository (by commit), or of a pull request. */
-  pipelineRuns?(o: { prId?: string; max?: number }): Promise<PipelineRun[]>;
+  pipelineRuns?(o: { prId?: string; max?: number; branch?: string }): Promise<PipelineRun[]>;
+  rerunPipeline?(run: PipelineRun): Promise<void>;
+  cancelPipeline?(run: PipelineRun): Promise<void>;
+  pipelineJobs?(run: PipelineRun): Promise<PipelineJob[]>;
+  pipelineLog?(run: PipelineRun, job: PipelineJob): Promise<string>;
   votePullRequest?(id: string, vote: ReviewVote, comment?: string): Promise<void>;
   /** Add the signed-in user as a reviewer, so the PR shows under "to review". */
   requestMyReview?(id: string): Promise<void>;

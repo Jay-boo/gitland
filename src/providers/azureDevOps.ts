@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { log } from '../log';
 import { config, errorMessage } from '../util';
-import { AuthError, CreatePullRequestOptions, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails, TicketSource } from './types';
+import { AuthError, CreatePullRequestOptions, PipelineJob, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails, TicketSource } from './types';
 
 export const AZURE_DEVOPS_SCOPES = ['499b84ac-1321-427f-aa17-267ca6975798/.default'];
 /** Legacy key: one token for every organization. */
@@ -261,6 +261,18 @@ export class AzureDevOpsProvider implements Provider {
       throw new Error(`Azure DevOps: ${msg}`);
     }
     return (await res.json()) as T;
+  }
+
+  /** A plain-text answer (build logs): same credentials as request(). */
+  private async requestText(url: string, org = this.org): Promise<string> {
+    const res = await fetch(url, { headers: { Authorization: await this.authHeader(org), Accept: 'text/plain' } });
+    if (res.status === 401 || res.status === 203) {
+      throw new AuthError(`Azure DevOps (${org}) rejected the credentials.`);
+    }
+    if (!res.ok) {
+      throw new Error(`Azure DevOps: ${res.status} ${res.statusText}`);
+    }
+    return res.text();
   }
 
   /**
@@ -719,13 +731,15 @@ export class AzureDevOpsProvider implements Provider {
     return this.repoId;
   }
 
-  async pipelineRuns(o: { prId?: string; max?: number }): Promise<PipelineRun[]> {
+  async pipelineRuns(o: { prId?: string; max?: number; branch?: string }): Promise<PipelineRun[]> {
     const repositoryId = await this.repositoryId();
-    const q = o.prId ? `&branchName=${e(`refs/pull/${o.prId}/merge`)}` : '';
+    const q = o.prId ? `&branchName=${e(`refs/pull/${o.prId}/merge`)}` : o.branch ? `&branchName=${e(`refs/heads/${o.branch}`)}` : '';
     const data = await this.request<{
-      value: { definition: { name: string }; status: string; result?: string; sourceVersion: string; sourceBranch: string; finishTime?: string; _links: { web: { href: string } } }[];
+      value: { id: number; definition: { id: number; name: string }; status: string; result?: string; sourceVersion: string; sourceBranch: string; startTime?: string; finishTime?: string; _links: { web: { href: string } } }[];
     }>('GET', `${this.projectUrl}/_apis/build/builds?repositoryId=${e(repositoryId)}&repositoryType=TfsGit&$top=${o.max ?? 60}&queryOrder=queueTimeDescending${q}&${API}`);
     return data.value.map((b) => ({
+      id: String(b.id),
+      definitionId: String(b.definition.id),
       name: b.definition.name,
       state:
         b.status === 'inProgress' ? 'running'
@@ -738,7 +752,58 @@ export class AzureDevOpsProvider implements Provider {
       sha: b.sourceVersion,
       branch: stripHeads(b.sourceBranch),
       finished: b.finishTime ? Date.parse(b.finishTime) : undefined,
+      started: b.startTime ? Date.parse(b.startTime) : undefined,
     }));
+  }
+
+  /** Queues a new run of the same pipeline on the same commit. */
+  async rerunPipeline(run: PipelineRun): Promise<void> {
+    await this.request('POST', `${this.projectUrl}/_apis/build/builds?${API}`, {
+      definition: { id: Number(run.definitionId) },
+      sourceBranch: run.branch ? `refs/heads/${run.branch}` : undefined,
+      sourceVersion: run.sha,
+    });
+  }
+
+  async cancelPipeline(run: PipelineRun): Promise<void> {
+    await this.request('PATCH', `${this.projectUrl}/_apis/build/builds/${e(run.id)}?${API}`, { status: 'cancelling' });
+  }
+
+  /** Jobs and their tasks, from the build timeline. */
+  async pipelineJobs(run: PipelineRun): Promise<PipelineJob[]> {
+    const data = await this.request<{
+      records: { id: string; parentId?: string; type: string; name: string; state?: string; result?: string; order?: number; log?: { id: number } }[];
+    }>('GET', `${this.projectUrl}/_apis/build/builds/${e(run.id)}/timeline?${API}`);
+    const state = (r: { state?: string; result?: string }): PipelineJob['state'] =>
+      r.state === 'inProgress' ? 'running'
+      : r.state === 'pending' ? 'queued'
+      : r.result === 'succeeded' ? 'succeeded'
+      : r.result === 'succeededWithIssues' ? 'partial'
+      : r.result === 'canceled' || r.result === 'skipped' ? 'canceled'
+      : r.result ? 'failed'
+      : 'queued';
+    const byOrder = (a: { order?: number }, b: { order?: number }) => (a.order ?? 0) - (b.order ?? 0);
+    const records = data.records ?? [];
+    return records
+      .filter((r) => r.type === 'Job')
+      .sort(byOrder)
+      .map((j) => ({
+        id: j.id,
+        name: j.name,
+        state: state(j),
+        logId: j.log ? String(j.log.id) : undefined,
+        steps: records
+          .filter((t) => t.type === 'Task' && t.parentId === j.id)
+          .sort(byOrder)
+          .map((t) => ({ id: t.id, name: t.name, state: state(t), logId: t.log ? String(t.log.id) : undefined })),
+      }));
+  }
+
+  async pipelineLog(run: PipelineRun, job: PipelineJob): Promise<string> {
+    if (!job.logId) {
+      return '';
+    }
+    return this.requestText(`${this.projectUrl}/_apis/build/builds/${e(run.id)}/logs/${e(job.logId)}?${API}`);
   }
 
   async votePullRequest(id: string, vote: ReviewVote, comment?: string): Promise<void> {
