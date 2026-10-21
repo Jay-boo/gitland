@@ -67,6 +67,10 @@ ${groups
   function commit(/** @type {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} */ el) {
     const key = el.dataset.key;
     if (!key) return;
+    if (el instanceof HTMLInputElement && el.type === 'number' && (el.value.trim() === '' || !Number.isFinite(Number(el.value)))) {
+      // An emptied number goes back to the default instead of becoming 0.
+      return vscode.postMessage({ type: 'reset', key });
+    }
     const value =
       el instanceof HTMLInputElement && el.type === 'checkbox' ? el.checked
       : el instanceof HTMLInputElement && el.type === 'number' ? Number(el.value)

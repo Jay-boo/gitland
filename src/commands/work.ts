@@ -257,7 +257,8 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   if (provider?.activateTicket && config('azureDevOps.activateOnStartWork', false)) {
     provider.activateTicket(ticket.id, ticket.org).catch((e) => vscode.window.showWarningMessage(`Could not activate work item: ${errorMessage(e)}`));
   }
-  if (provider && prTarget && prRemote) {
+  // GitHub refuses a pull request with no commits; Azure DevOps accepts a draft right away.
+  if (provider?.kind === 'azure' && prTarget && prRemote) {
     await offerDraftPullRequest(repo, provider, ticket, branch, prTarget, prRemote);
   }
   if (worktree) {

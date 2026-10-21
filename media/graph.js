@@ -1376,7 +1376,10 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       return;
     }
     if (e.key === 'Escape') {
-      if (compareArm) compareArm = null;
+      if (compareArm) {
+        compareArm = null;
+        return notice('Compare cancelled.');
+      }
       if (!$('keysCard').hidden) $('keysCard').hidden = true;
       else if (!menuEl.hidden) menuEl.hidden = true;
       else if (!pickerEl.hidden) closePicker();
@@ -1387,7 +1390,8 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     if (!data) return;
     const t = /** @type {HTMLElement} */ (e.target);
     const inInput = !!t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
-    const action = keys.keyAction(e, inInput);
+    const onButton = !!t && !!t.closest && !!t.closest('button, a, [role="button"]');
+    const action = keys.keyAction(e, inInput, onButton);
     if (!action) return;
     e.preventDefault();
     onKeyAction(action);

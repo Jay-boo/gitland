@@ -85,7 +85,12 @@ export class TicketPanel {
       this.details = details;
       this.panel.title = `#${this.id} ${details.ticket.title}`;
       const org = this.org ?? details.ticket.org;
-      const states = provider.ticketStates ? await provider.ticketStates(this.id, org).catch(() => undefined) : undefined;
+      const states = provider.ticketStates
+        ? await provider.ticketStates(this.id, org).catch((e) => {
+            log.error(`Ticket #${this.id}: could not list its states`, e);
+            return undefined;
+          })
+        : undefined;
       const assignee = details.ticket.assignee?.toLowerCase();
       this.post({
         type: 'details',
@@ -179,14 +184,18 @@ export class TicketPanel {
           if (!provider) {
             return;
           }
-          if (m.type === 'setState') {
-            await provider.setTicketState?.(this.id, m.state, org);
-          } else if (m.type === 'assign') {
-            await provider.assignTicketToMe?.(this.id, org);
-          } else if (m.text.trim()) {
-            await provider.commentTicket?.(this.id, m.text, org);
+          try {
+            if (m.type === 'setState') {
+              await provider.setTicketState?.(this.id, m.state, org);
+            } else if (m.type === 'assign') {
+              await provider.assignTicketToMe?.(this.id, org);
+            } else if (m.text.trim()) {
+              await provider.commentTicket?.(this.id, m.text, org);
+            }
+          } finally {
+            // Also after a failure: the page shows the ticket as it really is (state, comment box enabled again).
+            await this.load();
           }
-          await this.load();
           return;
         }
       }

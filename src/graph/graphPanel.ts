@@ -390,6 +390,9 @@ export class GraphController implements vscode.Disposable {
           await this.sendDetails(m.sha, 'hover');
           break;
         case 'mergeBase': {
+          if (!/^[0-9a-f]{7,64}$/i.test(m.sha)) {
+            break;
+          }
           const base = (await this.currentRepo.exec(['merge-base', m.sha, 'HEAD']).catch(() => '')).trim();
           await this.post(base ? { type: 'jump', sha: base } : { type: 'notice', text: 'No common ancestor with HEAD.' });
           break;

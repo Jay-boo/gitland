@@ -23,10 +23,12 @@
   /**
    * The action of a key press, or null (typing in a field, a modifier held, an unknown key).
    * @param {{ key: string, ctrlKey: boolean, altKey: boolean, metaKey: boolean, shiftKey: boolean }} e
-   * @param {boolean} inInput
+   * @param {boolean} inInput typing in a field: no key is taken
+   * @param {boolean} [onButton] a focused button / link: Enter and Space press it
    */
-  function keyAction(e, inInput) {
+  function keyAction(e, inInput, onButton = false) {
     if (inInput || e.ctrlKey || e.altKey || e.metaKey) return null;
+    if (onButton && (e.key === 'Enter' || e.key === ' ')) return null;
     return KEYS[e.key] ?? null;
   }
 

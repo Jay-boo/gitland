@@ -46,12 +46,12 @@ export interface JobLike {
 /** The first failed step (depth first), or the failed job itself when it has no steps. */
 export function firstFailed<T extends JobLike>(jobs: T[]): T | undefined {
   for (const j of jobs) {
-    if (j.steps?.length) {
-      const inner = firstFailed(j.steps as T[]);
-      if (inner) {
-        return inner;
-      }
-    } else if (j.state === 'failed') {
+    const inner = j.steps?.length ? firstFailed(j.steps as T[]) : undefined;
+    if (inner) {
+      return inner;
+    }
+    // A job can fail with no failed step (timeout, lost agent): its own log tells why.
+    if (j.state === 'failed') {
       return j;
     }
   }

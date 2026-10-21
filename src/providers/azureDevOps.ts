@@ -573,7 +573,7 @@ export class AzureDevOpsProvider implements Provider {
     const type = String(w.fields['System.WorkItemType']);
     const data = await this.request<{ value: { name: string; category?: string }[] }>(
       'GET',
-      `https://dev.azure.com/${e(org)}/${e(project)}/_apis/wit/workitemtypes/${e(type)}/states?${API}`,
+      `https://dev.azure.com/${e(org)}/${e(project)}/_apis/wit/workitemtypes/${e(type)}/states?api-version=7.1-preview.1`,
       undefined,
       'application/json',
       org,

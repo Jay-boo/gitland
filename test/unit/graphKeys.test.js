@@ -54,3 +54,11 @@ test('parentIndex and childIndex follow the history', () => {
   assert.strictEqual(childIndex(f, 1), 0);
   assert.strictEqual(childIndex(f, 0), -1);
 });
+
+test('Enter and Space on a focused button press the button, not the graph', () => {
+  const e = (key) => ({ key, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false });
+  assert.strictEqual(keyAction(e('Enter'), false, true), null);
+  assert.strictEqual(keyAction(e(' '), false, true), null);
+  assert.strictEqual(keyAction(e('ArrowDown'), false, true), 'down');
+  assert.strictEqual(keyAction(e('Enter'), false, false), 'toggleDetails');
+});

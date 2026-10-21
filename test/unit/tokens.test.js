@@ -91,3 +91,15 @@ test('the active segment is outlined in high contrast', () => {
   assert.match(read(path.join(media, 'base.css')), /\.gl-seg > button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
   assert.match(read(path.join(media, 'graph.css')), /\.seg button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
 });
+
+test('the ticket reminder is a modal question, asked after the staging checks and not on the hook retry', () => {
+  const ts = read(path.join(src, 'views', 'changesView.ts'));
+  assert.match(ts, /showWarningMessage\(`\$\{branch\} has no ticket[^`]*`, \{ modal: true \}/);
+  const commit = ts.slice(ts.indexOf('private async commit('));
+  assert.ok(commit.indexOf('remindTicket') > commit.indexOf("repo.exec(['add', '-A'])"), 'after staging');
+  assert.match(commit, /!amend && !noVerify/);
+});
+
+test('graph merge-base only takes a SHA', () => {
+  assert.match(read(path.join(src, 'graph', 'graphPanel.ts')), /case 'mergeBase': \{\n\s+if \(!\/\^\[0-9a-f\]\{7,64\}\$\/i\.test\(m\.sha\)\)/);
+});

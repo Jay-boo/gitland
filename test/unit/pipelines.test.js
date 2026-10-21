@@ -33,3 +33,8 @@ test('firstFailed walks jobs then steps', () => {
   assert.strictEqual(firstFailed([{ id: '3', name: 'x', state: 'failed' }]).id, '3');
   assert.strictEqual(firstFailed([{ id: '4', name: 'y', state: 'succeeded' }]), undefined);
 });
+
+test('firstFailed falls back to a failed job whose steps all passed (timeout, lost agent)', () => {
+  const jobs = [{ id: 'j', name: 'deploy', state: 'failed', steps: [{ id: 's', name: 'ok', state: 'succeeded' }] }];
+  assert.strictEqual(firstFailed(jobs).id, 'j');
+});

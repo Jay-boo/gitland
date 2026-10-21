@@ -96,8 +96,10 @@
       data = m;
       // Keep expanded runs open (and refresh their jobs) across polls.
       for (const id of Object.keys(expanded)) {
-        if (data.runs.some((/** @type {any} */ r) => r.id === id)) vscode.postMessage({ type: 'expand', id });
-        else delete expanded[id];
+        const run = data.runs.find((/** @type {any} */ r) => r.id === id);
+        if (!run) delete expanded[id];
+        // Finished runs don't change: keep their jobs and log instead of downloading them again.
+        else if (run.state === 'running' || run.state === 'queued' || expanded[id].loading) vscode.postMessage({ type: 'expand', id });
       }
       render();
     } else if (m.type === 'jobs') {

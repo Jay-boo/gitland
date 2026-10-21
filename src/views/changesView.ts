@@ -173,7 +173,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     const link = 'Link a ticket…';
     const anyway = 'Commit anyway';
     const never = "Don't ask for this branch";
-    const choice = await vscode.window.showWarningMessage(`${branch} has no ticket. Link one so this commit shows up on it?`, link, anyway, never);
+    const choice = await vscode.window.showWarningMessage(`${branch} has no ticket. Link one so this commit shows up on it?`, { modal: true }, link, anyway, never);
     if (choice === anyway) {
       return message;
     }
@@ -413,13 +413,6 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     if (!message.trim() && !amend) {
       throw new Error('Write a commit message first.');
     }
-    if (!amend) {
-      const linked = await this.remindTicket(repo, message);
-      if (linked === undefined) {
-        return;
-      }
-      message = linked;
-    }
     if (!status.staged.length && !amend) {
       if (!status.unstaged.length) {
         throw new Error('Nothing to commit.');
@@ -432,6 +425,14 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
         return;
       }
       await repo.exec(['add', '-A']);
+    }
+    // Not on amend (the commit exists) nor on "commit anyway" after a hook refused it (already asked).
+    if (!amend && !noVerify) {
+      const linked = await this.remindTicket(repo, message);
+      if (linked === undefined) {
+        return;
+      }
+      message = linked;
     }
     const hooks = noVerify ? [] : await repo.commitHooks().catch(() => []);
     let failed: string | undefined;
