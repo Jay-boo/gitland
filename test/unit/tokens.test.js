@@ -58,3 +58,11 @@ test('graph lanes come from the theme, not hex literals', () => {
   assert.deepStrictEqual(js.match(/'#[0-9a-fA-F]{3,8}'/g) || [], []);
   assert.match(js, /gl\.themeColors|themeColors\(/);
 });
+
+test('editor blame hover uses theme colours', () => {
+  const ts = read(path.join(src, 'blame', 'blameController.ts'));
+  for (const name of ['MUTED', 'BRANCH', 'PR', 'TICKET', 'RELEASE', 'ADDED', 'DELETED']) {
+    assert.match(ts, new RegExp(`const ${name} = 'var\\(--vscode-[\\w-]+\\)'`), `${name} is a theme variable`);
+  }
+  assert.doesNotMatch(ts, /\$\{c\}26/, 'pills do not append a hex alpha to a colour');
+});

@@ -39,13 +39,14 @@ interface CommitExtra {
 
 const HOVER_COMMANDS = ['gitland.showGraph', 'gitland.openCommitFileDiff', 'gitland.fileHistory', 'gitland.lineHistory', 'gitland.explainLines', 'gitland.openCommitOnRemote', 'gitland.copyText'];
 
-const MUTED = '#8b949e';
-const BRANCH = '#6f9fd0';
-const PR = '#a08cc8';
-const TICKET = '#6fb293';
-const RELEASE = '#c6ab6e';
-const ADDED = '#7fb58f';
-const DELETED = '#c98686';
+// Theme colours (VS Code allows var(--vscode-*) in hover spans), same meaning as the webviews' --gl-* tokens.
+const MUTED = 'var(--vscode-descriptionForeground)';
+const BRANCH = 'var(--vscode-charts-blue)';
+const PR = 'var(--vscode-charts-purple)';
+const TICKET = 'var(--vscode-charts-green)';
+const RELEASE = 'var(--vscode-charts-yellow)';
+const ADDED = 'var(--vscode-gitDecoration-addedResourceForeground)';
+const DELETED = 'var(--vscode-gitDecoration-deletedResourceForeground)';
 
 /**
  * GitLens-like blame: current-line annotation + status bar by default,
@@ -384,17 +385,7 @@ export class BlameController implements vscode.Disposable {
     if (c.email) {
       md.appendMarkdown(`&nbsp;&nbsp;${muted(escapeMd(c.email))}`);
     }
-    md.appendMarkdown(`\n\n${color('●', ageColor(c.date))}&nbsp;${timeAgo(c.date)}&nbsp;&nbsp;${muted(formatDate(c.date))}`);
-    if (extra?.branch) {
-      md.appendMarkdown(`&nbsp;&nbsp;&nbsp;${pill(`$(git-branch) ${escapeMd(truncate(extra.branch, 36))}`, BRANCH)}`);
-    }
-    if (extra) {
-      md.appendMarkdown(`&nbsp;&nbsp;${extra.release ? pill(`$(tag) ${escapeMd(extra.release)}`, RELEASE) : muted('not released yet')}`);
-    }
-    if (extra?.pr) {
-      md.appendMarkdown(`&nbsp;&nbsp;[${pill(`$(git-pull-request) PR ${extra.pr.id}`, PR)}](${extra.pr.url} "Pull request that brought this change")`);
-    }
-    md.appendMarkdown('\n\n');
+    md.appendMarkdown(`\n\n${color('●', ageColor(c.date))}&nbsp;${timeAgo(c.date)}&nbsp;&nbsp;${muted(formatDate(c.date))}\n\n`);
 
     // Message
     const message = extra?.message || c.summary;
@@ -407,13 +398,25 @@ export class BlameController implements vscode.Disposable {
       md.appendMarkdown(safeMarkdown(truncate(body, 1500)) + '\n\n');
     }
 
-    // PR / work item links
-    if (extra?.links.length) {
-      md.appendMarkdown(
-        extra.links
-          .map((l) => (l.kind === 'pr' ? `[${pill(`$(git-pull-request) PR ${l.id}`, PR)}](${l.url})` : `[${pill(`$(issues) #${l.id}`, TICKET)}](${l.url})`))
-          .join('&nbsp;&nbsp;&nbsp;') + '\n\n',
-      );
+    // One line of refs, like the graph hover card: branch, pull request, mentioned PRs / work items, release.
+    const refs: string[] = [];
+    if (extra?.branch) {
+      refs.push(pill(`$(git-branch) ${escapeMd(truncate(extra.branch, 36))}`, BRANCH));
+    }
+    if (extra?.pr) {
+      refs.push(`[${pill(`$(git-pull-request) PR ${extra.pr.id}`, PR)}](${extra.pr.url} "Pull request that brought this change")`);
+    }
+    for (const l of extra?.links ?? []) {
+      if (l.kind === 'pr' && l.id === extra?.pr?.id) {
+        continue;
+      }
+      refs.push(l.kind === 'pr' ? `[${pill(`$(git-pull-request) PR ${l.id}`, PR)}](${l.url})` : `[${pill(`$(issues) #${l.id}`, TICKET)}](${l.url})`);
+    }
+    if (extra) {
+      refs.push(extra.release ? pill(`$(tag) ${escapeMd(extra.release)}`, RELEASE) : muted('not released yet'));
+    }
+    if (refs.length) {
+      md.appendMarkdown(refs.join('&nbsp;&nbsp;') + '\n\n');
     }
 
     // SHA and stats
@@ -522,7 +525,7 @@ function color(text: string, c: string): string {
 
 /** Tinted badge: colored text on the same color at low opacity (#RRGGBBAA is allowed in hovers). */
 function pill(text: string, c: string): string {
-  return `<span style="color:${c};background-color:${c}26;">&nbsp;${text}&nbsp;</span>`;
+  return `<span style="color:${c};background-color:var(--vscode-textCodeBlock-background);border-radius:9px;">&nbsp;${text}&nbsp;</span>`;
 }
 
 /** Recent = warm, old = cool (log scale over a year), in the graph's muted palette. */
@@ -543,7 +546,7 @@ function diffBar(added: number, deleted: number): string {
   const total = added + deleted;
   const a = total ? Math.round((added / total) * 5) : 0;
   const d = total ? Math.min(5 - a, Math.round((deleted / total) * 5)) : 0;
-  return color('■'.repeat(a), ADDED) + color('■'.repeat(d), DELETED) + color('■'.repeat(5 - a - d), '#6e7681');
+  return color('■'.repeat(a), ADDED) + color('■'.repeat(d), DELETED) + color('■'.repeat(5 - a - d), 'var(--vscode-disabledForeground)');
 }
 
 function pad(s: string, n: number): string {
