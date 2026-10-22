@@ -454,7 +454,7 @@
 <div class="sel-line gl-ck"><span class="name">${icon('circle-filled')}${isWt ? 'Uncommitted changes' : `Selected · <span class="mono">${esc(d.sha.slice(0, 7))}</span>`}</span>${
     isWt
       ? ''
-      : `<button class="act" data-act="createBranch">${icon('git-branch')}Branch here</button><button class="act" data-act="checkoutCommit">${icon('target')}Checkout</button><button class="act" data-act="cherryPick">${icon('git-pull-request-go-to-changes')}Cherry-pick</button><button class="act" data-act="revert">${icon('discard')}Revert</button><button class="act" data-act="openRemote" title="Open on remote">${icon('link-external')}</button><button class="act gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button>`
+      : `<button class="act" data-act="createBranch" title="Create a branch here">${icon('git-branch')}Branch here</button><button class="act" data-act="checkoutCommit" title="Check out this commit">${icon('target')}Checkout</button><button class="act" data-act="cherryPick" title="Cherry-pick onto the current branch">${icon('git-pull-request-go-to-changes')}Cherry-pick</button><button class="act" data-act="revert" title="Revert this commit">${icon('discard')}Revert</button><button class="act" data-act="openRemote" title="Open on remote">${icon('link-external')}</button><button class="act gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button>`
   }<button class="act close" title="Close (Esc)">${icon('close')}</button></div>
 <div class="info">
   ${
@@ -897,7 +897,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     rowsEl.querySelectorAll('.commit.cmp').forEach((el) => el.classList.remove('cmp'));
     for (const sha of [a, b]) rowsEl.querySelector(`.commit[data-sha="${sha}"]`)?.classList.add('cmp');
     detailsEl.hidden = false;
-    detailsEl.innerHTML = `<div class="info"><h2 class="muted">Comparing ${a.slice(0, 7)} ↔ ${b.slice(0, 7)}…</h2></div>`;
+    detailsEl.innerHTML = `<div class="sel-line gl-ck"><span class="name">Comparing ${a.slice(0, 7)} ↔ ${b.slice(0, 7)}…</span><button class="act close" title="Close (Esc)">${icon('close')}</button></div>`;
     vscode.postMessage({ type: 'compare', a, b });
   }
 
@@ -912,15 +912,13 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     detailsEl.style.setProperty('--lane', 'var(--accent)');
     detailsEl.innerHTML = `
 <div class="resizer"></div>
-<button class="close ghost icon" title="Close (Esc)">${icon('close')}</button>
+<div class="sel-line gl-ck"><span class="name">${icon('git-compare')}Compare · <span class="mono">${esc(m.a.slice(0, 7))}..${esc(m.b.slice(0, 7))}</span></span><button class="act" data-act="swapCompare" title="Swap the two commits">${icon('arrow-swap')}Swap</button><button class="act close" title="Close (Esc)">${icon('close')}</button></div>
 <div class="info">
-  <h2>${icon('git-compare')} Compare</h2>
   ${side(ca, m.a)}
   <div class="cmp-arrow">${icon('arrow-down')} <span>${plural(m.onlyNewer, 'commit')} ahead${m.onlyOlder ? `, ${plural(m.onlyOlder, 'commit')} behind` : ''}</span></div>
   ${side(cb, m.b)}
-  <div class="actions"><button data-act="swapCompare">${icon('arrow-swap')}Swap</button></div>
 </div>
-<div class="files"><h3><span>${plural(m.files.length, 'file')} changed</span><span class="grow"></span>${st.added ? `<span class="plus">+${st.added}</span>` : ''}${st.deleted ? `<span class="minus">−${st.deleted}</span>` : ''}</h3>${fileRows(m.files) || '<span class="muted">No differences</span>'}</div>`;
+<div class="files"><h3 class="gl-ck"><span class="name">${icon('diff')}${plural(m.files.length, 'file')} changed</span>${st.added ? `<span class="plus act-stat">+${st.added}</span>` : ''}${st.deleted ? `<span class="minus act-stat">−${st.deleted}</span>` : ''}</h3>${fileRows(m.files) || '<span class="muted">No differences</span>'}</div>`;
     detailsEl.hidden = false;
   }
 

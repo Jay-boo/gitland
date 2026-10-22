@@ -303,7 +303,11 @@ body.compact .card .ft .hint { display: none; }
 #details .info, #details .files { overflow: auto; }
 /* The selected commit is the one filled card of the graph. */
 #details .info { padding: 12px 14px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
-#details .sel-line { grid-column: 1 / -1; margin: 8px 0 8px; }
+#details .sel-line { grid-column: 1 / -1; flex-wrap: wrap; row-gap: 4px; margin: 8px 0 8px; }
+#details .sel-line .name { flex: 0 1 auto; }
+/* Narrow (sidebar): the actions keep only their icons (their titles say what they do). */
+body.compact #details .sel-line .act:not(.close) { font-size: 0; gap: 0; padding: 0 5px; }
+body.compact #details .sel-line .act .codicon { font-size: 12px; }
 #details .sel-line .name .codicon { font-size: 10px; color: var(--lane); }
 #details .sel-line .close { padding: 0 4px; }
 #details .sel-line .gen-btn { color: var(--gl-ai); }
@@ -391,7 +395,7 @@ body.compact .card .ft .hint { display: none; }
 @media (max-width: 800px) {
   .row { grid-template-columns: var(--graph-w, 80px) minmax(150px, 1fr) 0 0 var(--w-sha, 66px); }
   .c-author, .c-date { display: none; }
-  #details { grid-template-columns: 1fr; }
+  #details { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); }
   #details .files { padding-top: 8px; }
 }
 
@@ -405,7 +409,7 @@ body.compact .card .ft .hint { display: none; }
     min-width: 320px;
     max-width: 600px;
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto auto;
     overflow: auto;
   }
   #details .files { padding-top: 8px; overflow: visible; }
@@ -427,7 +431,7 @@ body.compact .row { grid-template-columns: var(--graph-w, 80px) minmax(0, 1fr); 
 body.compact .row .c-author, body.compact .row .c-date, body.compact .row .c-sha { display: none; }
 body.compact .row.header { display: none; }
 body.compact .ref { max-width: 55%; }
-body.compact #details { grid-template-columns: 1fr; height: 50%; }
+body.compact #details { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); height: 50%; }
 body.compact #details .files { padding-top: 8px; }
 
 /* ---------- stashes ---------- */

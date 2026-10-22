@@ -143,7 +143,11 @@ body.is-generating .msgwrap::after {
 .group.conflicts .gh .n { color: var(--gl-err); }
 .gh .gs { display: inline-flex; gap: 4px; font-family: var(--mono); font-size: 11px; font-weight: normal; }
 .gh .gs:empty { display: none; }
-.gh .ga { order: 2; display: inline-flex; align-items: center; gap: 4px; }
+.gh { flex-wrap: wrap; row-gap: 4px; }
+.gh .gt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gh .ga { order: 2; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+/* Narrow sidebar: the +/− totals give way to the actions. */
+@media (max-width: 260px) { .gh .gs { display: none; } }
 
 .ga .selc { margin-right: 4px; font-weight: normal; color: var(--gl-link); }
 .gb .file { user-select: none; }
@@ -154,7 +158,7 @@ body.is-generating .msgwrap::after {
 
 /* Files are outlined rows. */
 .gb .file { height: 30px; margin-bottom: 6px; padding: 0 6px 0 10px; gap: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-radius: 8px; }
-.gb .file.sel { border-color: transparent; }
+.gb .file.sel { border-color: var(--vscode-contrastActiveBorder, transparent); }
 .gb .file .st {
   width: 16px;
   height: 16px;
@@ -200,7 +204,7 @@ body.is-generating .msgwrap::after {
 /* ---------- hooks & signing ---------- */
 .hook-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px 0 5px; border-radius: 5px; font-size: 11px; color: var(--muted); background: var(--gl-chip); border: 1px solid var(--gl-border); }
 .hook-chip .codicon { font-size: 11px; }
-.hook-out { margin: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-left: 3px solid var(--gl-err); }
+.hook-out { margin: 0 0 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-left: 3px solid var(--gl-err); }
 .hook-out[hidden] { display: none; }
 .ho-h { display: flex; align-items: center; gap: 6px; }
 .ho-h .codicon { color: var(--gl-err); }
@@ -211,4 +215,4 @@ body.is-generating .msgwrap::after {
 /* ---------- in an editor tab (Open Changes in Editor) ---------- */
 /* Same page, on the editor background, at a readable width instead of the whole screen. */
 body.changes.in-editor { --gl-bg: var(--vscode-editor-background); padding: 8px 0 24px; }
-body.changes.in-editor > * { max-width: 920px; margin-left: auto; margin-right: auto; }
+body.changes.in-editor > * { width: 100%; max-width: 920px; margin-left: auto; margin-right: auto; }

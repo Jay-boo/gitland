@@ -86,3 +86,7 @@ button.big:disabled { opacity: 0.45; cursor: default; }
 .new-comment .rb-bar { display: flex; gap: 6px; margin-top: 6px; }
 .t-main h3 > .grow, .t-side h3 > .grow, .dcard h3 > .grow, .cl-group h3 > .grow, .set-group h3 > .grow, .tab-body h3 > .grow { display: none; }
 .dcard h3 > .k, .cl-group h3 > .k { order: 2; }
+
+/* Markdown headings inside descriptions are not section separators. */
+.rich h3 { display: block; }
+.rich h3::after { content: none; }

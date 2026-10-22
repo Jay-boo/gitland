@@ -28,6 +28,19 @@ const REPLIES = { graph: { select: 'details', hover: 'hover' }, pipelines: { exp
 /** Extra shots after an interaction: [suffix, async (page) => …]. */
 const INTERACTIONS = {
   changes: [
+    ['narrow', async (page) => {
+      // Group headers (title, count, stats, actions) must fit the sidebar width.
+      const bad = await page.evaluate(() => [...document.querySelectorAll('.gh')].filter((h) => [...h.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > innerWidth - 2)).map((h) => h.textContent.trim().slice(0, 30)));
+      if (bad.length) throw new Error(`changes: group header actions cut off at ${await page.evaluate(() => innerWidth)}px: ${bad.join(' | ')}`);
+    }],
+    ['editor', async (page) => {
+      // In an editor tab the sections keep the readable width (not their content width).
+      const vp = page.viewportSize();
+      await page.setViewportSize({ width: 1400, height: vp.height });
+      const w = await page.evaluate(() => { document.body.classList.add('in-editor'); const g = document.getElementById('groups').getBoundingClientRect().width; const c = document.querySelector('.compose').getBoundingClientRect().width; document.body.classList.remove('in-editor'); return Math.min(g, c); });
+      await page.setViewportSize(vp);
+      if (w < 800) throw new Error(`changes in an editor tab: sections shrink to ${w}px`);
+    }],
     ['end', async (page) => {
       // The pinned composer must never cover the last file: scroll to the end and compare.
       const r = await page.evaluate(() => {
@@ -59,6 +72,38 @@ const INTERACTIONS = {
       const box = await row.boundingBox();
       await row.click({ position: { x: box.width - 12, y: box.height / 2 } });
       await page.waitForTimeout(300);
+    }],
+    ['detailsfit', async (page) => {
+      // Selected-commit actions and Close must all be reachable; the message must keep room with many files.
+      const row = page.locator('#rows .commit').nth(3);
+      const box = await row.boundingBox();
+      await row.click({ position: { x: box.width - 12, y: box.height / 2 } });
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(() => {
+        const d = document.getElementById('details');
+        if (!d || d.hidden) return { err: 'details not open' };
+        const dr = d.getBoundingClientRect();
+        const cut = [...d.querySelectorAll('.sel-line .act')].filter((b) => { const x = b.getBoundingClientRect(); return x.right > dr.right + 1 || x.width < 8; }).map((b) => b.textContent.trim() || b.className);
+        const files = d.querySelector('.files');
+        const f = files && files.querySelector('.file');
+        if (f) for (let i = 0; i < 30; i++) files.appendChild(f.cloneNode(true));
+        const info = d.querySelector('.info').getBoundingClientRect().height;
+        return { cut, info };
+      });
+      if (r.err) throw new Error(`graph: ${r.err}`);
+      if (r.cut.length) throw new Error(`graph details: actions cut off: ${r.cut.join(', ')}`);
+      if (r.info < 60) throw new Error(`graph details: the commit summary is squeezed to ${r.info}px by the file list`);
+    }],
+    ['compare', async (page) => {
+      await page.keyboard.press('Escape');
+      const rows = page.locator('#rows .commit');
+      const b3 = await rows.nth(3).boundingBox();
+      await rows.nth(3).click({ position: { x: b3.width - 12, y: b3.height / 2 } });
+      const b5 = await rows.nth(5).boundingBox();
+      await rows.nth(5).click({ position: { x: b5.width - 12, y: b5.height / 2 }, modifiers: ['Control'] });
+      await page.waitForTimeout(300);
+      const w = await page.evaluate(() => { const c = document.querySelector('#details .close'); return c ? c.getBoundingClientRect().width : 0; });
+      if (w > 60) throw new Error(`graph compare: the close button is stretched to ${w}px`);
     }],
     ['branches', async (page) => {
       await page.locator('#btnBranches').click();
@@ -132,6 +177,10 @@ window.__posted = [];
 let __state = undefined;
 window.__replies = {};
 const __reply = (m) => {
+  if (m && m.type === 'compare' && window.__replies.select) {
+    const d = window.__replies.select.details || {};
+    return void setTimeout(() => window.postMessage({ type: 'compare', a: m.a, b: m.b, files: d.files || [], onlyNewer: 2, onlyOlder: 0 }, '*'), 30);
+  }
   const r = m && window.__replies[m.type];
   if (r) setTimeout(() => window.postMessage({ ...r, sha: m.sha ?? r.sha, details: r.details && { ...r.details, sha: m.sha ?? r.sha } }, '*'), 30);
 };

@@ -545,9 +545,9 @@ export const CHANGES_BODY = `<header class="sync">
 </header>
 <div id="busy" class="busy" hidden></div>
 
-<div id="hookOut" class="hook-out" hidden></div>
 <main id="groups"></main>
 <section class="compose">
+  <div id="hookOut" class="hook-out" hidden></div>
   <div class="msgwrap">
     <textarea id="msg" rows="1" spellcheck="true" placeholder="Message · Ctrl+Enter to commit"></textarea>
     <button id="btnGen" class="icon gen" title="Generate the commit message from the changes (AI)"><i class="codicon codicon-sparkle"></i></button>

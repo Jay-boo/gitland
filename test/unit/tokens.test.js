@@ -150,3 +150,22 @@ test('stream components exist with high-contrast borders', () => {
   assert.match(css, /--gl-chip:/);
   assert.match(css, /--gl-dash:/);
 });
+
+test('a refused commit shows its hook output next to the Commit button', () => {
+  const ts = read(path.join(src, 'views', 'changesView.ts'));
+  const body = ts.slice(ts.indexOf('export const CHANGES_BODY'));
+  const compose = body.indexOf('<section class="compose">');
+  const hook = body.indexOf('id="hookOut"');
+  const end = body.indexOf('</section>', compose);
+  assert.ok(hook > compose && hook < end, '#hookOut is inside the pinned composer');
+});
+
+test('markdown headings in descriptions are not section separators', () => {
+  assert.match(read(path.join(media, 'ticket.css')), /\.rich h3::after\s*\{[^}]*content:\s*none/);
+});
+
+test('dashed lines and selected rows keep high-contrast edges', () => {
+  assert.match(base(), /--gl-dash:\s*var\(--vscode-contrastBorder,/);
+  assert.match(base(), /\.gl-orow\.sel\s*\{[^}]*contrastActiveBorder/);
+  assert.match(read(path.join(media, 'changes.css')), /\.gb \.file\.sel\s*\{[^}]*contrastActiveBorder/);
+});

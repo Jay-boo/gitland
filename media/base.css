@@ -95,7 +95,7 @@ body {
   --surface-2: var(--gl-card);
   /* chips and dashed rules */
   --gl-chip: color-mix(in srgb, var(--gl-fg) 11%, var(--gl-bg));
-  --gl-dash: color-mix(in srgb, var(--gl-fg) 24%, transparent);
+  --gl-dash: var(--vscode-contrastBorder, color-mix(in srgb, var(--gl-fg) 24%, transparent));
 }
 
 * { box-sizing: border-box; }
@@ -203,7 +203,7 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
   cursor: pointer;
 }
 .gl-orow:hover { background: var(--gl-hover); }
-.gl-orow.sel { background: var(--gl-selected); color: var(--gl-selected-fg); border-color: transparent; }
+.gl-orow.sel { background: var(--gl-selected); color: var(--gl-selected-fg); border-color: var(--vscode-contrastActiveBorder, transparent); }
 
 /* Long lists (commit graph, histories) stay plain dense rows. */
 .gl-list { padding: 0; }
