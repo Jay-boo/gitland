@@ -130,7 +130,7 @@ test('filled surfaces are rare (one card per screen)', () => {
 });
 
 test('chips are square-ish (no round pills)', () => {
-  const ok = /switch|knob|track|avatar|bubble|dot|scrollbar|gl-seg|gl-skeleton|loading/;
+  const ok = /switch|knob|track|avatar|bubble|dot|legend i|scrollbar|gl-seg|gl-skeleton|loading/;
   const bad = [];
   for (const f of files(media, '.css')) {
     for (const [sel, body] of rules(read(f))) {

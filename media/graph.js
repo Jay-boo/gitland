@@ -451,7 +451,11 @@
     detailsEl.style.setProperty('--lane', lane);
     detailsEl.innerHTML = `
 <div class="resizer"></div>
-<button class="close ghost icon" title="Close (Esc)">${icon('close')}</button>
+<div class="sel-line gl-ck"><span class="name">${icon('circle-filled')}${isWt ? 'Uncommitted changes' : `Selected · <span class="mono">${esc(d.sha.slice(0, 7))}</span>`}</span>${
+    isWt
+      ? ''
+      : `<button class="act" data-act="createBranch">${icon('git-branch')}Branch here</button><button class="act" data-act="checkoutCommit">${icon('target')}Checkout</button><button class="act" data-act="cherryPick">${icon('git-pull-request-go-to-changes')}Cherry-pick</button><button class="act" data-act="revert">${icon('discard')}Revert</button><button class="act" data-act="openRemote" title="Open on remote">${icon('link-external')}</button><button class="act gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button>`
+  }<button class="act close" title="Close (Esc)">${icon('close')}</button></div>
 <div class="info">
   ${
     isWt
@@ -478,18 +482,10 @@
   ${
     isWt
       ? ''
-      : `<div class="actions">
-    <button class="primary" data-act="createBranch">${icon('git-branch')}Branch here</button>
-    <button data-act="checkoutCommit">${icon('target')}Checkout</button>
-    <button data-act="cherryPick">${icon('git-pull-request-go-to-changes')}Cherry-pick</button>
-    <button data-act="revert">${icon('discard')}Revert</button>
-    <button data-act="openRemote">${icon('link-external')}Open on remote</button>
-    <button class="gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button>
-  </div>
-  <div class="explain-card" id="explainCard" hidden><div class="ex-h">${icon('sparkle')} Explanation<span class="grow"></span><span class="ex-stop" data-act="stopExplain">${icon('debug-stop')}</span></div><div class="md" id="explainBody"></div></div>`
+      : `<div class="explain-card" id="explainCard" hidden><div class="ex-h">${icon('sparkle')} Explanation<span class="grow"></span><span class="ex-stop" data-act="stopExplain">${icon('debug-stop')}</span></div><div class="md" id="explainBody"></div></div>`
   }
 </div>
-<div class="files"><h3><span>${plural(files.length, 'file')} changed</span><span class="grow"></span>${st.added ? `<span class="plus">+${st.added}</span>` : ''}${st.deleted ? `<span class="minus">−${st.deleted}</span>` : ''}</h3>${fileRows(files) || '<span class="muted">No file changes</span>'}</div>`;
+<div class="files"><h3 class="gl-ck"><span class="name">${icon('diff')}${plural(files.length, 'file')} changed</span>${st.added ? `<span class="plus act-stat">+${st.added}</span>` : ''}${st.deleted ? `<span class="minus act-stat">−${st.deleted}</span>` : ''}</h3>${fileRows(files) || '<span class="muted">No file changes</span>'}</div>`;
     detailsEl.hidden = false;
   }
 
