@@ -46,10 +46,10 @@ test('keyboard focus stays visible', () => {
 });
 
 test('cards, lists, pills and pop-overs show the high-contrast border', () => {
-  for (const sel of ['.gl-card', '.gl-list', '.gl-pill', '.gl-pop']) {
-    const rule = base().match(new RegExp(`(^|\\n)${sel.replace('.', '\\.')}\\s*\\{[^}]*\\}`));
+  for (const sel of ['.gl-task', '.gl-orow', '.gl-chip', '.gl-pop']) {
+    const rule = base().match(new RegExp(`(^|\\n)${sel.replace('.', '\\.')}[^{\\n]*\\{[^}]*\\}`));
     assert.ok(rule, `${sel} rule exists`);
-    assert.match(rule[0], /--gl-border/, `${sel} uses --gl-border`);
+    assert.match(rule[0], /--gl-border|contrastBorder/, `${sel} keeps an edge in high contrast`);
   }
 });
 
@@ -102,4 +102,51 @@ test('the ticket reminder is a modal question, asked after the staging checks an
 
 test('graph merge-base only takes a SHA', () => {
   assert.match(read(path.join(src, 'graph', 'graphPanel.ts')), /case 'mergeBase': \{\n\s+if \(!\/\^\[0-9a-f\]\{7,64\}\$\/i\.test\(m\.sha\)\)/);
+});
+
+// ---------- stream restyle (docs/superpowers/specs/2026-10-22-stream-restyle-design.md) ----------
+
+/** [selector, declarations] of every rule in a stylesheet (flat; @media blocks are scanned too). */
+function rules(css) {
+  const out = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  let m;
+  while ((m = re.exec(src))) out.push([m[1].trim().replace(/^@media[^{]*$/, '').trim(), m[2]]);
+  return out;
+}
+
+test('filled surfaces are rare (one card per screen)', () => {
+  const allowed = ['.sync', '#details .info', '.t-head', '.t-actions', '.c-head', '.preview'];
+  const bad = [];
+  for (const f of files(media, '.css').filter((f) => path.basename(f) !== 'base.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (/background(-color)?:\s*var\(--(gl-card|surface-2|surface)\)/.test(body) && !sel.split(',').every((s) => allowed.some((a) => s.trim().endsWith(a)))) {
+        bad.push(`${path.basename(f)}: ${sel}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(bad, []);
+});
+
+test('chips are square-ish (no round pills)', () => {
+  const ok = /switch|knob|track|avatar|bubble|dot|scrollbar|gl-seg|gl-skeleton|loading/;
+  const bad = [];
+  for (const f of files(media, '.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (/border-radius:\s*(999px|50%)/.test(body) && !ok.test(sel)) bad.push(`${path.basename(f)}: ${sel}`);
+    }
+  }
+  assert.deepStrictEqual(bad, []);
+});
+
+test('stream components exist with high-contrast borders', () => {
+  const css = base();
+  for (const sel of ['.gl-task', '.gl-orow', '.gl-ck .act', '.gl-chip']) {
+    const rule = rules(css).find(([s]) => s.split(',').map((x) => x.trim()).includes(sel));
+    assert.ok(rule, `${sel} rule exists`);
+    assert.match(rule[1], /--gl-border|contrastBorder|--gl-dash/, `${sel} keeps an edge in high contrast`);
+  }
+  assert.match(css, /--gl-chip:/);
+  assert.match(css, /--gl-dash:/);
 });

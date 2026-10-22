@@ -93,6 +93,9 @@ body {
   --gl-inset: color-mix(in srgb, var(--gl-bg) 60%, var(--gl-card));
   --surface: color-mix(in srgb, var(--gl-fg) 3%, var(--gl-bg));
   --surface-2: var(--gl-card);
+  /* chips and dashed rules */
+  --gl-chip: color-mix(in srgb, var(--gl-fg) 11%, var(--gl-bg));
+  --gl-dash: color-mix(in srgb, var(--gl-fg) 24%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -155,76 +158,100 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
 .gl-btn-pair { display: flex; gap: 8px; }
 .gl-btn-pair > button { flex: 1 1 0; min-width: 0; height: 28px; font-weight: 500; }
 
-/* ---------- cards & lists ---------- */
+/* ---------- the one filled card ---------- */
 
-.gl-card {
+/* Sixth's "Task" card: ONE per screen (branch header, selected commit, tab title). Everything else is unfilled. */
+.gl-task, .gl-card {
   background: var(--gl-card);
   border: 1px solid var(--gl-border);
   border-radius: var(--gl-radius-card);
   padding: 10px 12px;
 }
 
-/* One rounded card holding dense rows. */
-.gl-list {
-  background: var(--gl-card);
-  border: 1px solid var(--gl-border);
-  border-radius: var(--gl-radius-card);
-  padding: 4px 0;
-  overflow: hidden;
+/* ---------- sections: dashed "checkpoint" separators ---------- */
+
+/* <div class="gl-ck"><span class="name">⚑ Staged · 2</span><button class="act">Unstage all</button></div> */
+.gl-ck { display: flex; align-items: center; gap: 6px; min-height: 20px; margin: 12px 0 8px; color: var(--gl-faint); font-size: 11px; }
+.gl-ck .name { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--gl-muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gl-ck::after { content: ''; flex: 1 1 12px; order: 1; min-width: 12px; border-top: 1px dashed var(--gl-dash); }
+.gl-ck .act {
+  order: 2;
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--gl-muted);
+  background: transparent;
+  border: 1px dashed var(--vscode-contrastBorder, var(--gl-dash));
+  border-radius: 4px;
 }
+.gl-ck .act:hover { color: var(--gl-fg); border-style: solid; background: transparent; }
+.gl-ck .act .codicon { font-size: 12px; }
+
+/* ---------- outlined rows (short clickable lists) ---------- */
+
+.gl-orow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong));
+  border-radius: 8px;
+  cursor: pointer;
+}
+.gl-orow:hover { background: var(--gl-hover); }
+.gl-orow.sel { background: var(--gl-selected); color: var(--gl-selected-fg); border-color: transparent; }
+
+/* Long lists (commit graph, histories) stay plain dense rows. */
+.gl-list { padding: 0; }
 .gl-row { display: flex; align-items: center; gap: 8px; min-height: var(--gl-row-h); padding: 0 10px; cursor: pointer; }
 .gl-row:hover { background: var(--gl-hover); }
 .gl-row.sel, .gl-row[aria-selected='true'] { background: var(--gl-selected); color: var(--gl-selected-fg); }
 
-/* Section header: icon + bold title + count. */
-.gl-sec { display: flex; align-items: center; gap: 6px; min-height: 24px; margin: 10px 2px 6px; font-weight: 600; }
-.gl-sec > .codicon { color: var(--gl-muted); font-weight: normal; }
-.gl-sec .n { padding: 0 7px; border-radius: 999px; background: var(--gl-inset); color: var(--gl-muted); font-size: 11px; font-weight: normal; line-height: 16px; }
+/* Comments: a quote line, no box. */
+.gl-quote { margin: 10px 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--gl-dash); }
 
-/* ---------- pills & segmented switch ---------- */
+/* ---------- chips (small, square-ish, dark; meaning in the text colour) ---------- */
 
-.gl-pill {
+.gl-chip, .gl-pill {
   --c: var(--gl-muted);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+  flex: none;
   height: 18px;
-  padding: 0 8px;
+  padding: 0 7px;
   border: 1px solid var(--gl-border);
-  border-radius: 999px;
+  border-radius: 5px;
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
   color: var(--c);
-  background: color-mix(in srgb, var(--c) 15%, transparent);
+  background: var(--gl-chip);
 }
-.gl-pill .codicon { font-size: 11px; vertical-align: 0; }
-.gl-pill.neutral { color: var(--gl-muted); background: var(--gl-inset); }
-.gl-pill.c-main { --c: var(--gl-main); }
-.gl-pill.c-dev { --c: var(--gl-dev); }
-.gl-pill.c-feature { --c: var(--gl-feature); }
-.gl-pill.c-fix { --c: var(--gl-fix); }
-.gl-pill.c-hotfix { --c: var(--gl-hotfix); }
-.gl-pill.c-release { --c: var(--gl-release); }
-.gl-pill.c-chore { --c: var(--gl-chore); }
-.gl-pill.c-ok { --c: var(--gl-ok); }
-.gl-pill.c-warn { --c: var(--gl-warn); }
-.gl-pill.c-err { --c: var(--gl-err); }
-.gl-pill.c-ai { --c: var(--gl-ai); }
-.gl-pill.c-link { --c: var(--gl-link); }
+.gl-chip .codicon, .gl-pill .codicon { font-size: 11px; vertical-align: 0; }
+.c-main { --c: var(--gl-main); }
+.c-dev { --c: var(--gl-dev); }
+.c-feature { --c: var(--gl-feature); }
+.c-fix { --c: var(--gl-fix); }
+.c-hotfix { --c: var(--gl-hotfix); }
+.c-release { --c: var(--gl-release); }
+.c-chore { --c: var(--gl-chore); }
+.c-ok { --c: var(--gl-ok); }
+.c-warn { --c: var(--gl-warn); }
+.c-err { --c: var(--gl-err); }
+.c-ai { --c: var(--gl-ai); }
+.c-link { --c: var(--gl-link); }
+
+/* ---------- segmented switch ---------- */
 
 .gl-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--gl-radius-btn); background: var(--gl-inset); border: 1px solid var(--gl-border); }
 .gl-seg > button { height: 20px; padding: 0 9px; border: none; border-radius: 4px; background: transparent; color: var(--gl-muted); font-size: 11.5px; }
 .gl-seg > button:hover { color: var(--gl-fg); background: transparent; }
 .gl-seg > button.on, .gl-seg > button[aria-pressed='true'] { color: var(--vscode-button-foreground, white); background: var(--vscode-button-background, #0078d4); outline: 1px solid var(--vscode-contrastActiveBorder, transparent); outline-offset: -1px; }
-
-/* ---------- separators ---------- */
-
-/* Dashed line with a label and tiny outlined actions (Sixth's "Checkpoint · Compare · Restore"). */
-.gl-sep { display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; color: var(--gl-faint); font-size: 11px; }
-.gl-sep::after { content: ''; flex: 1; order: 1; border-top: 1px dashed var(--gl-line-strong); }
-.gl-sep .gl-sep-act { order: 2; height: 16px; padding: 0 5px; border: 1px dashed var(--gl-line-strong); border-radius: 4px; background: transparent; color: var(--gl-faint); font-size: 10.5px; }
-.gl-sep .gl-sep-act:hover { color: var(--gl-fg); border-style: solid; }
 
 /* ---------- floating: hover cards, menus, pickers ---------- */
 
