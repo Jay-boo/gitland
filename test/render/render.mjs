@@ -27,6 +27,21 @@ const SIDEBAR = new Set(['changes', 'tickets', 'prs', 'releases', 'pipelines']);
 const REPLIES = { graph: { select: 'details', hover: 'hover' }, pipelines: { expand: 'jobs' } };
 /** Extra shots after an interaction: [suffix, async (page) => …]. */
 const INTERACTIONS = {
+  changes: [
+    ['end', async (page) => {
+      // The pinned composer must never cover the last file: scroll to the end and compare.
+      const r = await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        document.body.scrollTop = document.body.scrollHeight;
+        const files = document.querySelectorAll('.gb .file');
+        const last = files[files.length - 1];
+        const compose = document.querySelector('.compose');
+        return last && compose ? { last: last.getBoundingClientRect().bottom, compose: compose.getBoundingClientRect().top } : null;
+      });
+      if (r && r.last > r.compose + 1) throw new Error(`changes: the last file (bottom ${r.last}) is under the composer (top ${r.compose})`);
+      await page.waitForTimeout(100);
+    }],
+  ],
   pipelines: [
     ['expand', async (page) => {
       await page.locator('.run[data-id="411"]').click({ position: { x: 60, y: 12 } });
@@ -202,7 +217,8 @@ for (const view of views) {
   }
 }
 await browser.close();
-fs.rmSync(tmp, { recursive: true, force: true });
+if (process.env.KEEP_HTML) console.log(`pages kept in ${tmp}`);
+else fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`${shots} screenshots → ${path.relative(root, outDir)}`);
 if (failures.length) {
   console.log(`${failures.length} failure(s):\n  ${failures.join('\n  ')}`);

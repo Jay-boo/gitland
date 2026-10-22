@@ -1,6 +1,7 @@
 /* Changes view: base.css components + graph.css .file rows. */
 
-body.changes { --gl-bg: var(--vscode-sideBar-background, var(--vscode-editor-background)); overflow-y: auto; overflow-x: hidden; background: var(--gl-bg); padding-bottom: 12px; }
+body.changes { --gl-bg: var(--vscode-sideBar-background, var(--vscode-editor-background)); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: var(--gl-bg); }
+body.changes > * { flex: none; }
 body.changes .grow { flex: 1; }
 
 /* ---------- sync bar ---------- */
@@ -25,7 +26,7 @@ body.changes .grow { flex: 1; }
 .sync .branch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sync .branch .codicon { color: var(--muted); }
 .ab { order: 9; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.ab > span { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--gl-border); --c: var(--gl-muted); color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
+.ab > span { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border-radius: 5px; border: 1px solid var(--gl-border); --c: var(--gl-muted); color: var(--c); background: var(--gl-chip); }
 .ab .codicon { font-size: 11px; vertical-align: -1px; }
 .ab .up { --c: var(--gl-main); }
 .ab .down { --c: var(--gl-release); }
@@ -39,7 +40,8 @@ body.is-busy .split { opacity: 0.6; }
 
 /* ---------- compose ---------- */
 
-.compose { padding: 10px 8px 4px; }
+/* Pinned at the bottom of the view, like Sixth's chat input. */
+.compose { position: sticky; bottom: 0; z-index: 2; margin-top: auto; padding: 10px 8px 8px; background: var(--gl-bg); box-shadow: 0 -10px 10px -2px var(--gl-bg); }
 .msgwrap { position: relative; }
 .msgwrap #msg { padding-right: 30px; }
 button.gen { position: absolute; top: 5px; right: 5px; height: 22px; padding: 0 4px; color: var(--muted); }
@@ -71,7 +73,7 @@ body.is-generating .msgwrap::after {
   color: var(--vscode-input-foreground, var(--fg));
   background: var(--vscode-input-background, var(--gl-inset));
   border: 1px solid var(--vscode-input-border, var(--gl-line));
-  border-radius: var(--gl-radius-input);
+  border-radius: var(--gl-radius-card);
   outline: none;
 }
 #msg:focus { border-color: var(--accent); }
@@ -85,9 +87,9 @@ body.is-generating .msgwrap::after {
   min-width: 0;
   max-width: 100%;
   height: 20px;
-  padding: 0 8px 0 6px;
-  border-radius: 999px;
-  border: 1px dashed color-mix(in srgb, var(--gl-ok) 60%, transparent);
+  padding: 0 7px 0 5px;
+  border-radius: 5px;
+  border: 1px dashed var(--gl-dash);
   font-size: 11px;
   color: var(--gl-ok);
   cursor: pointer;
@@ -96,12 +98,12 @@ body.is-generating .msgwrap::after {
 }
 .ticket .codicon { font-size: 11px; vertical-align: 0; }
 .ticket .tt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
-.ticket.on { border: 1px solid var(--gl-border); background: color-mix(in srgb, var(--gl-ok) 15%, transparent); }
+.ticket.on { border: 1px solid var(--gl-border); background: var(--gl-chip); }
 .counter { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .counter.long { color: var(--modified); }
 .counter.over { color: var(--deleted); }
 
-.row-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 4px 2px 10px; }
+.row-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 2px 8px; }
 
 /* Commit | Push: Sixth's pair of full buttons (primary, secondary). */
 .split { display: flex; gap: 8px; }
@@ -114,42 +116,45 @@ body.is-generating .msgwrap::after {
 
 /* ---------- file groups ---------- */
 
-#groups { padding: 0 8px; }
-.group { margin-top: 10px; }
+#groups { flex: 1 0 auto; padding: 0 8px 8px; }
+.group { margin-top: 4px; }
+/* Group header = a dashed checkpoint line: ⌄ Staged 2 +52 −3 - - - - [actions] */
 .gh {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 4px;
-  margin-bottom: 4px;
-  font-family: var(--gl-font);
-  font-size: 12px;
+  min-height: 22px;
+  margin: 10px 0 8px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: none;
-  color: var(--fg);
+  color: var(--gl-muted);
   cursor: pointer;
   user-select: none;
-  border-radius: 6px;
 }
-.gh:hover .gt { text-decoration: underline; text-decoration-color: var(--gl-line-strong); }
+.gh::after { content: ''; order: 1; flex: 1 1 12px; min-width: 12px; border-top: 1px dashed var(--gl-dash); }
+.gh > .grow { display: none; }
+.gh:hover .gt { color: var(--fg); }
 .gh .codicon { font-size: 12px; color: var(--faint); }
-.gh .gt { color: var(--fg); text-transform: none; }
-.gh .n { min-width: 18px; height: 16px; padding: 0 6px; border-radius: 999px; text-align: center; line-height: 16px; font-size: 11px; font-weight: normal; color: var(--gl-muted); background: var(--gl-inset); }
-.group.staged .gh .n { color: var(--gl-added); background: color-mix(in srgb, var(--gl-added) 15%, transparent); }
+.gh .gt { color: var(--gl-muted); text-transform: none; }
+.gh .n { font-weight: normal; color: var(--gl-faint); }
+.gh .n::before { content: '· '; }
+
 .group.conflicts .gh .gt, .group.conflicts .gh > .codicon { color: var(--gl-err); }
-.group.conflicts .gh .n { color: var(--gl-err); background: color-mix(in srgb, var(--gl-err) 15%, transparent); }
+.group.conflicts .gh .n { color: var(--gl-err); }
 .gh .gs { display: inline-flex; gap: 4px; font-family: var(--mono); font-size: 11px; font-weight: normal; }
-.gh .ga { display: none; }
-.gh:hover .ga, .group.has-sel .ga { display: inline-flex; align-items: center; }
+.gh .gs:empty { display: none; }
+.gh .ga { order: 2; display: inline-flex; align-items: center; gap: 4px; }
+
 .ga .selc { margin-right: 4px; font-weight: normal; color: var(--gl-link); }
 .gb .file { user-select: none; }
-.gb { padding: 4px 0; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
+.gb { padding: 0; background: none; border: 0; border-radius: 0; overflow: visible; }
 .gb .file.sel { background: var(--gl-selected); color: var(--gl-selected-fg); }
 .gb .file.sel:hover { background: var(--gl-selected); }
 .group.collapsed .gb { display: none; }
 
-.gb .file { height: 22px; padding: 0 6px 0 10px; border-radius: 0; gap: 8px; }
+/* Files are outlined rows. */
+.gb .file { height: 30px; margin-bottom: 6px; padding: 0 6px 0 10px; gap: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-radius: 8px; }
+.gb .file.sel { border-color: transparent; }
 .gb .file .st {
   width: 16px;
   height: 16px;
@@ -166,11 +171,14 @@ body.is-generating .msgwrap::after {
 .gb .file .fa { display: none; gap: 0; margin-left: auto; }
 .gb .file:hover .fa { display: inline-flex; }
 .gb .file:hover .delta { display: none; }
-.fa button.icon, .ga button.icon { height: 18px; padding: 0 3px; }
-.fa .codicon, .ga .codicon { font-size: 13px; }
+.fa button.icon { height: 20px; padding: 0 3px; }
+.ga button.icon { height: 18px; min-width: 0; padding: 0 5px; border: 1px dashed var(--vscode-contrastBorder, var(--gl-dash)); border-radius: 4px; color: var(--gl-muted); }
+.ga button.icon:hover { border-style: solid; color: var(--fg); background: transparent; }
+.fa .codicon { font-size: 13px; }
+.ga .codicon { font-size: 12px; }
 .gb .file.st-D .name { text-decoration: line-through; color: var(--muted); }
 
-.empty { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 10px; padding: 22px 16px; color: var(--faint); text-align: center; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 18px; padding: 16px; color: var(--faint); text-align: center; }
 .empty .codicon { font-size: 22px; color: var(--gl-ok); margin-bottom: 4px; }
 .empty b { color: var(--fg); font-weight: 600; }
 .empty span { font-size: 11.5px; }
@@ -178,8 +186,8 @@ body.is-generating .msgwrap::after {
 .meta:has(#ticket[hidden]) + .row-options { margin-top: 6px; }
 
 /* ---------- merge / rebase in progress ---------- */
-.op-banner { margin: 10px 0 0; padding: 10px 12px; border-radius: var(--gl-radius-card); border: 1px solid color-mix(in srgb, var(--gl-main) 40%, transparent); background: color-mix(in srgb, var(--gl-main) 8%, var(--gl-card)); }
-.op-banner.conflicted { border-color: color-mix(in srgb, var(--gl-warn) 45%, transparent); background: color-mix(in srgb, var(--gl-warn) 8%, var(--gl-card)); }
+.op-banner { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-left: 3px solid var(--gl-main); }
+.op-banner.conflicted { border-left-color: var(--gl-warn); }
 .op-top { display: flex; align-items: center; gap: 6px; font-weight: 600; }
 .op-top .codicon { color: var(--gl-main); }
 .op-banner.conflicted .op-top .codicon { color: var(--gl-warn); }
@@ -190,9 +198,9 @@ body.is-generating .msgwrap::after {
 .op-acts button:disabled { opacity: 0.45; }
 
 /* ---------- hooks & signing ---------- */
-.hook-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; color: var(--muted); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.hook-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px 0 5px; border-radius: 5px; font-size: 11px; color: var(--muted); background: var(--gl-chip); border: 1px solid var(--gl-border); }
 .hook-chip .codicon { font-size: 11px; }
-.hook-out { margin: 8px; padding: 10px 12px; border-radius: var(--gl-radius-card); border: 1px solid color-mix(in srgb, var(--gl-err) 45%, transparent); background: color-mix(in srgb, var(--gl-err) 7%, var(--gl-card)); }
+.hook-out { margin: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-left: 3px solid var(--gl-err); }
 .hook-out[hidden] { display: none; }
 .ho-h { display: flex; align-items: center; gap: 6px; }
 .ho-h .codicon { color: var(--gl-err); }

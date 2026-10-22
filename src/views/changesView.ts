@@ -544,6 +544,9 @@ export const CHANGES_BODY = `<header class="sync">
   <button id="btnSync" class="icon" title="Sync (pull then push)"><i class="codicon codicon-sync"></i></button>
 </header>
 <div id="busy" class="busy" hidden></div>
+
+<div id="hookOut" class="hook-out" hidden></div>
+<main id="groups"></main>
 <section class="compose">
   <div class="msgwrap">
     <textarea id="msg" rows="1" spellcheck="true" placeholder="Message · Ctrl+Enter to commit"></textarea>
@@ -565,6 +568,4 @@ export const CHANGES_BODY = `<header class="sync">
     <button id="btnCommitPush" class="alt" title="Commit, then push (Ctrl+Shift+Enter)"><i id="pushIcon" class="codicon codicon-arrow-up"></i><span id="pushLabel">Push</span></button>
   </div>
 </section>
-<div id="hookOut" class="hook-out" hidden></div>
-<main id="groups"></main>
 <div id="error" hidden></div>`;
