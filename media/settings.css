@@ -2,9 +2,7 @@
 
 #page { max-width: 920px; }
 .set-filter { width: 280px; max-width: 100%; }
-.set-group { margin-bottom: 12px; padding: 12px 14px 4px; }
-.set-group h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 13px; font-weight: 600; }
-.set-group h3 .n { font-size: 11px; font-weight: normal; color: var(--gl-muted); padding: 0 7px; border-radius: 999px; background: var(--gl-inset); line-height: 16px; }
+.set-group { margin-bottom: 8px; }
 .set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 6px 18px; align-items: start; padding: 10px 0; border-top: 1px dashed var(--gl-line-strong); }
 .set-group h3 + .set-row { border-top: 0; }
 .set-row.changed .set-title { color: var(--gl-link); }

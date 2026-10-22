@@ -44,7 +44,7 @@
 <div class="t-actions"><label class="search set-filter"><i class="codicon codicon-filter"></i><input id="setFilter" type="search" placeholder="Filter settings" value="${esc(filter)}" spellcheck="false"></label></div>
 ${groups
   .map(
-    (/** @type {any} */ g) => `<section class="gl-card set-group"><h3>${esc(g.title)} <span class="n">${g.settings.length}</span></h3>${g.settings
+    (/** @type {any} */ g) => `<section class="set-group"><h3>${esc(g.title)} <span class="n">${g.settings.length}</span></h3>${g.settings
       .map((/** @type {any} */ s) => {
         const v = data.values[s.key];
         const changed = !same(v, s.default);

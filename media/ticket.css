@@ -17,13 +17,17 @@ body.ticket-page { overflow-y: auto; background: var(--bg); }
 /* Form pages have no action bar under the header: close the card. */
 .t-head:not(:has(+ .t-actions)) { border-bottom: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); padding-bottom: 16px; margin-bottom: 16px; }
 .t-actions button { height: 28px; }
-.cur-chip.big { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--gl-link) 15%, transparent); border: 1px solid var(--gl-border); }
+.cur-chip.big { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; font-size: 12px; color: var(--gl-link); border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); }
 
 .t-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
 @media (max-width: 760px) { .t-grid { grid-template-columns: 1fr; } }
-.t-main section, .t-side section { margin-bottom: 12px; padding: 12px 14px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
-.t-main h3, .t-side h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--fg); }
-.t-main h3 .n, .t-side h3 .n { font-size: 11px; font-weight: normal; color: var(--gl-muted); padding: 0 7px; border-radius: 999px; background: var(--gl-inset); line-height: 16px; }
+.t-main section, .t-side section { margin-bottom: 10px; }
+/* Section titles are dashed checkpoint lines. */
+.t-main h3, .t-side h3, .dcard h3, .cl-group h3, .set-group h3 { display: flex; align-items: center; gap: 6px; margin: 4px 0 10px; font-size: 11px; font-weight: 600; color: var(--gl-muted); text-transform: none; }
+.t-main h3::after, .t-side h3::after, .dcard h3::after, .cl-group h3::after, .set-group h3::after { content: ''; order: 1; flex: 1 1 12px; min-width: 12px; border-top: 1px dashed var(--gl-dash); }
+.t-main h3 > button, .t-side h3 > button, .dcard h3 > button, .cl-group h3 > button, .set-group h3 > button { order: 2; }
+.t-main h3 .n, .t-side h3 .n, .dcard h3 .n, .cl-group h3 .n, .set-group h3 .n { font-size: 11px; font-weight: normal; color: var(--gl-faint); padding: 0; border: 0; background: none; }
+.t-main h3 .n::before, .t-side h3 .n::before, .dcard h3 .n::before, .cl-group h3 .n::before, .set-group h3 .n::before { content: '· '; }
 .none { color: var(--faint); font-size: 12px; }
 
 /* Rich text (work item HTML / issue markdown) */
@@ -44,7 +48,7 @@ body.ticket-page { overflow-y: auto; background: var(--bg); }
 .img-ref { font-family: var(--mono); font-size: 11px; }
 .rich.none { color: var(--faint); font-style: italic; }
 
-.comment { padding: 10px 12px; margin-bottom: 8px; border-radius: var(--gl-radius-input); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.comment { margin: 0 0 10px; padding: 2px 0 2px 12px; border-left: 2px solid var(--gl-dash); }
 .comment:last-child { margin-bottom: 0; }
 .comment .ch { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; font-size: 12px; }
 .comment .ch span { font-size: 11px; color: var(--faint); }
@@ -55,7 +59,7 @@ body.ticket-page { overflow-y: auto; background: var(--bg); }
 .t-side dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .t-side dd .codicon { font-size: 11px; color: var(--muted); }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.tag { padding: 0 8px; height: 18px; line-height: 18px; border-radius: 999px; font-size: 11px; color: var(--muted); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.tag { padding: 0 7px; height: 18px; line-height: 16px; font-size: 11px; color: var(--muted); border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); }
 .link-row, .commit-row { display: flex; align-items: center; gap: 7px; min-height: 24px; padding: 0 6px; margin: 0 -6px; border-radius: 6px; cursor: pointer; }
 .link-row:hover, .commit-row:hover { background: var(--gl-hover); }
 .link-row.on { cursor: default; }
@@ -80,3 +84,5 @@ button.big:disabled { opacity: 0.45; cursor: default; }
 .new-comment.gl-composer { margin-top: 10px; padding: 8px 10px; }
 .new-comment textarea { min-height: 54px; }
 .new-comment .rb-bar { display: flex; gap: 6px; margin-top: 6px; }
+.t-main h3 > .grow, .t-side h3 > .grow, .dcard h3 > .grow, .cl-group h3 > .grow, .set-group h3 > .grow, .tab-body h3 > .grow { display: none; }
+.dcard h3 > .k, .cl-group h3 > .k { order: 2; }

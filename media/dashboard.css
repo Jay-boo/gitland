@@ -2,23 +2,22 @@
 #page { max-width: 1200px; }
 .t-head { align-items: center; }
 .summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 18px; }
-.sum { --s: var(--muted); display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; color: var(--fg); background: color-mix(in srgb, var(--s) 15%, transparent); border: 1px solid var(--gl-border); }
+.sum { --s: var(--muted); display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; font-size: 12px; color: var(--fg); border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); }
 .sum .codicon { color: var(--s); font-size: 13px; }
 .sum b { font-family: var(--mono); }
 .sum.ok { --s: var(--gl-ok); }
 .sum.warn { --s: var(--gl-ai); }
 .sum.bad { --s: var(--gl-err); }
 .dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; }
-.dcard { padding: 12px 14px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); min-width: 0; }
-.dcard h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-family: var(--font); font-size: 12.5px; font-weight: 600; text-transform: none; color: var(--fg); }
+.dcard { min-width: 0; }
+.dcard h3 { gap: 7px; }
 .dcard h3 > .codicon { color: var(--muted); }
-.dcard h3 .n { font-size: 11px; font-weight: 400; color: var(--gl-muted); padding: 0 7px; border-radius: 999px; background: var(--gl-inset); line-height: 16px; }
 .dcard h3 button { height: 22px; font-size: 11px; font-weight: 400; }
 .dcard h3 .k { font-size: 11px; font-weight: 400; color: var(--faint); }
 .dcard .sub { margin: 10px 0 4px; padding-top: 8px; border-top: 1px dashed var(--gl-line-strong); font-size: 11.5px; color: var(--faint); }
-.drow { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 4px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; }
+.drow { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-bottom: 6px; padding: 5px 8px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-radius: 8px; cursor: pointer; }
 .drow:hover { background: var(--gl-hover); }
-.drow.current { box-shadow: inset 2px 0 0 var(--gl-link); background: color-mix(in srgb, var(--gl-link) 8%, transparent); }
+.drow.current { border-color: var(--gl-link); }
 .drow .body { flex: 1; min-width: 0; line-height: 1.35; }
 .drow .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drow .title.mono { font-family: var(--mono); font-size: 12px; }

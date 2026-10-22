@@ -5,12 +5,12 @@
 .glyph.small .codicon { font-size: 11px; }
 .rev { display: flex; align-items: center; gap: 8px; min-height: 26px; }
 .rev .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.rev .req { font-size: 10.5px; padding: 0 7px; border-radius: 999px; color: var(--gl-link); background: color-mix(in srgb, var(--gl-link) 15%, transparent); border: 1px solid var(--gl-border); }
+.rev .req { font-size: 10.5px; padding: 0 6px; color: var(--gl-link); border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); }
 .rev .k { font-size: 11px; color: var(--faint); }
 .comment .file { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comment .file .codicon { font-size: 10px; }
 
-.review-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -6px 0 16px; padding: 10px 12px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
+.review-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 14px; padding: 0 0 12px; border-bottom: 1px dashed var(--gl-dash); }
 .review-bar .k { font-size: 12px; color: var(--muted); }
 .review-bar .k b { color: var(--fg); }
 .vote { --v: var(--muted); height: 26px; gap: 5px; font-size: 12px; }

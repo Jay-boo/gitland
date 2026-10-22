@@ -86,7 +86,7 @@ body.is-generating .ed-wrap::after {
 .ver-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 10px; }
 .ver-input { width: 200px; margin: 0; font-family: var(--mono); }
 .ver-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.ver-chips .type { padding: 0 10px; height: 22px; line-height: 20px; border-radius: 999px; border: 1px solid var(--gl-border); background: var(--gl-inset); font-size: 11.5px; color: var(--muted); cursor: pointer; }
+.ver-chips .type { padding: 0 9px; height: 22px; line-height: 20px; border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .ver-chips .type em { font-style: normal; color: var(--faint); margin-left: 3px; }
 .ver-chips .type:hover { color: var(--fg); }
 .ver-chips .type.on { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
