@@ -1,7 +1,7 @@
 /* Pipelines view: list.css items + the expanded jobs of a run. */
 
-.run.open { background: var(--gl-hover); }
-.jobs { padding: 4px 10px 10px 43px; border-bottom: 1px dashed var(--gl-line-strong); }
+.run.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-style: dashed; margin-bottom: 0; }
+.jobs { margin-bottom: 6px; padding: 6px 10px 10px 43px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-top: 0; border-radius: 0 0 8px 8px; }
 .jobs .job { display: flex; align-items: center; gap: 7px; min-height: 22px; font-size: 12px; }
 .jobs .job.step { padding-left: 18px; color: var(--muted); }
 .jobs .job.failed { color: var(--gl-err); font-weight: 600; }

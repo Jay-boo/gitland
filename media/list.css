@@ -20,46 +20,52 @@ body.list { padding-bottom: 8px; }
 
 /* ---------- group headers ---------- */
 
-.grp { margin: 10px 8px 0; }
+.grp { margin: 4px 8px 0; }
 .grp:first-child { margin-top: 6px; }
+/* Group header = a dashed checkpoint line. */
 .gh {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 4px;
-  margin-bottom: 4px;
-  font-size: 12px;
+  min-height: 22px;
+  margin: 10px 0 8px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--fg);
+  color: var(--gl-muted);
   cursor: pointer;
   user-select: none;
 }
-.gh:hover .gt { text-decoration: underline; text-decoration-color: var(--gl-line-strong); }
+.gh::after { content: ''; order: 1; flex: 1 1 12px; min-width: 12px; border-top: 1px dashed var(--gl-dash); }
+.gh:hover .gt { color: var(--fg); }
 .gh > .codicon { font-size: 12px; color: var(--faint); }
-.gh .gt { color: var(--fg); }
-.gh .n { min-width: 18px; height: 16px; padding: 0 6px; border-radius: 999px; text-align: center; line-height: 16px; font-size: 11px; font-weight: normal; color: var(--gl-muted); background: var(--gl-inset); }
-.gh .ga { display: none; }
+.gh .gt { color: var(--gl-muted); }
+.gh .n { font-weight: normal; color: var(--gl-faint); }
+.gh .n::before { content: '· '; }
+.gh .ga { order: 2; display: none; }
 .gh:hover .ga { display: inline-flex; }
 .grp.collapsed .gb { display: none; }
 /* Each group's items sit in one rounded card. */
-.gb { padding: 4px 0; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); overflow: hidden; }
-#list > .gb { margin: 6px 8px 0; }
-.gb .state { margin: 0; padding: 10px; background: none; border: 0; }
+.gb { padding: 0; }
+#list > .gb { margin: 8px 8px 0; }
+.gb .state { margin: 0 0 6px; padding: 8px; border: 1px dashed var(--gl-dash); border-radius: 8px; }
 
 /* ---------- items ---------- */
 
+/* Items are outlined rows. */
 .item {
   position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 40px;
-  padding: 4px 8px 4px 10px;
+  min-height: 44px;
+  margin-bottom: 6px;
+  padding: 5px 8px 5px 10px;
+  border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong));
+  border-radius: 8px;
   cursor: pointer;
 }
 .item:hover { background: var(--gl-hover); }
-.item.current { background: color-mix(in srgb, var(--gl-link) 9%, transparent); box-shadow: inset 2px 0 0 var(--gl-link); }
+.item.current { border-color: var(--gl-link); }
 .item .body { flex: 1; min-width: 0; line-height: 1.35; }
 .item .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item .meta { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; }
@@ -107,14 +113,12 @@ body.list { padding-bottom: 8px; }
   flex: none;
   display: inline-flex;
   align-items: center;
-  height: 16px;
-  padding: 0 7px;
-  border-radius: 999px;
-  border: 1px solid var(--gl-border);
+  height: 17px;
+  padding: 0 6px;
+  border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip);
   font-size: 10.5px;
   line-height: 1;
   color: var(--p);
-  background: color-mix(in srgb, var(--p) 15%, transparent);
 }
 .p-new { --p: var(--muted); }
 .p-active { --p: var(--gl-main); }
@@ -128,7 +132,7 @@ body.list { padding-bottom: 8px; }
 
 /* ---------- states ---------- */
 
-.state { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px; padding: 24px 16px; text-align: center; color: var(--faint); background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
+.state { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px; padding: 20px 16px; text-align: center; color: var(--faint); }
 .state > .codicon { font-size: 22px; margin-bottom: 2px; }
 .state b { color: var(--fg); font-weight: 600; }
 .state span { font-size: 11.5px; max-width: 280px; word-break: break-word; }
@@ -161,11 +165,10 @@ body.list { padding-bottom: 8px; }
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: 6px 8px 0;
-  padding: 10px 12px;
-  border-radius: var(--gl-radius-card);
+  margin: 8px 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1px dashed color-mix(in srgb, var(--gl-ai) 55%, transparent);
-  background: color-mix(in srgb, var(--gl-ai) 7%, var(--gl-card));
   cursor: pointer;
 }
 .unreleased .body { flex: 1; min-width: 0; line-height: 1.35; }
