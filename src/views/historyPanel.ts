@@ -92,7 +92,7 @@ export class HistoryPanel {
           range: this.range,
           entries: this.entries,
           avatars,
-          links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
+          links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}'), ticketKeys: provider.ticketKeys },
           autoExplain: this.autoExplain,
         });
         this.autoExplain = false;

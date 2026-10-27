@@ -145,7 +145,7 @@ export class ComparePanel {
         viewed: this.viewed(),
         ...c,
         avatars,
-        links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
+        links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}'), ticketKeys: provider.ticketKeys },
         release: this.view.release && this.view.release === this.to ? { tag: this.to, url: provider?.releaseUrl(this.to) } : undefined,
       });
     } catch (e) {

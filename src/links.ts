@@ -9,7 +9,7 @@ export interface MessageLink {
 /**
  * Pull requests and work items / issues mentioned in a commit message:
  * "Merged PR 527", "Merge pull request 522 / #12", "(#12)" (GitHub), "!42" / "See merge request g/r!42" (GitLab),
- * "AB#1234", "#1234".
+ * "AB#1234", "#1234", or Jira keys "DATA-12" (configured projects only) when the tickets come from Jira.
  * Same rules as `linksIn` in media/graph.js.
  */
 export function findLinks(text: string, provider: Provider | undefined): MessageLink[] {
@@ -39,8 +39,24 @@ export function findLinks(text: string, provider: Provider | undefined): Message
       add('pr', m[1] ?? m[2]);
     }
   }
+  const keys = provider.ticketKeys;
+  if (keys) {
+    for (const m of text.matchAll(jiraKeyPattern(Object.keys(keys)))) {
+      if (!seen.has('ticket' + m[0])) {
+        seen.add('ticket' + m[0]);
+        out.push({ kind: 'ticket', id: m[0], url: `${keys[m[1]]}/browse/${m[0]}` });
+      }
+    }
+    return out;
+  }
   for (const m of text.matchAll(/(?:^|[\s([,;])(?:AB)?#(\d+)\b/g)) {
     add('ticket', m[1]);
   }
   return out;
+}
+
+/** "DATA-12" for the given project keys, as a whole word (not "XDATA-12", "UTF-8"). */
+export function jiraKeyPattern(keys: string[]): RegExp {
+  const alt = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return new RegExp(`(?<![\\w/-])(${alt || '(?!)'})-\\d+\\b`, 'g');
 }

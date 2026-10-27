@@ -152,7 +152,7 @@ export class ReleasePanel {
         files: { count: files.length, added: files.reduce((n, f) => n + (f.added ?? 0), 0), deleted: files.reduce((n, f) => n + (f.deleted ?? 0), 0) },
         remote: !!this.remoteUrl,
         remoteName: provider && signIn(provider.kind).host,
-        links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
+        links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}'), ticketKeys: provider.ticketKeys },
       });
     } catch (e) {
       log.error(`Release ${tag} failed to load`, e);
