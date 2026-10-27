@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Repo } from '../git/repo';
 import { AzureDevOpsProvider } from './azureDevOps';
 import { GitHubProvider } from './github';
-import { parseRemoteUrl } from './remote';
+import { resolveRemoteUrl } from './remote';
 import { Provider } from './types';
 
 const cache = new Map<string, { remoteUrl: string; provider: Provider }>();
@@ -21,7 +21,7 @@ export async function getProvider(repo: Repo, secrets: vscode.SecretStorage): Pr
     if (cached && cached.remoteUrl === remote.url) {
       return cached.provider;
     }
-    const info = parseRemoteUrl(remote.url);
+    const info = await resolveRemoteUrl(remote.url);
     if (!info) {
       continue;
     }
