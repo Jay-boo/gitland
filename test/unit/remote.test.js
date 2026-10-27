@@ -59,3 +59,7 @@ test('resolveRemoteUrl: alias to a GitLab host', async () => {
   const r = async (a) => (a === 'gl' ? 'gitlab.com' : undefined);
   assert.deepStrictEqual(await resolveRemoteUrl('git@gl:group/repo.git', r), { kind: 'gitlab', host: 'gitlab.com', path: 'group/repo' });
 });
+
+test('parseRemoteUrl: gitland.gitlab.hosts entries written as URLs', () => {
+  assert.deepStrictEqual(parseRemoteUrl('git@git.corp:a/b.git', ['https://git.corp:8443/']), { kind: 'gitlab', host: 'git.corp', path: 'a/b' });
+});

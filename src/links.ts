@@ -19,7 +19,8 @@ export function findLinks(text: string, provider: Provider | undefined): Message
   const out: MessageLink[] = [];
   const seen = new Set<string>();
   const add = (kind: MessageLink['kind'], id: string) => {
-    if (seen.has(kind + id) || seen.has('pr' + id)) {
+    // GitHub issues and PRs share numbers; GitLab issues (#n) and MRs (!n) do not.
+    if (seen.has(kind + id) || (provider.kind !== 'gitlab' && seen.has('pr' + id))) {
       return;
     }
     seen.add(kind + id);

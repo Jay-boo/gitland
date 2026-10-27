@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { groupJobsByStage, pipelineState, stripDraft } from './gitlabMap.pure';
+import { GlJob, groupJobsByStage, once, pipelineState, stripDraft } from './gitlabMap.pure';
 import { AuthError, CreatePullRequestOptions, PipelineJob, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails } from './types';
 
 /** Personal access tokens are stored per host (gitlab.com, self-hosted instances). */
@@ -101,7 +101,8 @@ const DONE = new Set(['succeeded', 'failed', 'canceled']);
 export class GitLabProvider implements Provider {
   readonly kind = 'gitlab' as const;
   readonly ticketNoun = 'issue';
-  private user?: Promise<GlUser>;
+  /** Signed-in user, with the token it was read with (a new token is a new user). */
+  private user?: { token: string; user: Promise<GlUser> };
 
   constructor(readonly host: string, private readonly path: string, private readonly secrets: vscode.SecretStorage) {}
 
@@ -143,7 +144,8 @@ export class GitLabProvider implements Provider {
   }
 
   private async token(): Promise<string> {
-    const token = (await this.secrets.get(gitlabTokenKey(this.host))) ?? (await promptGitLabToken(this.host, this.secrets));
+    // Parallel requests share one prompt.
+    const token = (await this.secrets.get(gitlabTokenKey(this.host))) ?? (await once(this.host, () => promptGitLabToken(this.host, this.secrets)));
     if (!token) {
       throw new AuthError('Set a GitLab token to continue.', true);
     }
@@ -184,10 +186,14 @@ export class GitLabProvider implements Provider {
     return (await this.fetch(method, path)).text();
   }
 
-  private me(): Promise<GlUser> {
-    this.user ??= this.request<GlUser>('GET', '/user');
-    this.user.catch(() => (this.user = undefined));
-    return this.user;
+  private async me(): Promise<GlUser> {
+    const token = await this.token();
+    if (this.user?.token !== token) {
+      const user = this.request<GlUser>('GET', '/user');
+      user.catch(() => this.user?.user === user && (this.user = undefined));
+      this.user = { token, user };
+    }
+    return this.user.user;
   }
 
   async avatarFor(email: string): Promise<string | undefined> {
@@ -462,13 +468,10 @@ export class GitLabProvider implements Provider {
     await this.request('POST', `${this.project}/pipelines/${encodeURIComponent(run.id)}/cancel`);
   }
 
-  /** Stages, each with its jobs as steps (GitLab lists jobs newest first). */
+  /** Stages, each with its jobs as steps (retried jobs are fetched so a retry keeps its stage in place). */
   async pipelineJobs(run: PipelineRun): Promise<PipelineJob[]> {
-    const jobs = await this.request<{ id: number; name: string; stage: string; status: string }[]>(
-      'GET',
-      `${this.project}/pipelines/${encodeURIComponent(run.id)}/jobs?per_page=100&include_retried=false`,
-    );
-    return groupJobsByStage(jobs.sort((a, b) => a.id - b.id));
+    const jobs = await this.request<GlJob[]>('GET', `${this.project}/pipelines/${encodeURIComponent(run.id)}/jobs?per_page=100&include_retried=true`);
+    return groupJobsByStage(jobs);
   }
 
   /** A job's log; for a stage, the logs of its failed jobs (or of its first job). */

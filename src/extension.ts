@@ -35,6 +35,7 @@ import { Repo } from './git/repo';
 import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps } from './providers/azureDevOps';
 import { GITHUB_SCOPES } from './providers/github';
 import { GitLabProvider, gitlabTokenKey, promptGitLabToken } from './providers/gitlab';
+import { normalizeHost } from './providers/gitlabMap.pure';
 import { AuthError } from './providers/types';
 import { initLog, log } from './log';
 import { config, errorMessage } from './util';
@@ -471,7 +472,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await secrets.delete(patSecretKey(org));
       }
       // SecretStorage cannot list keys: clear the GitLab hosts Gitland knows about.
-      const gitlabHosts = ['gitlab.com', ...config<string[]>('gitlab.hosts', []), (await activeGitLabHost()) ?? ''];
+      const gitlabHosts = ['gitlab.com', ...config<string[]>('gitlab.hosts', []).map(normalizeHost), (await activeGitLabHost()) ?? ''];
       for (const host of new Set(gitlabHosts.filter(Boolean))) {
         await secrets.delete(gitlabTokenKey(host));
       }

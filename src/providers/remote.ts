@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import { normalizeHost } from './gitlabMap.pure';
 
 export type RemoteInfo =
   | { kind: 'azure'; org: string; project: string; repo: string }
@@ -16,7 +17,7 @@ const dec = (s: string) => {
 /** gitlab.com, a host of setting gitland.gitlab.hosts, or any `gitlab.*` host (port ignored). */
 export function isGitLabHost(host: string, gitlabHosts: string[]): boolean {
   const name = host.replace(/:\d+$/, '').toLowerCase();
-  return name === 'gitlab.com' || name.startsWith('gitlab.') || gitlabHosts.some((h) => h.trim().toLowerCase() === name);
+  return name === 'gitlab.com' || name.startsWith('gitlab.') || gitlabHosts.some((h) => normalizeHost(h) === name);
 }
 
 export function parseRemoteUrl(url: string, gitlabHosts: string[] = []): RemoteInfo | undefined {

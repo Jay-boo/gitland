@@ -29,3 +29,8 @@ test('GitLab: merge requests (!n) and issues (#n)', () => {
 test('GitHub: !n is not a pull request', () => {
   assert.ok(!findLinks('a!12', github).some((l) => l.kind === 'pr'));
 });
+
+test('GitLab: an issue and a merge request with the same number are both linked', () => {
+  const l = findLinks('Fix\n\nCloses #7\n\nSee merge request g/r!7', gitlab);
+  assert.deepStrictEqual(l.map((x) => x.kind + x.id).sort(), ['pr7', 'ticket7']);
+});

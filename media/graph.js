@@ -88,7 +88,7 @@
     const seen = new Set();
     const add = (kind, id) => {
       const key = kind + id;
-      if (seen.has(key) || seen.has('pr' + id)) return;
+      if (seen.has(key) || (L.kind !== 'gitlab' && seen.has('pr' + id))) return;
       seen.add(key);
       out.push({ kind, id, url: (kind === 'pr' ? L.pr : L.ticket).replace('{id}', id) });
     };
