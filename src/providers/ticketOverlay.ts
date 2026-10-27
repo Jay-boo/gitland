@@ -87,3 +87,11 @@ export class TicketOverlay {
 export function hostOf<P extends Provider | undefined>(provider: P): P | Provider {
   return provider instanceof TicketOverlay ? provider.host : provider;
 }
+
+/** Signed in to wherever the tickets come from (Jira for an overlay), without prompting. */
+export async function ticketsSignedIn(provider: Provider | undefined): Promise<boolean> {
+  if (!provider) {
+    return false;
+  }
+  return (provider instanceof TicketOverlay ? provider.ticketsSignedIn() : provider.isSignedIn()).catch(() => false);
+}

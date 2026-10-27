@@ -5,7 +5,7 @@ const {
   isJiraSource, jiraFlavour, normalizeSite, apiBase, parseTicketId, myTicketsJql, searchJql,
   toTicket, mergeTickets, toDetails, adfBody, jiraErrorMessage, jiraKeysIn, jiraKeyFromBranch,
 } = require('../../out/unit/jiraMap.js');
-const { ticketPrefix, ticketLabel } = require('../../out/unit/ticketPrefix.js');
+const { ticketPrefix, ticketLabel, mentionGrep, closesHostWorkItems } = require('../../out/unit/ticketPrefix.js');
 
 test('jiraFlavour', () => {
   assert.strictEqual(jiraFlavour('https://acme.atlassian.net'), 'cloud');
@@ -146,4 +146,22 @@ test('jiraKeyFromBranch', () => {
 test('ticketLabel: #12 for numbers, keys as they are', () => {
   assert.strictEqual(ticketLabel('12'), '#12');
   assert.strictEqual(ticketLabel('DATA-12'), 'DATA-12');
+});
+
+test('mentionGrep: git log pattern for commits that mention a ticket', () => {
+  const re = (id, p) => new RegExp(mentionGrep(id, p));
+  assert.ok(re('12', { kind: 'azure' }).test('fix AB#12 now'));
+  assert.ok(!re('12', { kind: 'azure' }).test('fix AB#123'));
+  const jira = { kind: 'github', ticketKind: 'jira' };
+  assert.ok(re('DATA-12', jira).test('DATA-12: fix'));
+  assert.ok(re('DATA-12', jira).test('fix (DATA-12)'));
+  assert.ok(!re('DATA-12', jira).test('XDATA-12 fix'));
+  assert.ok(!re('DATA-12', jira).test('DATA-123'));
+  assert.ok(!mentionGrep('DATA-12', jira).includes('(?'), 'git -E has no lookbehind');
+});
+
+test('closesHostWorkItems: only Azure DevOps with its own work items', () => {
+  assert.strictEqual(closesHostWorkItems({ kind: 'azure' }), true);
+  assert.strictEqual(closesHostWorkItems({ kind: 'azure', ticketKind: 'jira' }), false);
+  assert.strictEqual(closesHostWorkItems({ kind: 'github' }), false);
 });

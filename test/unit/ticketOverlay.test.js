@@ -79,3 +79,11 @@ test('pull request work items are the Jira keys of its title and description', a
   const d = await new TicketOverlay(host, { ...tickets, ticketKeys: { DATA: 'https://a', OPS: 'https://b' } }).getPullRequestDetails('9');
   assert.deepStrictEqual(d.workItems, [{ id: 'DATA-1', url: 'https://a/browse/DATA-1' }, { id: 'OPS-2', url: 'https://b/browse/OPS-2' }]);
 });
+
+test('ticketsSignedIn: the tracker for an overlay, the host otherwise', async () => {
+  const { host, tickets } = fakes();
+  assert.strictEqual(await mod.exports.ticketsSignedIn(new TicketOverlay(host, tickets)), false);
+  assert.strictEqual(await mod.exports.ticketsSignedIn(host), true);
+  assert.strictEqual(await mod.exports.ticketsSignedIn(undefined), false);
+  assert.strictEqual(await mod.exports.ticketsSignedIn({ isSignedIn: () => Promise.reject(new Error('x')) }), false);
+});

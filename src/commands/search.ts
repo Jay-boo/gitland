@@ -3,6 +3,7 @@ import { Repo } from '../git/repo';
 import { getProvider } from '../providers';
 import { Provider, PullRequest } from '../providers/types';
 import { timeAgo } from '../util';
+import { ticketsSignedIn } from '../providers/ticketOverlay';
 
 type Item = vscode.QuickPickItem & { run?: () => unknown };
 
@@ -17,6 +18,8 @@ const FS = '\x1f';
 export async function searchEverywhere(repo: Repo, secrets: vscode.SecretStorage, open: { commit(sha: string): void; pr(id: string): void; ticket(id: string, org?: string): void }): Promise<void> {
   const provider = await getProvider(repo, secrets);
   const signedIn = provider ? await provider.isSignedIn().catch(() => false) : false;
+  // Tickets may come from Jira: its own sign-in, never prompted from here.
+  const ticketsOk = await ticketsSignedIn(provider);
   const qp = vscode.window.createQuickPick<Item>();
   qp.title = 'Gitland: Search Everywhere';
   qp.placeholder = 'Branches, tags, commits, code, pull requests, tickets…   (b: c: s: pr: t:)';
@@ -42,7 +45,7 @@ export async function searchEverywhere(repo: Repo, secrets: vscode.SecretStorage
       want('commits') ? commits(repo, q, open) : [],
       want('content') && (only === 'content' || q.length >= 3) ? content(repo, q, open) : [],
       want('prs') && provider && signedIn ? pullRequests((prs ??= provider.listPullRequests().catch(() => [])), q, open) : [],
-      want('tickets') && provider && signedIn ? tickets(provider, q, open) : [],
+      want('tickets') && provider && ticketsOk ? tickets(provider, q, open) : [],
     ]);
     if (my !== seq) {
       return; // a newer query is running

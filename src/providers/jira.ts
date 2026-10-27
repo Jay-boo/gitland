@@ -12,7 +12,17 @@ export function jiraSources(scope?: vscode.Uri): JiraTicketSource[] {
   return vscode.workspace
     .getConfiguration('gitland', scope)
     .get<TicketSource[]>('tickets.sources', [])
-    .filter((s): s is JiraTicketSource => isJiraSource(s) && !!s.site && !!s.project);
+    .filter((s): s is JiraTicketSource => isJiraSource(s) && !!s.site && !!s.project && validSite(s.site));
+}
+
+function validSite(site: string): boolean {
+  try {
+    normalizeSite(site);
+    return true;
+  } catch {
+    log.info(`Jira: ignoring the ticket source with site "${site}" (not a site address)`);
+    return false;
+  }
 }
 
 /** Configured Jira sites, normalized. */
@@ -132,6 +142,11 @@ export class JiraTickets {
     return `Jira · ${this.sources.map((s) => s.project).join(', ')}`;
   }
 
+  /** "12", "#12", "data-12" → "DATA-12". */
+  private key(id: string): string {
+    return parseTicketId(id, this.sources.map((s) => s.project)) ?? id;
+  }
+
   private siteOf(id: string, org?: string): string {
     return org ? normalizeSite(org) : this.ticketKeys[keyOf(id)] ?? this.sites[0];
   }
@@ -219,7 +234,7 @@ export class JiraTickets {
   }
 
   async getTicket(id: string, org?: string): Promise<Ticket | undefined> {
-    const key = parseTicketId(id, this.sources.map((s) => s.project)) ?? id;
+    const key = this.key(id);
     const site = this.siteOf(key, org);
     try {
       return toTicket(await this.request<JiraIssue>(site, 'GET', `/issue/${encodeURIComponent(key)}?fields=${TICKET_FIELDS}`), site);
@@ -232,6 +247,7 @@ export class JiraTickets {
   }
 
   async getTicketDetails(id: string, org?: string): Promise<TicketDetails | undefined> {
+    id = this.key(id);
     const site = this.siteOf(id, org);
     const key = encodeURIComponent(id);
     try {
@@ -249,6 +265,7 @@ export class JiraTickets {
   }
 
   private async transitions(id: string, org?: string): Promise<JiraTransition[]> {
+    id = this.key(id);
     const res = await this.request<{ transitions?: JiraTransition[] }>(this.siteOf(id, org), 'GET', `/issue/${encodeURIComponent(id)}/transitions`);
     return res?.transitions ?? [];
   }
@@ -263,6 +280,7 @@ export class JiraTickets {
   }
 
   async setTicketState(id: string, state: string, org?: string): Promise<void> {
+    id = this.key(id);
     const t = (await this.transitions(id, org)).find((x) => x.name === state);
     if (!t) {
       throw new Error(`Jira: "${state}" is not available for ${id}.`);
@@ -272,6 +290,7 @@ export class JiraTickets {
 
   /** Start Work: the first transition into an "In Progress" status. */
   async activateTicket(id: string, org?: string): Promise<void> {
+    id = this.key(id);
     const t = (await this.transitions(id, org)).find((x) => x.to?.statusCategory?.key === 'indeterminate');
     if (t) {
       await this.transition(id, t, org);
@@ -279,12 +298,14 @@ export class JiraTickets {
   }
 
   async assignTicketToMe(id: string, org?: string): Promise<void> {
+    id = this.key(id);
     const site = this.siteOf(id, org);
     const me = await this.me(site);
     await this.request(site, 'PUT', `/issue/${encodeURIComponent(id)}/assignee`, jiraFlavour(site) === 'cloud' ? { accountId: me.accountId } : { name: me.name });
   }
 
   async commentTicket(id: string, text: string, org?: string): Promise<void> {
+    id = this.key(id);
     const site = this.siteOf(id, org);
     await this.request(site, 'POST', `/issue/${encodeURIComponent(id)}/comment`, { body: jiraFlavour(site) === 'cloud' ? adfBody(text) : text });
   }

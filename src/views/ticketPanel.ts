@@ -2,12 +2,13 @@ import * as vscode from 'vscode';
 import { Repo } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
 import { getProvider } from '../providers';
+import { Provider } from '../providers/types';
 import { Ticket, TicketDetails } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { capture } from '../devCapture';
-import { ticketLabel, ticketPrefix } from '../providers/ticketPrefix.pure';
+import { mentionGrep, ticketLabel, ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'start' | 'open' | 'copy' }
@@ -76,7 +77,7 @@ export class TicketPanel {
     try {
       const [details, local, current, me] = await Promise.all([
         provider.getTicketDetails(this.id, this.org),
-        this.localWork(repo, this.id),
+        this.localWork(repo, this.id, provider),
         repo.currentBranch(),
         repo.getConfig('user.name').catch(() => undefined),
       ]);
@@ -111,11 +112,11 @@ export class TicketPanel {
   }
 
   /** Branches started for the ticket and commits that mention it, in this repository. */
-  private async localWork(repo: Repo, id: string): Promise<{ branches: string[]; commits: { sha: string; short: string; author: string; date: number; subject: string }[] }> {
+  private async localWork(repo: Repo, id: string, provider: Provider): Promise<{ branches: string[]; commits: { sha: string; short: string; author: string; date: number; subject: string }[] }> {
     const [cfg, log] = await Promise.all([
       repo.exec(['config', '--get-regexp', '^branch\\..*\\.gitlandticket$']).catch(() => ''),
       repo
-        .exec(['log', '--all', '-n', '30', '-E', `--grep=(AB)?#${id}([^0-9]|$)`, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'])
+        .exec(['log', '--all', '-n', '30', '-E', `--grep=${mentionGrep(id, provider)}`, '--format=%H%x1f%h%x1f%an%x1f%at%x1f%s'])
         .catch(() => ''),
     ]);
     const branches = cfg
