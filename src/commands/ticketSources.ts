@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
 import { getProvider } from '../providers';
 import { AzureDevOpsProvider } from '../providers/azureDevOps';
-import { TicketSource } from '../providers/types';
+import { AzureTicketSource as TicketSource } from '../providers/types';
 import { errorMessage } from '../util';
 
 type SourceItem = vscode.QuickPickItem & { source?: TicketSource; target?: vscode.ConfigurationTarget; add?: boolean };
