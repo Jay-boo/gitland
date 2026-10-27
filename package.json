@@ -1,7 +1,7 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps, GitHub & GitLab.",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps, GitHub & GitLab, with Jira tickets.",
   "version": "0.3.1",
   "publisher": "jay-boo",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "blame",
     "azure devops",
     "gitlab",
+    "jira",
     "pull request",
     "work items"
   ],
@@ -689,27 +690,59 @@
         "gitland.tickets.sources": {
           "type": "array",
           "default": [],
-          "markdownDescription": "Azure DevOps projects the tickets come from, when they are not in the repository's project (e.g. a shared backlog). Empty = the repository's project. Easiest with **Gitland: Ticket Sources\u2026** (\u2699 in the Tickets view).",
+          "markdownDescription": "Where the tickets come from, when not from the repository: Azure DevOps projects (e.g. a shared backlog), or Jira projects, for any code host (Jira issues then replace the host's tickets; pull requests stay on the host). Empty = the repository's own tickets. Easiest with **Gitland: Ticket Sources\u2026** (\u2699 in the Tickets view).",
           "items": {
-            "type": "object",
-            "required": [
-              "organization",
-              "project"
-            ],
-            "properties": {
-              "organization": {
-                "type": "string",
-                "description": "Azure DevOps organization (dev.azure.com/<organization>)."
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "organization",
+                  "project"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "azure"
+                  },
+                  "organization": {
+                    "type": "string",
+                    "description": "Azure DevOps organization (dev.azure.com/<organization>)."
+                  },
+                  "project": {
+                    "type": "string",
+                    "description": "Project that holds the work items."
+                  },
+                  "wiql": {
+                    "type": "string",
+                    "description": "WIQL for 'My Tickets' in this project (default: gitland.azureDevOps.wiql; @project is this project)."
+                  }
+                }
               },
-              "project": {
-                "type": "string",
-                "description": "Project that holds the work items."
-              },
-              "wiql": {
-                "type": "string",
-                "description": "WIQL for 'My Tickets' in this project (default: gitland.azureDevOps.wiql; @project is this project)."
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "site",
+                  "project"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "jira"
+                  },
+                  "site": {
+                    "type": "string",
+                    "description": "Jira site, e.g. https://your-company.atlassian.net (Cloud) or https://jira.your-company.com (Server / Data Center)."
+                  },
+                  "project": {
+                    "type": "string",
+                    "description": "Jira project key, e.g. DATA."
+                  },
+                  "jql": {
+                    "type": "string",
+                    "description": "JQL for 'My Tickets' in this project (default: assigned to me, not done)."
+                  }
+                }
               }
-            }
+            ]
           }
         },
         "gitland.gitlab.hosts": {
