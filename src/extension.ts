@@ -36,6 +36,7 @@ import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps 
 import { GITHUB_SCOPES } from './providers/github';
 import { GitLabProvider, gitlabTokenKey, promptGitLabToken } from './providers/gitlab';
 import { normalizeHost } from './providers/gitlabMap.pure';
+import { jiraSites, jiraTokenKey, setJiraToken } from './providers/jira';
 import { AuthError } from './providers/types';
 import { initLog, log } from './log';
 import { config, errorMessage } from './util';
@@ -465,6 +466,11 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       refreshViews();
     }),
+    command('gitland.setJiraToken', async () => {
+      if (await setJiraToken(jiraSites(), secrets)) {
+        refreshViews();
+      }
+    }),
     command('gitland.clearCredentials', async () => {
       const org = await activeAzureOrg();
       await secrets.delete(PAT_SECRET_KEY);
@@ -475,6 +481,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const gitlabHosts = ['gitlab.com', ...config<string[]>('gitlab.hosts', []).map(normalizeHost), (await activeGitLabHost()) ?? ''];
       for (const host of new Set(gitlabHosts.filter(Boolean))) {
         await secrets.delete(gitlabTokenKey(host));
+      }
+      for (const site of jiraSites()) {
+        await secrets.delete(jiraTokenKey(site));
       }
       vscode.window.showInformationMessage('Gitland: stored tokens cleared.');
       refreshViews();

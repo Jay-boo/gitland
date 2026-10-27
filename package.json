@@ -168,6 +168,11 @@
         "category": "Gitland"
       },
       {
+        "command": "gitland.setJiraToken",
+        "title": "Set Jira Token",
+        "category": "Gitland"
+      },
+      {
         "command": "gitland.clearCredentials",
         "title": "Clear Stored Tokens",
         "category": "Gitland"
