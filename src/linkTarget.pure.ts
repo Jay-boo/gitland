@@ -1,6 +1,6 @@
 /** The URL builders of a provider (see providers/types.ts), all a link needs to be recognised. */
 export interface LinkUrls {
-  kind: 'azure' | 'github';
+  kind: 'azure' | 'github' | 'gitlab';
   pullRequestUrl(id: string): string;
   ticketUrl(id: string): string;
   releaseUrl(tag: string): string;
@@ -28,11 +28,14 @@ export function linkTarget(url: string, provider: LinkUrls | undefined): LinkTar
   if (id && same(bare, provider.pullRequestUrl(id))) {
     return { kind: 'pr', id };
   }
-  if (id && provider.kind === 'github' && same(bare, provider.ticketUrl(id))) {
+  if (id && provider.kind !== 'azure' && same(bare, provider.ticketUrl(id))) {
     return { kind: 'ticket', id };
   }
-  const tag = provider.kind === 'github' ? /\/releases\/tag\/([^/]+)\/?$/.exec(bare)?.[1] : /[?&]version=GT([^&#]+)/.exec(url)?.[1];
-  if (tag && same(provider.kind === 'github' ? bare : url, provider.releaseUrl(decodeURIComponent(tag)))) {
+  const tag =
+    provider.kind === 'github' ? /\/releases\/tag\/([^/]+)\/?$/.exec(bare)?.[1]
+    : provider.kind === 'gitlab' ? /\/-\/releases\/([^/]+)\/?$/.exec(bare)?.[1]
+    : /[?&]version=GT([^&#]+)/.exec(url)?.[1];
+  if (tag && same(provider.kind === 'azure' ? url : bare, provider.releaseUrl(decodeURIComponent(tag)))) {
     return { kind: 'release', tag: decodeURIComponent(tag) };
   }
   return undefined;

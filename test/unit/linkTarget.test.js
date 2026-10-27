@@ -38,3 +38,17 @@ test('anything else opens in the browser', () => {
   assert.strictEqual(linkTarget('https://github.com/o/r/commit/abc', github), undefined);
   assert.strictEqual(linkTarget('https://example.com/pull/3', undefined), undefined);
 });
+
+const gitlab = {
+  kind: 'gitlab',
+  pullRequestUrl: (id) => `https://gitlab.com/g/r/-/merge_requests/${id}`,
+  ticketUrl: (id) => `https://gitlab.com/g/r/-/issues/${id}`,
+  releaseUrl: (tag) => `https://gitlab.com/g/r/-/releases/${encodeURIComponent(tag)}`,
+};
+
+test('GitLab merge requests, issues and releases open Gitland pages', () => {
+  assert.deepStrictEqual(linkTarget('https://gitlab.com/g/r/-/merge_requests/42', gitlab), { kind: 'pr', id: '42' });
+  assert.deepStrictEqual(linkTarget('https://gitlab.com/g/r/-/issues/7#note_1', gitlab), { kind: 'ticket', id: '7' });
+  assert.deepStrictEqual(linkTarget('https://gitlab.com/g/r/-/releases/v1.0', gitlab), { kind: 'release', tag: 'v1.0' });
+  assert.strictEqual(linkTarget('https://gitlab.com/other/r/-/issues/7', gitlab), undefined);
+});

@@ -8,7 +8,8 @@ export interface MessageLink {
 
 /**
  * Pull requests and work items / issues mentioned in a commit message:
- * "Merged PR 527", "Merge pull request 522 / #12", "(#12)" (GitHub), "AB#1234", "#1234".
+ * "Merged PR 527", "Merge pull request 522 / #12", "(#12)" (GitHub), "!42" / "See merge request g/r!42" (GitLab),
+ * "AB#1234", "#1234".
  * Same rules as `linksIn` in media/graph.js.
  */
 export function findLinks(text: string, provider: Provider | undefined): MessageLink[] {
@@ -30,6 +31,11 @@ export function findLinks(text: string, provider: Provider | undefined): Message
   if (provider.kind === 'github') {
     for (const m of text.split('\n')[0].matchAll(/\(#(\d+)\)/g)) {
       add('pr', m[1]);
+    }
+  }
+  if (provider.kind === 'gitlab') {
+    for (const m of text.matchAll(/merge request \S*!(\d+)|(?:^|[^\w])!(\d+)\b/gi)) {
+      add('pr', m[1] ?? m[2]);
     }
   }
   for (const m of text.matchAll(/(?:^|[\s([,;])(?:AB)?#(\d+)\b/g)) {

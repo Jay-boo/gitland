@@ -79,7 +79,7 @@
 
   /**
    * Pull requests and work items mentioned in a commit message:
-   * "Merged PR 527", "Merge pull request 522 / #12", "(#12)", "AB#1234", "#1234".
+   * "Merged PR 527", "Merge pull request 522 / #12", "(#12)", "!42" (GitLab), "AB#1234", "#1234".
    */
   function linksIn(text) {
     const L = data && data.links;
@@ -94,16 +94,18 @@
     };
     for (const m of text.matchAll(/\b(?:Merged PR|Merge pull request|pull request) #?(\d+)/gi)) add('pr', m[1]);
     if (L.kind === 'github') for (const m of text.split('\n')[0].matchAll(/\(#(\d+)\)/g)) add('pr', m[1]);
+    if (L.kind === 'gitlab') for (const m of text.matchAll(/merge request \S*!(\d+)|(?:^|[^\w])!(\d+)\b/gi)) add('pr', m[1] || m[2]);
     for (const m of text.matchAll(/(?:^|[\s(\[,;])(?:AB)?#(\d+)\b/g)) add('ticket', m[1]);
     return out;
   }
 
   function linkChips(links) {
-    const noun = data.links && data.links.kind === 'github' ? 'Issue' : 'Work item';
+    const kind = data.links && data.links.kind;
+    const noun = kind === 'github' || kind === 'gitlab' ? 'Issue' : 'Work item';
     return links
       .map((l) =>
         l.kind === 'pr'
-          ? `<span class="link-chip" data-url="${esc(l.url)}" title="Open pull request ${l.id}">${icon('git-pull-request')}PR ${l.id}</span>`
+          ? `<span class="link-chip" data-url="${esc(l.url)}" title="Open ${kind === 'gitlab' ? 'merge request' : 'pull request'} ${l.id}">${icon('git-pull-request')}${kind === 'gitlab' ? `MR !${l.id}` : `PR ${l.id}`}</span>`
           : `<span class="link-chip" data-url="${esc(l.url)}" title="Open ${noun.toLowerCase()} ${l.id}">${icon('issues')}${noun} ${l.id}</span>`,
       )
       .join('');
@@ -389,7 +391,7 @@
     $('repoName').textContent = data.repoName;
     $('branchName').innerHTML = `${icon('git-branch')}<span>${esc(data.branch || 'detached HEAD')}</span>${icon('chevron-down', 'chev')}`;
     const remote = String(data.remote || '');
-    $('remoteName').innerHTML = remote ? `${icon(/github/i.test(remote) ? 'github' : 'azure-devops')}<span>${esc(remote)}</span>` : '';
+    $('remoteName').innerHTML = remote ? `${icon(/^GitLab/.test(remote) ? 'repo' : /github/i.test(remote) ? 'github' : 'azure-devops')}<span>${esc(remote)}</span>` : '';
     const html = data.commits
       .map(
         (c, i) => `<div class="row commit${c.sha === WORKTREE ? ' worktree' : ''}${c.parents.length > 1 ? ' merge' : ''}${isStash(c) ? ' stash' : ''}${c.sha === selected ? ' selected' : ''}" style="--lane:${color(c.graph.color)}" data-i="${i}" data-sha="${c.sha}">
