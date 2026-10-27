@@ -34,6 +34,7 @@ import { PullRequest } from './providers/types';
 import { Repo } from './git/repo';
 import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps } from './providers/azureDevOps';
 import { GITHUB_SCOPES } from './providers/github';
+import { GitLabProvider, gitlabTokenKey, promptGitLabToken } from './providers/gitlab';
 import { AuthError } from './providers/types';
 import { initLog, log } from './log';
 import { config, errorMessage } from './util';
@@ -180,6 +181,12 @@ export function activate(context: vscode.ExtensionContext): void {
     const repo = await repos.activeRepo();
     const provider = repo && (await getProvider(repo, secrets));
     return provider instanceof AzureDevOpsProvider ? provider.organization : undefined;
+  };
+  /** GitLab host of the active repository, if any. */
+  const activeGitLabHost = async (): Promise<string | undefined> => {
+    const repo = await repos.activeRepo();
+    const provider = repo && (await getProvider(repo, secrets));
+    return provider instanceof GitLabProvider ? provider.host : undefined;
   };
   const refreshViews = () => {
     tickets.refresh();
@@ -445,11 +452,28 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage(`Gitland: GitHub now uses ${session.account.label}.`);
       refreshViews();
     }),
+    command('gitland.setGitLabToken', async () => {
+      const host =
+        (await activeGitLabHost()) ??
+        (await vscode.window.showInputBox({ title: 'GitLab host', value: 'gitlab.com', prompt: 'Host name of the GitLab instance', ignoreFocusOut: true }))?.trim();
+      if (!host) {
+        return;
+      }
+      if (await promptGitLabToken(host, secrets)) {
+        vscode.window.showInformationMessage(`Gitland: token saved for ${host}.`);
+      }
+      refreshViews();
+    }),
     command('gitland.clearCredentials', async () => {
       const org = await activeAzureOrg();
       await secrets.delete(PAT_SECRET_KEY);
       if (org) {
         await secrets.delete(patSecretKey(org));
+      }
+      // SecretStorage cannot list keys: clear the GitLab hosts Gitland knows about.
+      const gitlabHosts = ['gitlab.com', ...config<string[]>('gitlab.hosts', []), (await activeGitLabHost()) ?? ''];
+      for (const host of new Set(gitlabHosts.filter(Boolean))) {
+        await secrets.delete(gitlabTokenKey(host));
       }
       vscode.window.showInformationMessage('Gitland: stored tokens cleared.');
       refreshViews();
