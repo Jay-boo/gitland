@@ -22,7 +22,7 @@ export async function getProvider(repo: Repo, secrets: vscode.SecretStorage): Pr
       return cached.provider;
     }
     const info = await resolveRemoteUrl(remote.url);
-    if (!info) {
+    if (!info || info.kind === 'gitlab') {
       continue;
     }
     const provider =
