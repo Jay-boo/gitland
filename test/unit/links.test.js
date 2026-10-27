@@ -34,3 +34,24 @@ test('GitLab: an issue and a merge request with the same number are both linked'
   const l = findLinks('Fix\n\nCloses #7\n\nSee merge request g/r!7', gitlab);
   assert.deepStrictEqual(l.map((x) => x.kind + x.id).sort(), ['pr7', 'ticket7']);
 });
+
+const jira = { ...github, ticketKind: 'jira', ticketKeys: { DATA: 'https://acme.atlassian.net', OPS: 'https://jira.corp.com/jira' } };
+
+test('Jira: only configured keys, whole words', () => {
+  assert.deepStrictEqual(findLinks('DATA-12 fix UTF-8 and SHA-256, XDATA-3, see OPS-4', jira).map((l) => [l.kind, l.id, l.url]), [
+    ['ticket', 'DATA-12', 'https://acme.atlassian.net/browse/DATA-12'],
+    ['ticket', 'OPS-4', 'https://jira.corp.com/jira/browse/OPS-4'],
+  ]);
+});
+
+test('Jira: #n is not a ticket, PR rules intact', () => {
+  assert.deepStrictEqual(findLinks('Fix (#7)\n\nrefs #9', jira).map((l) => [l.kind, l.id]), [['pr', '7']]);
+});
+
+test('Jira: a key and a PR with the same number are both linked', () => {
+  assert.deepStrictEqual(findLinks('DATA-7: fix (#7)', jira).map((l) => l.kind + l.id).sort(), ['pr7', 'ticketDATA-7']);
+});
+
+test('Jira: a key inside a URL path is not linked twice', () => {
+  assert.deepStrictEqual(findLinks('see https://acme.atlassian.net/browse/DATA-5', jira), []);
+});

@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, listDate, loadingHtml, stateHtml, stateClass } = /** @type {any} */ (window).gl;
+  const { esc, ticketLabel, icon, listDate, loadingHtml, stateHtml, stateClass } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -49,7 +49,7 @@
 
     const ticketRow = (t) => {
       const [cls, ic] = kind(t.type);
-      return `<div class="drow" data-ticket="${esc(t.id)}" data-org="${esc(t.org || '')}"><span class="glyph g-${cls}">${icon(ic)}</span><div class="body"><div class="title">${esc(t.title)}</div><div class="meta"><span class="id">#${esc(t.id)}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${t.project ? `<span>${esc(t.project)}</span>` : ''}</div></div>
+      return `<div class="drow" data-ticket="${esc(t.id)}" data-org="${esc(t.org || '')}"><span class="glyph g-${cls}">${icon(ic)}</span><div class="body"><div class="title">${esc(t.title)}</div><div class="meta"><span class="id">${esc(ticketLabel(t.id))}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${t.project ? `<span>${esc(t.project)}</span>` : ''}</div></div>
         <span class="acts"><button class="icon" data-start="${esc(t.id)}" title="Start work (branch)">${icon('git-branch')}</button></span></div>`;
     };
     const prRow = (p) => {
@@ -67,7 +67,7 @@
       ].filter(Boolean);
       const pr = r && r.prs.find((p) => p.sourceBranch === x.name);
       return `<div class="drow branch${x.current ? ' current' : ''}"><span class="glyph g-story">${icon('git-branch')}</span><div class="body"><div class="title">${esc(x.name)}${x.current ? ' <span class="cur-chip">● current</span>' : ''}</div>
-        <div class="meta">${flags.join('')}${x.ticket ? `<span class="link-t" data-ticket="${esc(x.ticket)}">${icon('issues')}#${esc(x.ticket)}</span>` : ''}${pr ? `<span class="link-t" data-pr="${esc(pr.id)}">${icon('git-pull-request')}${esc(pr.label)}</span>` : ''}<span>${esc(x.subject)}</span></div></div>
+        <div class="meta">${flags.join('')}${x.ticket ? `<span class="link-t" data-ticket="${esc(x.ticket)}">${icon('issues')}${esc(ticketLabel(x.ticket))}</span>` : ''}${pr ? `<span class="link-t" data-pr="${esc(pr.id)}">${icon('git-pull-request')}${esc(pr.label)}</span>` : ''}<span>${esc(x.subject)}</span></div></div>
         ${r ? ciHtml(r.branchCi[x.name]) : ''}${listDate(x.date)}
         <span class="acts">${x.current ? '' : `<button class="icon" data-branch="checkout" data-name="${esc(x.name)}" title="Checkout">${icon('check')}</button>`}
           ${!x.upstream || x.ahead > 0 ? `<button class="icon" data-branch="push" data-name="${esc(x.name)}" title="Push">${icon('arrow-up')}</button>` : ''}

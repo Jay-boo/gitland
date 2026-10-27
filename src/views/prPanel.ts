@@ -10,6 +10,7 @@ import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtm
 import { ComparePanel } from './comparePanel';
 import { TicketPanel } from './ticketPanel';
 import { capture } from '../devCapture';
+import { closesHostWorkItems, ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'checkout' | 'open' | 'copy' | 'files' }
@@ -82,7 +83,7 @@ export class PrPanel {
         type: 'details',
         details: d,
         current,
-        prefix: provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#',
+        prefix: ticketPrefix(provider),
         can: { vote: !!provider.votePullRequest, requestReview: !!provider.requestMyReview, comment: !!provider.commentPullRequest, resolve: !!provider.resolveThread, update: !!provider.updatePullRequest, kind: provider.kind },
       });
       provider
@@ -154,7 +155,8 @@ export class PrPanel {
         // finds them in its commits.
         const ids = d.workItems.map((w) => w.id);
         let transition = false;
-        if (provider.kind === 'azure' && ids.length) {
+        // Jira issues are not Azure DevOps work items: nothing to close or list on the host.
+        if (closesHostWorkItems(provider) && ids.length) {
           const list = ids.map((id) => `#${id}`).join(', ');
           const close = { label: `$(pass) Complete the linked work items`, description: list, value: true };
           const keep = { label: `$(circle-large-outline) Leave them open`, description: 'close them later, e.g. on the release PR', value: false };
@@ -168,7 +170,7 @@ export class PrPanel {
           }
           transition = pick.value;
         }
-        const related = provider.kind === 'azure' && ids.length ? `\n\nRelated work items: ${ids.map((id) => `#${id}`).join(', ')}` : '';
+        const related = closesHostWorkItems(provider) && ids.length ? `\n\nRelated work items: ${ids.map((id) => `#${id}`).join(', ')}` : '';
         await provider.updatePullRequest!(this.id, {
           complete: {
             strategy: strategy.value,

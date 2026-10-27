@@ -75,6 +75,9 @@
   }
 
   /** Work item state → chip colour class (p-new / p-active / p-blocked / p-done). */
+  /** "#12" for numbered tickets, Jira keys as they are ("DATA-12"). */
+  const ticketLabel = (/** @type {unknown} */ id) => (/^\d+$/.test(String(id)) ? `#${id}` : String(id));
+
   function stateClass(/** @type {string} */ s) {
     const t = String(s).toLowerCase();
     if (/(done|closed|resolved|completed|merged)/.test(t)) return 'done';
@@ -88,7 +91,7 @@
   /** The graph lane colours (--gl-lane-0 … 10), read through get (e.g. getComputedStyle). */
   const themeColors = (/** @type {(name: string) => string} */ get) => Array.from({ length: 11 }, (_, i) => get(`--gl-lane-${i}`));
 
-  const gl = { esc, icon, relTime, relShort, shortDate, fullDate, listDate, displayName, stateHtml, loadingHtml, stateClass, branchHead, middleName, $, themeColors };
+  const gl = { esc, icon, relTime, relShort, shortDate, fullDate, listDate, displayName, stateHtml, loadingHtml, stateClass, ticketLabel, branchHead, middleName, $, themeColors };
   // @ts-ignore
   root.gl = gl;
   // @ts-ignore

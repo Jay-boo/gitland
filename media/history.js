@@ -25,6 +25,11 @@
     const out = [];
     const seen = new Set();
     for (const m of text.matchAll(/\b(?:Merged PR|Merge pull request|pull request) #?(\d+)/gi)) if (!seen.has('p' + m[1])) seen.add('p' + m[1]), out.push(`<span class="hchip pr" data-url="${esc(L.pr.replace('{id}', m[1]))}">${icon('git-pull-request')}${m[1]}</span>`);
+    if (L.ticketKeys) {
+      const alt = Object.keys(L.ticketKeys).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      for (const m of text.matchAll(new RegExp(`(?<![\\w/-])(${alt || '(?!)'})-\\d+\\b`, 'g'))) if (!seen.has('t' + m[0])) seen.add('t' + m[0]), out.push(`<span class="hchip tk" data-url="${esc(`${L.ticketKeys[m[1]]}/browse/${m[0]}`)}">${icon('issues')}${esc(m[0])}</span>`);
+      return out.join('');
+    }
     for (const m of text.matchAll(/(?:^|[\s(\[,;])(?:AB)?#(\d+)\b/g)) if (!seen.has('p' + m[1]) && !seen.has('t' + m[1])) seen.add('t' + m[1]), out.push(`<span class="hchip tk" data-url="${esc(L.ticket.replace('{id}', m[1]))}">${icon('issues')}${m[1]}</span>`);
     return out.join('');
   }

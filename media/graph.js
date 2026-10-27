@@ -95,18 +95,31 @@
     for (const m of text.matchAll(/\b(?:Merged PR|Merge pull request|pull request) #?(\d+)/gi)) add('pr', m[1]);
     if (L.kind === 'github') for (const m of text.split('\n')[0].matchAll(/\(#(\d+)\)/g)) add('pr', m[1]);
     if (L.kind === 'gitlab') for (const m of text.matchAll(/merge request \S*!(\d+)|(?:^|[^\w])!(\d+)\b/gi)) add('pr', m[1] || m[2]);
+    const keys = L.ticketKeys;
+    if (keys) {
+      for (const m of text.matchAll(jiraKeyRe(keys))) {
+        if (!seen.has('ticket' + m[0])) seen.add('ticket' + m[0]), out.push({ kind: 'ticket', id: m[0], url: `${keys[m[1]]}/browse/${m[0]}` });
+      }
+      return out;
+    }
     for (const m of text.matchAll(/(?:^|[\s(\[,;])(?:AB)?#(\d+)\b/g)) add('ticket', m[1]);
     return out;
   }
 
+  /** Jira keys of the configured projects, as whole words (same as jiraKeyPattern in src/links.ts). */
+  function jiraKeyRe(keys) {
+    const alt = Object.keys(keys).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    return new RegExp(`(?<![\\w/-])(${alt || '(?!)'})-\\d+\\b`, 'g');
+  }
+
   function linkChips(links) {
     const kind = data.links && data.links.kind;
-    const noun = kind === 'github' || kind === 'gitlab' ? 'Issue' : 'Work item';
+    const noun = data.links && data.links.ticketKeys ? 'Jira' : kind === 'github' || kind === 'gitlab' ? 'Issue' : 'Work item';
     return links
       .map((l) =>
         l.kind === 'pr'
           ? `<span class="link-chip" data-url="${esc(l.url)}" title="Open ${kind === 'gitlab' ? 'merge request' : 'pull request'} ${l.id}">${icon('git-pull-request')}${kind === 'gitlab' ? `MR !${l.id}` : `PR ${l.id}`}</span>`
-          : `<span class="link-chip" data-url="${esc(l.url)}" title="Open ${noun.toLowerCase()} ${l.id}">${icon('issues')}${noun} ${l.id}</span>`,
+          : `<span class="link-chip" data-url="${esc(l.url)}" title="Open ${noun === 'Jira' ? 'Jira issue' : noun.toLowerCase()} ${l.id}">${icon('issues')}${noun} ${l.id}</span>`,
       )
       .join('');
   }
@@ -127,8 +140,9 @@
           .replace(/(^|[\s(])(https:\/\/[^\s<)]+)/g, '$1<span class="md-link" data-url="$2">$2</span>')
           .replace(/(^|[\s(\[,;])((?:AB)?#(\d+))\b/g, (m, pre, label, id) => {
             const l = data && data.links;
-            return l ? `${pre}<span class="md-link" data-url="${esc(l.ticket.replace('{id}', id))}">${label}</span>` : m;
+            return l && !l.ticketKeys ? `${pre}<span class="md-link" data-url="${esc(l.ticket.replace('{id}', id))}">${label}</span>` : m;
           })
+          .replace(data && data.links && data.links.ticketKeys ? jiraKeyRe(data.links.ticketKeys) : /(?!)/g, (m, key) => `<span class="md-link" data-url="${esc(`${data.links.ticketKeys[key]}/browse/${m}`)}">${m}</span>`)
           .replace(/\b((?:Merged PR|Merge pull request) #?(\d+))/g, (m, label, id) => {
             const l = data && data.links;
             return l ? `<span class="md-link" data-url="${esc(l.pr.replace('{id}', id))}">${label}</span>` : m;

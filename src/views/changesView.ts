@@ -11,6 +11,7 @@ import { ChangesBadge } from './changesBadge';
 import { capture } from '../devCapture';
 import { needsTicketReminder, withTicketRef } from '../tickets/reminder.pure';
 import { pickTicket } from '../commands/work';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' }
@@ -139,7 +140,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
         repoName: path.basename(repo.root),
         status,
         ticket,
-        ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#',
+        ticketPrefix: ticketPrefix(provider),
         operation,
         hooks,
         signing: { always: gpgsign === 'true', available: !!signingKey || gpgFormat === 'ssh' },
@@ -162,8 +163,8 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
       branch ? repo.getConfig(`branch.${branch}.gitlandNoTicket`) : undefined,
       getProvider(repo, this.context.secrets).catch(() => undefined),
     ]);
-    const prefix = provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#';
-    if (!provider || !needsTicketReminder({ enabled: config('changes.ticketReminder', true), branch, linkedTicket: linked, skipped: skipped === 'true', message, prefix })) {
+    const prefix = ticketPrefix(provider);
+    if (!provider || !needsTicketReminder({ enabled: config('changes.ticketReminder', true), branch, linkedTicket: linked, skipped: skipped === 'true', message, prefix, keys: Object.keys(provider?.ticketKeys ?? {}) })) {
       return message;
     }
     const link = 'Link a ticket…';
@@ -285,7 +286,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     try {
       const text = await generateCommitMessage(
         repo,
-        ticket && { ...ticket, prefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
+        ticket && { ...ticket, prefix: ticketPrefix(provider) },
         (t) => this.post({ type: 'genText', text: t }),
         cts.token,
       );

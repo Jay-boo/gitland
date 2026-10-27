@@ -11,6 +11,8 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
+import { ticketsSignedIn } from '../providers/ticketOverlay';
 
 type Message =
   | { type: 'ready' | 'explain' | 'stopExplain' }
@@ -92,7 +94,7 @@ export class HistoryPanel {
           range: this.range,
           entries: this.entries,
           avatars,
-          links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
+          links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}'), ticketKeys: provider.ticketKeys },
           autoExplain: this.autoExplain,
         });
         this.autoExplain = false;
@@ -182,11 +184,12 @@ export async function mentionedContext(provider: Provider | undefined, texts: st
     return [];
   }
   const links = findLinks(texts.join('\n'), provider);
+  const ticketsOk = await ticketsSignedIn(provider);
   const prs = links.filter((l) => l.kind === 'pr').slice(0, 20).map((l) => `PR ${l.id}`);
-  const ids = [...new Set(links.filter((l) => l.kind === 'ticket').map((l) => l.id))].slice(0, 8);
+  const ids = ticketsOk ? [...new Set(links.filter((l) => l.kind === 'ticket').map((l) => l.id))].slice(0, 8) : [];
   const tickets = await Promise.all(ids.map((id) => provider.getTicket(id).catch(() => undefined)));
   return [
-    ...tickets.filter((t): t is NonNullable<typeof t> => !!t).map((t) => `${provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#'}${t.id} (${t.type}, ${t.state}): ${t.title}`),
+    ...tickets.filter((t): t is NonNullable<typeof t> => !!t).map((t) => `${ticketPrefix(provider)}${t.id} (${t.type}, ${t.state}): ${t.title}`),
     ...prs,
   ];
 }

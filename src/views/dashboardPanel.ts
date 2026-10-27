@@ -10,6 +10,7 @@ import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtm
 import { PrPanel } from './prPanel';
 import { TicketPanel } from './ticketPanel';
 import { capture } from '../devCapture';
+import { ticketsSignedIn } from '../providers/ticketOverlay';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'newPr' | 'signIn' }
@@ -80,7 +81,10 @@ export class DashboardPanel {
       return;
     }
     const [tickets, prs, runs] = await Promise.all([
-      provider.listMyTickets().catch((e) => (log.info(`Dashboard: tickets (${errorMessage(e)})`), [] as Ticket[])),
+      // Tickets may come from Jira: only when signed in there, so the dashboard never prompts.
+      (await ticketsSignedIn(provider))
+        ? provider.listMyTickets().catch((e) => (log.info(`Dashboard: tickets (${errorMessage(e)})`), [] as Ticket[]))
+        : ([] as Ticket[]),
       provider.listPullRequests().catch((e) => (log.info(`Dashboard: PRs (${errorMessage(e)})`), [] as PullRequest[])),
       provider.pipelineRuns ? provider.pipelineRuns({ max: 100 }).catch(() => [] as PipelineRun[]) : Promise.resolve([] as PipelineRun[]),
     ]);

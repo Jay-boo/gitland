@@ -52,3 +52,11 @@ test('GitLab merge requests, issues and releases open Gitland pages', () => {
   assert.deepStrictEqual(linkTarget('https://gitlab.com/g/r/-/releases/v1.0', gitlab), { kind: 'release', tag: 'v1.0' });
   assert.strictEqual(linkTarget('https://gitlab.com/other/r/-/issues/7', gitlab), undefined);
 });
+
+test('Jira browse links on a configured site open the ticket page', () => {
+  const p = { ...github, ticketKeys: { DATA: 'https://acme.atlassian.net', OPS: 'https://jira.corp.com/jira' } };
+  assert.deepStrictEqual(linkTarget('https://acme.atlassian.net/browse/DATA-7?focused=1', p), { kind: 'ticket', id: 'DATA-7', org: 'https://acme.atlassian.net' });
+  assert.deepStrictEqual(linkTarget('https://Jira.corp.com/jira/browse/OPS-2', p), { kind: 'ticket', id: 'OPS-2', org: 'https://jira.corp.com/jira' });
+  assert.strictEqual(linkTarget('https://other.atlassian.net/browse/DATA-7', p), undefined);
+  assert.strictEqual(linkTarget('https://acme.atlassian.net/browse/NOPE-7', p), undefined);
+});

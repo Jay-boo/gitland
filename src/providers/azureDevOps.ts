@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { log } from '../log';
 import { config, errorMessage } from '../util';
-import { AuthError, CreatePullRequestOptions, PipelineJob, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails, TicketSource } from './types';
+import { AuthError, CreatePullRequestOptions, PipelineJob, PipelineRun, Provider, PullRequest, PullRequestDetails, ReviewVote, Ticket, TicketDetails, AzureTicketSource as TicketSource, JiraTicketSource } from './types';
 
 export const AZURE_DEVOPS_SCOPES = ['499b84ac-1321-427f-aa17-267ca6975798/.default'];
 /** Legacy key: one token for every organization. */
@@ -195,7 +195,7 @@ export class AzureDevOpsProvider implements Provider {
    * Teams often keep all work items in one "backlog" project, separate from the code.
    */
   get ticketSources(): TicketSource[] {
-    const list = config<TicketSource[]>('tickets.sources', []).filter((t) => t && t.organization && t.project);
+    const list = config<(TicketSource | JiraTicketSource)[]>('tickets.sources', []).filter((t): t is TicketSource => !!t && t.type !== 'jira' && !!t.organization && !!t.project);
     return list.length ? list : [{ organization: this.org, project: this.project }];
   }
 

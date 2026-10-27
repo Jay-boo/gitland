@@ -315,6 +315,8 @@ export class GraphController implements vscode.Disposable {
           kind: provider.kind,
           pr: provider.pullRequestUrl('{id}'),
           ticket: provider.ticketUrl('{id}'),
+          // Jira project key → site: keys like DATA-12 link to <site>/browse/DATA-12.
+          ticketKeys: provider.ticketKeys,
         },
         commits: list.map((c, i) => ({
           sha: c.sha,

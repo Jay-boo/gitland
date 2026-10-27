@@ -28,12 +28,26 @@ export interface TicketDetails {
 }
 
 /** An Azure DevOps project the tickets come from (setting gitland.tickets.sources). */
-export interface TicketSource {
+export interface AzureTicketSource {
+  type?: 'azure';
   organization: string;
   project: string;
   /** WIQL for "My Tickets" in this project (default: gitland.azureDevOps.wiql). */
   wiql?: string;
 }
+
+/** A Jira project the tickets come from, whatever the code host. */
+export interface JiraTicketSource {
+  type: 'jira';
+  /** e.g. https://acme.atlassian.net, or https://jira.corp.com/jira (Server / Data Center). */
+  site: string;
+  /** Project key, e.g. DATA. */
+  project: string;
+  /** JQL for "My Tickets" in this project (default: assigned to me, not done). */
+  jql?: string;
+}
+
+export type TicketSource = AzureTicketSource | JiraTicketSource;
 
 export type PullRequestGroup = 'mine' | 'review' | 'other';
 
@@ -132,6 +146,10 @@ export interface Provider {
   commentTicket?(id: string, text: string, org?: string): Promise<void>;
   /** Where tickets are read from, for the Tickets view title (e.g. "Backlog"). */
   readonly ticketSourceLabel?: string;
+  /** Set when the tickets come from Jira instead of the code host (ids are keys like DATA-12). */
+  readonly ticketKind?: 'jira';
+  /** Jira project key → site, for the keys recognized in commit messages and links. */
+  readonly ticketKeys?: Record<string, string>;
   listPullRequests(): Promise<PullRequest[]>;
   getPullRequestDetails?(id: string): Promise<PullRequestDetails>;
   /** Latest CI runs of the repository (by commit), or of a pull request. */

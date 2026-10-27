@@ -34,3 +34,9 @@ test('withTicketRef appends to the subject line', () => {
   assert.strictEqual(withTicketRef('', 'AB#7'), 'AB#7');
   assert.strictEqual(withTicketRef('fix: x  ', 'AB#7'), 'fix: x AB#7');
 });
+
+test('needsTicketReminder: Jira keys', () => {
+  const jira = { enabled: true, branch: 'feature/login', skipped: false, prefix: '', keys: ['DATA'] };
+  assert.strictEqual(needsTicketReminder({ ...jira, message: 'fix 2 bugs' }), true);
+  assert.strictEqual(needsTicketReminder({ ...jira, message: 'fix login DATA-12' }), false);
+});

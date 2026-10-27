@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relTime, listDate, loadingHtml, stateClass } = /** @type {any} */ (window).gl;
+  const { esc, ticketLabel, icon, relTime, listDate, loadingHtml, stateClass } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -49,7 +49,7 @@
       ${!m.branches.length && !m.commits.length ? `<div class="none">No branch or commit mentions ${esc(ref)} yet.</div>` : ''}
     </section>`);
     if (d.related.length) {
-      side.push(`<section><h3>Related</h3>${d.related.map((r) => `<div class="link-row" data-ticket="${esc(r.id)}">${icon('link')}<span>${esc(r.kind)} #${esc(r.id)}</span></div>`).join('')}</section>`);
+      side.push(`<section><h3>Related</h3>${d.related.map((r) => `<div class="link-row" data-ticket="${esc(r.id)}">${icon('link')}<span>${esc(r.kind)} ${esc(ticketLabel(r.id))}</span></div>`).join('')}</section>`);
     }
     const body = [
       d.description ? `<section class="rich">${rich(d.format, d.description)}</section>` : `<section class="rich none">No description.</section>`,
@@ -67,7 +67,7 @@
     page.innerHTML = `
 <header class="t-head">
   <div class="t-title">
-    <div class="t-kind"><span class="glyph big g-${cls}">${icon(ic)}</span><span>${esc(t.type)}</span><span class="id">#${esc(t.id)}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${d.changed ? `<span class="k">updated ${esc(relTime(d.changed))}</span>` : ''}</div>
+    <div class="t-kind"><span class="glyph big g-${cls}">${icon(ic)}</span><span>${esc(t.type)}</span><span class="id">${esc(ticketLabel(t.id))}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${d.changed ? `<span class="k">updated ${esc(relTime(d.changed))}</span>` : ''}</div>
     <h1>${esc(t.title)}</h1>
   </div>
 </header>
