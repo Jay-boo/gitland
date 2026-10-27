@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AuthError, CreatePullRequestOptions, Provider, PullRequest, Ticket, TicketDetails, PullRequestDetails, PipelineRun, ReviewVote } from './types';
+import { AuthError, CreatePullRequestOptions, Provider, PullRequest, Ticket, TicketDetails, PullRequestDetails, PipelineJob, PipelineRun, ReviewVote } from './types';
 
 export const GITHUB_SCOPES = ['repo'];
 
@@ -56,6 +56,10 @@ export class GitHubProvider implements Provider {
     return `${this.webUrl}/pull/${id}`;
   }
 
+  releaseUrl(tag: string): string {
+    return `${this.webUrl}/releases/tag/${encodeURIComponent(tag)}`;
+  }
+
   async isSignedIn(): Promise<boolean> {
     return !!(await vscode.authentication.getSession('github', GITHUB_SCOPES, { silent: true }));
   }
@@ -87,6 +91,22 @@ export class GitHubProvider implements Provider {
       throw new Error(`GitHub: ${msg}`);
     }
     return (await res.json()) as T;
+  }
+
+  /** Requests whose answer is empty or plain text (rerun, cancel, job logs). */
+  private async requestText(method: string, path: string): Promise<string> {
+    const session = await vscode.authentication.getSession('github', GITHUB_SCOPES, { createIfNone: true });
+    const res = await fetch(`https://api.github.com${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${session.accessToken}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'gitland-vscode' },
+    });
+    if (res.status === 401) {
+      throw new AuthError('GitHub rejected the credentials. Run "Gitland: Switch GitHub Account".');
+    }
+    if (!res.ok) {
+      throw new Error(`GitHub: ${res.status} ${res.statusText}`);
+    }
+    return res.text();
   }
 
   async avatarFor(_email: string, sha?: string): Promise<string | undefined> {
@@ -162,6 +182,22 @@ export class GitHubProvider implements Provider {
       related: [],
       changed: i.updated_at ? Date.parse(i.updated_at) : undefined,
     };
+  }
+
+  async ticketStates(): Promise<{ name: string }[]> {
+    return [{ name: 'open' }, { name: 'closed' }];
+  }
+
+  async setTicketState(id: string, state: string): Promise<void> {
+    await this.request('PATCH', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}`, { state: state === 'closed' ? 'closed' : 'open' });
+  }
+
+  async assignTicketToMe(id: string): Promise<void> {
+    await this.request('POST', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}/assignees`, { assignees: [await this.me()] });
+  }
+
+  async commentTicket(id: string, text: string): Promise<void> {
+    await this.request('POST', `/repos/${this.owner}/${this.repo}/issues/${encodeURIComponent(id)}/comments`, { body: text });
   }
 
   async getTicket(id: string): Promise<Ticket | undefined> {
@@ -243,16 +279,19 @@ export class GitHubProvider implements Provider {
     };
   }
 
-  async pipelineRuns(o: { prId?: string; max?: number }): Promise<PipelineRun[]> {
+  async pipelineRuns(o: { prId?: string; max?: number; branch?: string }): Promise<PipelineRun[]> {
     const base = `/repos/${this.owner}/${this.repo}`;
-    let branch: string | undefined;
+    let branch: string | undefined = o.branch;
     if (o.prId) {
       branch = (await this.request<GhPull>('GET', `${base}/pulls/${encodeURIComponent(o.prId)}`)).head.ref;
     }
     const data = await this.request<{
-      workflow_runs: { name: string; status: string; conclusion: string | null; html_url: string; head_sha: string; head_branch: string; updated_at: string }[];
+      workflow_runs: { id: number; workflow_id: number; name: string; status: string; conclusion: string | null; html_url: string; head_sha: string; head_branch: string; updated_at: string; run_started_at?: string }[];
     }>('GET', `${base}/actions/runs?per_page=${o.max ?? 60}${branch ? `&branch=${encodeURIComponent(branch)}` : ''}`);
     return data.workflow_runs.map((r) => ({
+      id: String(r.id),
+      definitionId: String(r.workflow_id),
+      started: r.run_started_at ? Date.parse(r.run_started_at) : undefined,
       name: r.name,
       state:
         r.status === 'in_progress' ? 'running'
@@ -265,6 +304,39 @@ export class GitHubProvider implements Provider {
       branch: r.head_branch,
       finished: r.status === 'completed' ? Date.parse(r.updated_at) : undefined,
     }));
+  }
+
+  async rerunPipeline(run: PipelineRun): Promise<void> {
+    await this.requestText('POST', `/repos/${this.owner}/${this.repo}/actions/runs/${encodeURIComponent(run.id)}/rerun`);
+  }
+
+  async cancelPipeline(run: PipelineRun): Promise<void> {
+    await this.requestText('POST', `/repos/${this.owner}/${this.repo}/actions/runs/${encodeURIComponent(run.id)}/cancel`);
+  }
+
+  async pipelineJobs(run: PipelineRun): Promise<PipelineJob[]> {
+    const data = await this.request<{ jobs: { id: number; name: string; status: string; conclusion: string | null; steps?: { number: number; name: string; status: string; conclusion: string | null }[] }[] }>(
+      'GET',
+      `/repos/${this.owner}/${this.repo}/actions/runs/${encodeURIComponent(run.id)}/jobs?per_page=100`,
+    );
+    const state = (x: { status: string; conclusion: string | null }): PipelineJob['state'] =>
+      x.status === 'in_progress' ? 'running'
+      : x.status !== 'completed' ? 'queued'
+      : x.conclusion === 'success' ? 'succeeded'
+      : x.conclusion === 'cancelled' || x.conclusion === 'skipped' ? 'canceled'
+      : 'failed';
+    return data.jobs.map((j) => ({
+      id: String(j.id),
+      name: j.name,
+      state: state(j),
+      logId: String(j.id),
+      steps: (j.steps ?? []).map((st) => ({ id: `${j.id}.${st.number}`, name: st.name, state: state(st), logId: String(j.id) })),
+    }));
+  }
+
+  /** The job's whole log (GitHub has no per-step log endpoint). */
+  async pipelineLog(_run: PipelineRun, job: PipelineJob): Promise<string> {
+    return job.logId ? this.requestText('GET', `/repos/${this.owner}/${this.repo}/actions/jobs/${encodeURIComponent(job.logId)}/logs`) : '';
   }
 
   async votePullRequest(id: string, vote: ReviewVote, comment?: string): Promise<void> {

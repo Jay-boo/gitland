@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, listDate, loadingHtml, stateHtml, stateClass } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -49,13 +49,13 @@
 
     const ticketRow = (t) => {
       const [cls, ic] = kind(t.type);
-      return `<div class="drow" data-ticket="${esc(t.id)}" data-org="${esc(t.org || '')}"><span class="glyph g-${cls}">${icon(ic)}</span><div class="body"><div class="title">${esc(t.title)}</div><div class="meta"><span class="id">#${esc(t.id)}</span><span>${esc(t.state)}</span>${t.project ? `<span>${esc(t.project)}</span>` : ''}</div></div>
+      return `<div class="drow" data-ticket="${esc(t.id)}" data-org="${esc(t.org || '')}"><span class="glyph g-${cls}">${icon(ic)}</span><div class="body"><div class="title">${esc(t.title)}</div><div class="meta"><span class="id">#${esc(t.id)}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${t.project ? `<span>${esc(t.project)}</span>` : ''}</div></div>
         <span class="acts"><button class="icon" data-start="${esc(t.id)}" title="Start work (branch)">${icon('git-branch')}</button></span></div>`;
     };
     const prRow = (p) => {
       const rv = REV[p.isDraft ? 'waiting' : p.review || 'waiting'];
       return `<div class="drow" data-pr="${esc(p.id)}"><span class="glyph g-${p.isDraft ? 'draft' : rv[0]}">${icon(p.isDraft ? 'git-pull-request-draft' : rv[1])}</span><div class="body"><div class="title">${esc(p.title)}</div>
-        <div class="meta"><span class="id">${esc(p.label)}</span><span class="pill p-${p.isDraft ? 'draft' : rv[0]}">${p.isDraft ? 'draft' : rv[2]}</span><span>${esc(p.sourceBranch)} → ${esc(p.targetBranch)}</span>${p.group === 'review' ? `<span>${icon('account')} ${esc(p.author)}</span>` : ''}</div></div>${ciHtml(p.ci)}<span class="k">${p.created ? esc(relShort(p.created)) : ''}</span></div>`;
+        <div class="meta"><span class="id">${esc(p.label)}</span><span class="pill p-${p.isDraft ? 'draft' : rv[0]}">${p.isDraft ? 'draft' : rv[2]}</span><span>${esc(p.sourceBranch)} → ${esc(p.targetBranch)}</span>${p.group === 'review' ? `<span>${icon('account')} ${esc(p.author)}</span>` : ''}</div></div>${ciHtml(p.ci)}${p.created ? listDate(p.created) : '<span class="k"></span>'}</div>`;
     };
     const branchRow = (x) => {
       const flags = [
@@ -66,27 +66,32 @@
         x.merged && `<span class="flag ok" title="Merged into the default branch">${icon('git-merge')}merged</span>`,
       ].filter(Boolean);
       const pr = r && r.prs.find((p) => p.sourceBranch === x.name);
-      return `<div class="drow branch${x.current ? ' current' : ''}"><span class="glyph g-story">${icon('git-branch')}</span><div class="body"><div class="title mono">${esc(x.name)}${x.current ? ' <span class="cur-chip">● current</span>' : ''}</div>
+      return `<div class="drow branch${x.current ? ' current' : ''}"><span class="glyph g-story">${icon('git-branch')}</span><div class="body"><div class="title">${esc(x.name)}${x.current ? ' <span class="cur-chip">● current</span>' : ''}</div>
         <div class="meta">${flags.join('')}${x.ticket ? `<span class="link-t" data-ticket="${esc(x.ticket)}">${icon('issues')}#${esc(x.ticket)}</span>` : ''}${pr ? `<span class="link-t" data-pr="${esc(pr.id)}">${icon('git-pull-request')}${esc(pr.label)}</span>` : ''}<span>${esc(x.subject)}</span></div></div>
-        ${r ? ciHtml(r.branchCi[x.name]) : ''}<span class="k">${esc(relShort(x.date))}</span>
+        ${r ? ciHtml(r.branchCi[x.name]) : ''}${listDate(x.date)}
         <span class="acts">${x.current ? '' : `<button class="icon" data-branch="checkout" data-name="${esc(x.name)}" title="Checkout">${icon('check')}</button>`}
           ${!x.upstream || x.ahead > 0 ? `<button class="icon" data-branch="push" data-name="${esc(x.name)}" title="Push">${icon('arrow-up')}</button>` : ''}
           ${!pr && !x.merged && !x.isDefault ? `<button class="icon" data-branch="pr" data-name="${esc(x.name)}" title="Create a pull request">${icon('git-pull-request-create')}</button>` : ''}
           ${x.merged && !x.current ? `<button class="icon" data-branch="delete" data-name="${esc(x.name)}" title="Delete (merged)">${icon('trash')}</button>` : ''}</span></div>`;
     };
-    const loadingOr = (html) => (r ? html : local.signedIn ? '<div class="skeleton"><div></div><div></div></div>' : `<div class="none">Sign in to see it. <span class="link-t" data-act="signIn">Sign in</span></div>`);
+    const loadingOr = (html) => (r ? html : loadingHtml('Loading…'));
+    // Signed out: one sign-in block for everything that needs the provider; only the local branches stay.
+    const provider = String(local.remote || '').split(' · ')[0] || 'your provider';
+    const signin = !local.signedIn && !r
+      ? stateHtml({ state: 'signin', title: `Sign in to ${provider}`, text: 'to see reviews, pull requests and tickets' }, `<button class="primary" data-act="signIn">${icon('sign-in')}Sign in</button>`)
+      : '';
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-story">${icon('dashboard')}</span>
-  <div class="t-title"><div class="t-kind"><span>Dashboard</span><span class="k">${esc(local.repoName)}${local.remote ? ` · ${esc(local.remote)}` : ''}</span></div>
+  <div class="t-title"><div class="t-kind"><span class="glyph big g-story">${icon('dashboard')}</span><span title="${esc(local.remote || '')}">Dashboard · ${esc(local.repoName)}</span></div>
   <h1>${summary.length ? 'What needs you' : 'All clear'}</h1></div>
   <span class="grow"></span><button class="icon" data-act="refresh" title="Refresh">${icon('refresh')}</button>
 </header>
-<div class="summary">${summary.join('') || `<span class="sum ok">${icon('check-all')}Nothing waiting for you</span>`}</div>
+${summary.length ? `<div class="summary">${summary.join('')}</div>` : ''}
+${signin}
 <div class="dgrid">
-  ${card('Waiting for my review', 'eye', r ? review.length : undefined, loadingOr(review.map(prRow).join('') || '<div class="none">Nothing to review.</div>'))}
+  ${signin ? '' : `${card('Waiting for my review', 'eye', r ? review.length : undefined, loadingOr(review.map(prRow).join('') || '<div class="none">Nothing to review.</div>'))}
   ${card('My pull requests', 'git-pull-request', r ? mine.length : undefined, loadingOr(mine.map(prRow).join('') || '<div class="none">No open pull request.</div>'), `<button class="ghost" data-act="newPr">${icon('add')}New</button>`)}
-  ${card('Tickets in progress', 'issues', r ? inProgress.length : undefined, loadingOr(inProgress.map(ticketRow).join('') || '<div class="none">Nothing in progress.</div>') + (r && todo.length ? `<div class="sub">To do · ${todo.length}</div>${todo.slice(0, 6).map(ticketRow).join('')}` : ''))}
+  ${card('Tickets in progress', 'issues', r ? inProgress.length : undefined, loadingOr(inProgress.map(ticketRow).join('') || '<div class="none">Nothing in progress.</div>') + (r && todo.length ? `<h3 class="sub">To do <span class="n">${todo.length}</span></h3>${todo.slice(0, 6).map(ticketRow).join('')}` : ''))}`}
   ${card('My branches', 'git-branch', b.length, b.map(branchRow).join('') || '<div class="none">No local branch.</div>', mergedB.length ? `<span class="k">${mergedB.length} merged</span>` : '')}
 </div>`;
   }
@@ -111,9 +116,9 @@
       remote = m;
       render();
     } else if (m.type === 'error') {
-      page.innerHTML = `<div class="state error">${icon('warning')}<b>${esc(m.message)}</b></div>`;
+      page.innerHTML = stateHtml({ state: 'error', title: 'Could not load the dashboard', text: m.message }, `<button data-act="refresh">${icon('refresh')}Retry</button>`);
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Loading the dashboard…');
   vscode.postMessage({ type: 'ready' });
 })();

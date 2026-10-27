@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, relShort, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -29,7 +29,7 @@
     const q = filterEl.value.trim().toLowerCase();
     const prs = data.prs.filter((p) => !q || `${p.label} ${p.title} ${p.sourceBranch} ${p.targetBranch} ${p.author}`.toLowerCase().includes(q));
     if (!data.prs.length) {
-      listEl.innerHTML = `<div class="state done">${icon('git-pull-request')}<b>No active pull requests</b><span>in this repository</span>
+      listEl.innerHTML = `<div class="gl-empty empty">${icon('git-pull-request')}<b>No active pull requests</b><span>in this repository</span>
         <button data-act="create">${icon('git-pull-request-create')}Create pull request…</button></div>`;
       return;
     }
@@ -43,7 +43,7 @@
       const collapsed = !!state.collapsed[g.key];
       return `<div class="grp${collapsed ? ' collapsed' : ''}">
   <div class="gh" data-toggle="${g.key}">${icon(collapsed ? 'chevron-right' : 'chevron-down')}<span class="gt">${g.label}</span><span class="n">${list.length}</span></div>
-  <div class="gb">${list.length ? list.map(item).join('') : `<div class="state"><span>none</span></div>`}</div>
+  <div class="gb">${list.length ? list.map(item).join('') : `<div class="gl-empty"><span>none</span></div>`}</div>
 </div>`;
     }).join('');
     listEl.innerHTML =
@@ -73,7 +73,7 @@
         : m.state === 'error'
           ? `<button data-act="refresh">${icon('refresh')}Retry</button>`
           : '';
-    listEl.innerHTML = `<div class="state ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
+    listEl.innerHTML = `<div class="gl-empty ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
   }
 
   listEl.addEventListener('click', (e) => {
@@ -101,8 +101,12 @@
       data = null;
       showState(m);
     } else if (m.type === 'loading' && !data) {
-      listEl.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+      listEl.innerHTML = loadingHtml('Loading pull requests…');
     }
   });
+  // No data yet (loading, empty, sign-in, error): hide the filter box above the state block.
+  const noData = () => document.body.classList.toggle('no-data', !!listEl.querySelector(':scope > .gl-empty') && !(/** @type {HTMLInputElement | null} */ (document.querySelector('.lv-head input'))?.value));
+  new MutationObserver(noData).observe(listEl, { childList: true });
+  noData();
   vscode.postMessage({ type: 'ready' });
 })();

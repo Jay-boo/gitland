@@ -1,6 +1,7 @@
 /* Changes view: base.css components + graph.css .file rows. */
 
-body.changes { --gl-bg: var(--vscode-sideBar-background, var(--vscode-editor-background)); overflow-y: auto; overflow-x: hidden; background: var(--gl-bg); padding-bottom: 12px; }
+body.changes { --gl-bg: var(--vscode-sideBar-background, var(--vscode-editor-background)); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; background: var(--gl-bg); }
+body.changes > * { flex: none; }
 body.changes .grow { flex: 1; }
 
 /* ---------- sync bar ---------- */
@@ -10,9 +11,9 @@ body.changes .grow { flex: 1; }
   top: 0;
   z-index: 3;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 2px 4px;
+  gap: 0 2px;
   margin: 8px 8px 0;
   padding: 8px 6px 8px 12px;
   background: var(--gl-card);
@@ -20,12 +21,14 @@ body.changes .grow { flex: 1; }
   border-radius: var(--gl-radius-card);
   box-shadow: 0 -8px 0 var(--gl-bg);
 }
-.sync .branch { flex: 1 1 0; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; color: var(--fg); }
-.sync > .grow { display: none; }
+/* One row: branch name (truncates last), ahead/behind or ✓ right after it, then the one sync action and "…". */
+.sync .branch { flex: 0 1 auto; max-width: 100%; min-height: 22px; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; color: var(--fg); }
+.sync > .grow { display: block; flex: 1 1 0; min-width: 4px; }
 .sync .branch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sync .branch .codicon { color: var(--muted); }
-.ab { order: 9; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.ab > span { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--gl-border); --c: var(--gl-muted); color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); }
+.ab { flex: none; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0 0 0 6px; font-size: 11px; color: var(--muted); }
+.ab:empty { display: none; }
+.ab > span { display: inline-flex; align-items: center; gap: 2px; height: 22px; --c: var(--gl-muted); color: var(--c); }
 .ab .codicon { font-size: 11px; vertical-align: -1px; }
 .ab .up { --c: var(--gl-main); }
 .ab .down { --c: var(--gl-release); }
@@ -39,7 +42,8 @@ body.is-busy .split { opacity: 0.6; }
 
 /* ---------- compose ---------- */
 
-.compose { padding: 10px 8px 4px; }
+/* Pinned at the bottom of the view, like Sixth's chat input. */
+.compose { position: sticky; bottom: 0; z-index: 2; margin-top: auto; padding: 10px 8px 8px; background: var(--gl-bg); box-shadow: 0 -10px 10px -2px var(--gl-bg); }
 .msgwrap { position: relative; }
 .msgwrap #msg { padding-right: 30px; }
 button.gen { position: absolute; top: 5px; right: 5px; height: 22px; padding: 0 4px; color: var(--muted); }
@@ -71,37 +75,39 @@ body.is-generating .msgwrap::after {
   color: var(--vscode-input-foreground, var(--fg));
   background: var(--vscode-input-background, var(--gl-inset));
   border: 1px solid var(--vscode-input-border, var(--gl-line));
-  border-radius: var(--gl-radius-input);
+  border-radius: var(--gl-radius-card);
   outline: none;
 }
-#msg:focus { border-color: var(--accent); }
+#msg:focus { border-color: var(--vscode-focusBorder, var(--gl-accent)); }
 #msg::placeholder { color: var(--vscode-input-placeholderForeground, var(--faint)); }
 
 .meta { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-top: 6px; }
 .ticket {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
   max-width: 100%;
   height: 20px;
-  padding: 0 8px 0 6px;
-  border-radius: 999px;
-  border: 1px dashed color-mix(in srgb, var(--gl-ok) 60%, transparent);
-  font-size: 11px;
-  color: var(--gl-ok);
+  padding: 0 2px;
+  font-size: 12px;
+  color: var(--gl-muted);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
 }
-.ticket .codicon { font-size: 11px; vertical-align: 0; }
-.ticket .tt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
-.ticket.on { border: 1px solid var(--gl-border); background: color-mix(in srgb, var(--gl-ok) 15%, transparent); }
+/* Ticket of the branch: a plain text row with the link icon (no box); click adds its reference to the message. */
+.ticket:hover { color: var(--gl-fg); }
+.ticket .codicon { font-size: 13px; vertical-align: 0; }
+.ticket .ref-id { color: var(--gl-link); }
+.ticket .ref-id { flex: none; }
+.ticket .tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ticket.on .codicon { color: var(--gl-ok); }
 .counter { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .counter.long { color: var(--modified); }
 .counter.over { color: var(--deleted); }
 
-.row-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 4px 2px 10px; }
+.row-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 2px 8px; }
 
 /* Commit | Push: Sixth's pair of full buttons (primary, secondary). */
 .split { display: flex; gap: 8px; }
@@ -114,93 +120,105 @@ body.is-generating .msgwrap::after {
 
 /* ---------- file groups ---------- */
 
-#groups { padding: 0 8px; }
-.group { margin-top: 10px; }
-.gh {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 4px;
-  margin-bottom: 4px;
-  font-family: var(--gl-font);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
-  color: var(--fg);
-  cursor: pointer;
-  user-select: none;
-  border-radius: 6px;
-}
-.gh:hover .gt { text-decoration: underline; text-decoration-color: var(--gl-line-strong); }
+#groups { flex: 1 0 auto; padding: 0 8px 8px; }
+.group { margin-top: 4px; }
+/* Group header: list.css .gh (dashed checkpoint line); here the actions stay visible and the totals show. */
+.gh { margin-bottom: 4px; flex-wrap: wrap; row-gap: 4px; }
 .gh .codicon { font-size: 12px; color: var(--faint); }
-.gh .gt { color: var(--fg); text-transform: none; }
-.gh .n { min-width: 18px; height: 16px; padding: 0 6px; border-radius: 999px; text-align: center; line-height: 16px; font-size: 11px; font-weight: normal; color: var(--gl-muted); background: var(--gl-inset); }
-.group.staged .gh .n { color: var(--gl-added); background: color-mix(in srgb, var(--gl-added) 15%, transparent); }
+.gh .gt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .group.conflicts .gh .gt, .group.conflicts .gh > .codicon { color: var(--gl-err); }
-.group.conflicts .gh .n { color: var(--gl-err); background: color-mix(in srgb, var(--gl-err) 15%, transparent); }
+.group.conflicts .gh .n { color: var(--gl-err); }
 .gh .gs { display: inline-flex; gap: 4px; font-family: var(--mono); font-size: 11px; font-weight: normal; }
-.gh .ga { display: none; }
-.gh:hover .ga, .group.has-sel .ga { display: inline-flex; align-items: center; }
+.gh .gs:empty { display: none; }
+.gh .ga { order: 2; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+/* Narrow sidebar: the +/− totals give way to the actions. */
+@media (max-width: 260px) { .gh .gs { display: none; } }
+
 .ga .selc { margin-right: 4px; font-weight: normal; color: var(--gl-link); }
 .gb .file { user-select: none; }
-.gb { padding: 4px 0; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
+.gb { padding: 0; background: none; border: 0; border-radius: 0; overflow: visible; }
 .gb .file.sel { background: var(--gl-selected); color: var(--gl-selected-fg); }
 .gb .file.sel:hover { background: var(--gl-selected); }
 .group.collapsed .gb { display: none; }
 
-.gb .file { height: 22px; padding: 0 6px 0 10px; border-radius: 0; gap: 8px; }
-.gb .file .st {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  background: color-mix(in srgb, var(--s) 15%, transparent);
-}
+/* Files are outlined rows. */
+/* Files: plain 22px rows like the native SCM tree; status letter on the right, actions on hover. */
+.gb .file { height: 22px; padding: 0 4px 0 8px; gap: 6px; border: 1px solid transparent; border-radius: 5px; }
+.gb .file.sel { border-color: var(--vscode-contrastActiveBorder, transparent); }
+.gb .file:hover { border-color: var(--vscode-contrastActiveBorder, transparent); }
+.gb .file .st { order: 9; width: 14px; margin-left: 2px; font-size: 11px; }
 .gb .file .st.X { --s: var(--deleted); }
 .gb .file .st.U { --s: var(--added); }
-.gb .file .delta { margin-left: auto; }
+.gb .file .delta { margin-left: auto; color: var(--faint); }
 .gb .file .fa { display: none; gap: 0; margin-left: auto; }
 .gb .file:hover .fa { display: inline-flex; }
 .gb .file:hover .delta { display: none; }
-.fa button.icon, .ga button.icon { height: 18px; padding: 0 3px; }
-.fa .codicon, .ga .codicon { font-size: 13px; }
+.fa button.icon { height: 20px; padding: 0 3px; }
+.ga button.icon { height: 20px; min-width: 0; padding: 0 4px; border-radius: 4px; color: var(--gl-muted); }
+.ga button.icon:hover { color: var(--fg); border-color: var(--vscode-contrastActiveBorder, transparent); }
+.fa .codicon { font-size: 13px; }
+.ga .codicon { font-size: 12px; }
 .gb .file.st-D .name { text-decoration: line-through; color: var(--muted); }
 
-.empty { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 10px; padding: 22px 16px; color: var(--faint); text-align: center; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-card); }
-.empty .codicon { font-size: 22px; color: var(--gl-ok); margin-bottom: 4px; }
-.empty b { color: var(--fg); font-weight: 600; }
-.empty span { font-size: 11.5px; }
 .meta:has(#ticket[hidden]) { display: none; }
 .meta:has(#ticket[hidden]) + .row-options { margin-top: 6px; }
 
 /* ---------- merge / rebase in progress ---------- */
-.op-banner { margin: 10px 0 0; padding: 10px 12px; border-radius: var(--gl-radius-card); border: 1px solid color-mix(in srgb, var(--gl-main) 40%, transparent); background: color-mix(in srgb, var(--gl-main) 8%, var(--gl-card)); }
-.op-banner.conflicted { border-color: color-mix(in srgb, var(--gl-warn) 45%, transparent); background: color-mix(in srgb, var(--gl-warn) 8%, var(--gl-card)); }
+/* An in-progress operation: a coloured left rule, no box. */
+.op-banner { margin: 14px 0 0; padding: 2px 0 2px 12px; background: transparent; border-left: 2px solid var(--gl-main); }
+.op-banner.conflicted { border-left-color: var(--gl-warn); }
 .op-top { display: flex; align-items: center; gap: 6px; font-weight: 600; }
 .op-top .codicon { color: var(--gl-main); }
 .op-banner.conflicted .op-top .codicon { color: var(--gl-warn); }
 .op-top b { font-weight: 600; }
-.op-sub { margin: 2px 0 10px 20px; font-size: 11.5px; color: var(--muted); }
+.op-sub { margin: 2px 0 8px 20px; font-size: 11.5px; color: var(--muted); }
 .op-acts { display: flex; flex-wrap: wrap; gap: 6px; }
-.op-acts button { height: 26px; }
+.op-acts { margin-left: 20px; }
+.op-acts button { height: 24px; }
 .op-acts button:disabled { opacity: 0.45; }
 
 /* ---------- hooks & signing ---------- */
-.hook-chip { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11px; color: var(--muted); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.hook-chip { padding: 0 7px 0 5px; color: var(--muted); }
 .hook-chip .codicon { font-size: 11px; }
-.hook-out { margin: 8px; padding: 10px 12px; border-radius: var(--gl-radius-card); border: 1px solid color-mix(in srgb, var(--gl-err) 45%, transparent); background: color-mix(in srgb, var(--gl-err) 7%, var(--gl-card)); }
+.hook-out { margin: 0 0 8px; padding: 2px 0 2px 12px; border-left: 2px solid var(--gl-err); }
 .hook-out[hidden] { display: none; }
 .ho-h { display: flex; align-items: center; gap: 6px; }
 .ho-h .codicon { color: var(--gl-err); }
-.hook-out pre { max-height: 220px; overflow: auto; margin: 8px 0; padding: 8px 10px; border-radius: var(--gl-radius-input); background: var(--gl-inset); font-family: var(--mono); font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.hook-out pre { max-height: 220px; overflow: auto; margin: 8px 0; padding: 6px 8px; border-radius: var(--gl-radius-input); border: 1px solid var(--vscode-widget-border, var(--gl-line-strong)); font-family: var(--mono); font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .ho-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .ho-acts button { height: 26px; }
 
 /* ---------- in an editor tab (Open Changes in Editor) ---------- */
 /* Same page, on the editor background, at a readable width instead of the whole screen. */
 body.changes.in-editor { --gl-bg: var(--vscode-editor-background); padding: 8px 0 24px; }
-body.changes.in-editor > * { max-width: 920px; margin-left: auto; margin-right: auto; }
+body.changes.in-editor > * { width: 100%; max-width: 920px; margin-left: auto; margin-right: auto; }
+/* Very narrow sidebar: "unpublished" keeps only its icon so the sync buttons stay on the same row. */
+
+
+.sync-menu { position: fixed; z-index: 10; min-width: 150px; }
+.sync-menu .gl-mi .codicon { width: 14px; color: var(--gl-muted); }
+.sync-menu .gl-mi:focus { outline: none; background: var(--vscode-menu-selectionBackground, var(--gl-selected)); color: var(--vscode-menu-selectionForeground, var(--gl-selected-fg)); }
+
+#hooks { display: inline-flex; gap: 6px; }
+
+/* Branch card fit (changes.js fitBranch): "unpublished" icon-only, then a second row for counts + buttons. */
+.sync .bn { min-width: 0; overflow: hidden; white-space: nowrap; }
+.sync.ab-icon .pub-t { display: none; }
+.sync.stacked { flex-wrap: wrap; row-gap: 2px; }
+.sync.stacked .branch { flex: 1 0 100%; }
+.sync.stacked .ab { margin-left: 20px; }
+.ab .pub { gap: 4px; }
+.nw { white-space: nowrap; }
+/* The composer gets a separator only while the list scrolls under it. */
+body.lifted .compose { box-shadow: 0 -1px 0 var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border, var(--gl-line))); }
+/* Narrow sidebar: hooks chip icon-only (+n), and the secondary commit button icon-only so the primary label never truncates. */
+@media (max-width: 260px) {
+  /* Clean state: one clause per line, no dangling separator. */
+  .gl-empty .nw { display: block; }
+  .gl-empty .sep { display: none; }
+  .hook-chip .hk-name { display: none; }
+  .split .alt { padding: 0 8px; }
+  .split .alt #pushLabel { display: none; }
+  .row-options { gap: 6px 8px; }
+}

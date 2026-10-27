@@ -216,6 +216,9 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     return false;
   }
   let worktree: string | undefined;
+  /** Branch a draft pull request would target: the base the new branch starts from. */
+  let prTarget: string | undefined;
+  let prRemote: string | undefined;
   if (exists) {
     if (where === 'worktree') {
       worktree = await createWorktree(repo, branch);
@@ -237,6 +240,8 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     if (!base) {
       return false;
     }
+    prRemote = remote;
+    prTarget = remote && base.startsWith(`${remote}/`) ? base.slice(remote.length + 1) : base;
     if (where === 'worktree') {
       worktree = await createWorktree(repo, branch, { startPoint: base });
       if (!worktree) {
@@ -252,6 +257,10 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   if (provider?.activateTicket && config('azureDevOps.activateOnStartWork', false)) {
     provider.activateTicket(ticket.id, ticket.org).catch((e) => vscode.window.showWarningMessage(`Could not activate work item: ${errorMessage(e)}`));
   }
+  // GitHub refuses a pull request with no commits; Azure DevOps accepts a draft right away.
+  if (provider?.kind === 'azure' && prTarget && prRemote) {
+    await offerDraftPullRequest(repo, provider, ticket, branch, prTarget, prRemote);
+  }
   if (worktree) {
     // Git config is shared by all worktrees, so the new window already sees the ticket link.
     await openFolderInNewWindow(worktree);
@@ -262,8 +271,36 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     : `Working on #${ticket.id} in branch '${branch}'.`;
   vscode.window.showInformationMessage(msg, open).then((c) => {
     if (c === open) {
-      vscode.env.openExternal(vscode.Uri.parse(ticket!.url));
+      vscode.commands.executeCommand('gitland.tickets.show', { ticket });
     }
   });
   return true;
+}
+
+/** Last step of Start work: optionally push the new branch and open a draft pull request linked to the ticket. */
+async function offerDraftPullRequest(repo: Repo, provider: Provider, ticket: Ticket, branch: string, target: string, remote: string): Promise<void> {
+  const pick = await vscode.window.showQuickPick(
+    [
+      { label: '$(git-branch) Branch only', draft: false },
+      { label: '$(git-pull-request-draft) Branch + draft pull request', description: `into ${target}, linked to #${ticket.id}`, draft: true },
+    ],
+    { placeHolder: `Also create a draft pull request for ${branch}?` },
+  );
+  if (!pick?.draft) {
+    return;
+  }
+  try {
+    const pr = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Gitland: creating the draft pull request…' }, async () => {
+      await repo.exec(['push', '-u', remote, branch]);
+      return provider.createPullRequest({ source: branch, target, title: ticket.title, description: '', draft: true, ticketIds: [ticket.id], addMeAsReviewer: false });
+    });
+    const open = 'Open';
+    vscode.window.showInformationMessage(`Draft pull request ${pr.label} created.`, open).then((c) => {
+      if (c === open) {
+        vscode.commands.executeCommand('gitland.prs.show', pr.id);
+      }
+    });
+  } catch (e) {
+    vscode.window.showWarningMessage(`Gitland: no draft pull request (${errorMessage(e)}). The branch is kept; create the pull request after your first commit.`);
+  }
 }

@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "publisher": "jay-boo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -36,8 +36,10 @@
     "onWebviewPanel:gitland.pullRequest",
     "onWebviewPanel:gitland.ticket",
     "onWebviewPanel:gitland.compare",
+    "onWebviewPanel:gitland.release",
     "onWebviewPanel:gitland.history",
     "onWebviewPanel:gitland.dashboard",
+    "onWebviewPanel:gitland.settings",
     "onWebviewPanel:gitland.cleanup",
     "onWebviewPanel:gitland.newPullRequest",
     "onWebviewPanel:gitland.newRelease",
@@ -49,6 +51,12 @@
   ],
   "contributes": {
     "commands": [
+      {
+        "command": "gitland.settings",
+        "title": "Settings",
+        "category": "Gitland",
+        "icon": "$(settings-gear)"
+      },
       {
         "command": "gitland.showGraph",
         "title": "Show Commit Graph",
@@ -323,6 +331,11 @@
     "views": {
       "gitlandSidebar": [
         {
+          "id": "gitland.changesBadge",
+          "name": "Changes Count",
+          "when": "false"
+        },
+        {
           "type": "webview",
           "id": "gitland.changesView",
           "name": "Changes",
@@ -359,6 +372,14 @@
           "icon": "media/activity.svg",
           "visibility": "collapsed",
           "initialSize": 1
+        },
+        {
+          "type": "webview",
+          "id": "gitland.pipelines",
+          "name": "Pipelines",
+          "icon": "media/activity.svg",
+          "visibility": "collapsed",
+          "initialSize": 1
         }
       ],
       "gitlandPanel": [
@@ -378,6 +399,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "gitland.settings",
+          "when": "view == gitland.changesView",
+          "group": "navigation@9"
+        },
         {
           "command": "gitland.tickets.startWorkById",
           "when": "view == gitland.tickets",
@@ -636,6 +662,11 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Language model family for the \u2728 commit messages (e.g. `gpt-4o-mini`, `claude-sonnet-4`). Empty: a fast Copilot model."
+        },
+        "gitland.changes.ticketReminder": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before committing on a branch that has no ticket, offer to link one (main, dev, release/* and hotfix/* are never asked about)."
         },
         "gitland.changes.pullRebase": {
           "type": "boolean",
@@ -898,7 +929,7 @@
     "vscode:prepublish": "node esbuild.mjs --production",
     "test": "npm run build && node test/runTest.js",
     "render": "node test/render/render.mjs",
-    "test:unit": "node --test test/unit/"
+    "test:unit": "node test/unit/build.mjs && node --test test/unit/"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

@@ -1,0 +1,14 @@
+{
+ "title": "Release 0.5.0",
+ "body": "<main id=\"page\"></main>",
+ "script": [
+  "md.js",
+  "release.js"
+ ],
+ "styles": [
+  "list.css",
+  "ticket.css",
+  "release.css"
+ ],
+ "bodyClass": "ticket-page"
+}

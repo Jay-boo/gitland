@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon } = /** @type {any} */ (window).gl;
+  const { esc, icon, loadingHtml, stateClass } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -21,14 +21,6 @@
     return ['issue', 'circle-large-outline'];
   }
 
-  /** Work item state → pill color. */
-  function stateClass(s) {
-    const t = String(s).toLowerCase();
-    if (/(done|closed|resolved|completed|merged)/.test(t)) return 'done';
-    if (/(block|impediment)/.test(t)) return 'blocked';
-    if (/(active|progress|doing|committed|review|open|approved)/.test(t)) return 'active';
-    return 'new';
-  }
 
   function render() {
     if (!data) return;
@@ -39,28 +31,29 @@
     tickets.sort((a, b) => (b.id === data.currentId ? 1 : 0) - (a.id === data.currentId ? 1 : 0) || rank[stateClass(a.state)] - rank[stateClass(b.state)]);
     const noun = data.noun || 'ticket';
     if (!data.tickets.length) {
-      listEl.innerHTML = `<div class="state done">${icon('check-all')}<b>No open ${noun}s assigned to you</b><span>${esc(data.source)}</span>
+      listEl.innerHTML = `<div class="gl-empty done">${icon('check-all')}<b>No open ${noun}s assigned to you</b><span>${esc(data.source)}</span>
         <button data-act="startById">${icon('search')}Find a ${noun}…</button></div>`;
       return;
     }
     // Group by type when there are several kinds, else a flat list.
     const groups = new Map();
     for (const t of tickets) {
-      // Groups only when the tickets come from several projects.
-      const k = data.multiSource ? t.project || '' : '';
+      // Several projects: one group per project. One project: checkpoint sections by progress, like Pull Requests.
+      const k = data.multiSource ? t.project || '' : t.id === data.currentId ? 'current' : { active: 'active', blocked: 'active', new: 'new', done: 'done' }[stateClass(t.state)];
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k).push(t);
     }
-    const label = { bug: 'Bugs', task: 'Tasks', story: 'Stories', feature: 'Features', epic: 'Epics', issue: 'Other' };
+    const label = data.multiSource ? {} : { current: 'Current branch', active: 'In progress', new: 'To do', done: 'Done' };
+    const sections = !data.multiSource || groups.size > 1;
     const html = [...groups.entries()]
       .map(([k, list]) => {
         const collapsed = !!state.collapsed[k];
-        const head = groups.size > 1 ? `<div class="gh" data-toggle="${esc(k)}">${icon(collapsed ? 'chevron-right' : 'chevron-down')}<span class="gt">${esc(label[k] || k)}</span><span class="n">${list.length}</span></div>` : '';
-        return `<div class="grp${collapsed && groups.size > 1 ? ' collapsed' : ''}">${head}<div class="gb">${list.map(item).join('')}</div></div>`;
+        const head = sections ? `<div class="gh" data-toggle="${esc(k)}">${icon(collapsed ? 'chevron-right' : 'chevron-down')}<span class="gt">${esc(label[k] || k)}</span><span class="n">${list.length}</span></div>` : '';
+        return `<div class="grp${collapsed && sections ? ' collapsed' : ''}">${head}<div class="gb">${list.map(item).join('')}</div></div>`;
       })
       .join('');
     listEl.innerHTML =
-      (html || `<div class="state"><b>No match</b></div>`) +
+      (html || `<div class="gl-empty"><b>No match</b></div>`) +
       `<div class="foot"><button class="ghost" data-act="startById">${icon('search')}Find a ${noun}…</button><span class="grow"></span><button class="ghost icon" data-act="sources" title="Ticket sources">${icon('settings')}</button></div>`;
   }
 
@@ -87,7 +80,7 @@
         : m.state === 'error'
           ? `<button data-act="refresh">${icon('refresh')}Retry</button>`
           : '';
-    listEl.innerHTML = `<div class="state ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
+    listEl.innerHTML = `<div class="gl-empty ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
   }
 
   listEl.addEventListener('click', (e) => {
@@ -115,8 +108,12 @@
       data = null;
       showState(m);
     } else if (m.type === 'loading' && !data) {
-      listEl.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+      listEl.innerHTML = loadingHtml('Loading tickets…');
     }
   });
+  // No data yet (loading, empty, sign-in, error): hide the filter box above the state block.
+  const noData = () => document.body.classList.toggle('no-data', !!listEl.querySelector(':scope > .gl-empty') && !(/** @type {HTMLInputElement | null} */ (document.querySelector('.lv-head input'))?.value));
+  new MutationObserver(noData).observe(listEl, { childList: true });
+  noData();
   vscode.postMessage({ type: 'ready' });
 })();

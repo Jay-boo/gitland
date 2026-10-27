@@ -9,6 +9,8 @@ import { generateCommitMessage } from '../commitMessage';
 import { webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { ChangesBadge } from './changesBadge';
 import { capture } from '../devCapture';
+import { needsTicketReminder, withTicketRef } from '../tickets/reminder.pure';
+import { pickTicket } from '../commands/work';
 
 type Message =
   | { type: 'ready' }
@@ -68,10 +70,6 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
-    // The bottom panel's count is on its Commit Graph view (VS Code adds up a container's badges).
-    if (this.viewId === ChangesView.viewId) {
-      this.badge.attach(this.viewId, view);
-    }
     view.webview.options = webviewOptions(this.context.extensionUri);
     view.webview.html = this.html(view.webview);
     view.webview.onDidReceiveMessage((m: Message) => this.onMessage(m), undefined, this.disposables);
@@ -153,6 +151,45 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     }
   }
 
+  /**
+   * Before committing on a branch with no ticket: offer to link one (gitland.changes.ticketReminder).
+   * Returns the message to commit (with the reference added when a ticket was linked), or undefined to cancel.
+   */
+  private async remindTicket(repo: Repo, message: string): Promise<string | undefined> {
+    const branch = await repo.currentBranch();
+    const [linked, skipped, provider] = await Promise.all([
+      branch ? repo.getConfig(`branch.${branch}.gitlandTicket`) : undefined,
+      branch ? repo.getConfig(`branch.${branch}.gitlandNoTicket`) : undefined,
+      getProvider(repo, this.context.secrets).catch(() => undefined),
+    ]);
+    const prefix = provider?.kind === 'github' ? '#' : 'AB#';
+    if (!provider || !needsTicketReminder({ enabled: config('changes.ticketReminder', true), branch, linkedTicket: linked, skipped: skipped === 'true', message, prefix })) {
+      return message;
+    }
+    const link = 'Link a ticket…';
+    const anyway = 'Commit anyway';
+    const never = "Don't ask for this branch";
+    const choice = await vscode.window.showWarningMessage(`${branch} has no ticket. Link one so this commit shows up on it?`, { modal: true }, link, anyway, never);
+    if (choice === anyway) {
+      return message;
+    }
+    if (choice === never) {
+      await repo.setConfig(`branch.${branch}.gitlandNoTicket`, 'true');
+      return message;
+    }
+    if (choice !== link) {
+      return undefined;
+    }
+    const ticket = await pickTicket(provider);
+    if (!ticket) {
+      return undefined;
+    }
+    await repo.setConfig(`branch.${branch}.gitlandTicket`, ticket.id);
+    await repo.setConfig(`branch.${branch}.gitlandTicketTitle`, ticket.title);
+    void this.refresh();
+    return withTicketRef(message, `${prefix}${ticket.id}`);
+  }
+
   /** Ticket linked to the current branch by "Start work" (branch.<name>.gitlandTicket). */
   private async ticketOf(repo: Repo): Promise<{ id: string; title?: string } | undefined> {
     const branch = await repo.currentBranch();
@@ -229,9 +266,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
           await this.resolve(repo, m.path, m.side);
           break;
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url);
           return;
       }
     } catch (e) {
@@ -385,6 +420,14 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
       }
       await repo.exec(['add', '-A']);
     }
+    // Not on amend (the commit exists) nor on "commit anyway" after a hook refused it (already asked).
+    if (!amend && !noVerify) {
+      const linked = await this.remindTicket(repo, message);
+      if (linked === undefined) {
+        return;
+      }
+      message = linked;
+    }
     const hooks = noVerify ? [] : await repo.commitHooks().catch(() => []);
     let failed: string | undefined;
     await this.withBusy(hooks.length ? `Running ${hooks.join(', ')}…` : amend ? 'Amending…' : 'Committing…', async () => {
@@ -493,9 +536,14 @@ export const CHANGES_BODY = `<header class="sync">
   <button id="btnPull" class="icon" title="Pull"><i class="codicon codicon-arrow-down"></i></button>
   <button id="btnPush" class="icon" title="Push"><i class="codicon codicon-arrow-up"></i></button>
   <button id="btnSync" class="icon" title="Sync (pull then push)"><i class="codicon codicon-sync"></i></button>
+  <button id="btnSyncMore" class="icon" title="More: fetch, pull, push, sync" aria-haspopup="menu"><i class="codicon codicon-ellipsis"></i></button>
 </header>
+<div id="syncMenu" class="gl-pop menu sync-menu" role="menu" hidden></div>
 <div id="busy" class="busy" hidden></div>
+
+<main id="groups"></main>
 <section class="compose">
+  <div id="hookOut" class="hook-out" hidden></div>
   <div class="msgwrap">
     <textarea id="msg" rows="1" spellcheck="true" placeholder="Message · Ctrl+Enter to commit"></textarea>
     <button id="btnGen" class="icon gen" title="Generate the commit message from the changes (AI)"><i class="codicon codicon-sparkle"></i></button>
@@ -516,6 +564,4 @@ export const CHANGES_BODY = `<header class="sync">
     <button id="btnCommitPush" class="alt" title="Commit, then push (Ctrl+Shift+Enter)"><i id="pushIcon" class="codicon codicon-arrow-up"></i><span id="pushLabel">Push</span></button>
   </div>
 </section>
-<div id="hookOut" class="hook-out" hidden></div>
-<main id="groups"></main>
 <div id="error" hidden></div>`;

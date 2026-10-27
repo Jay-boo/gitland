@@ -18,6 +18,9 @@ import { ComparePanel } from './views/comparePanel';
 import { PrPanel } from './views/prPanel';
 import { NewPrPanel } from './views/newPrPanel';
 import { ReleasesView } from './views/releasesView';
+import { ReleasePanel } from './views/releasePanel';
+import { PipelinesView } from './views/pipelinesView';
+import { SettingsPanel } from './views/settingsPanel';
 import { NewReleasePanel } from './views/newReleasePanel';
 import { RebasePanel } from './views/rebasePanel';
 import { CleanupPanel } from './views/cleanupPanel';
@@ -25,6 +28,7 @@ import { DashboardPanel } from './views/dashboardPanel';
 import { HistoryPanel } from './views/historyPanel';
 import { adoptRestoredPanel, createPanel, RestoreInfo, webviewOptions } from './views/webviewHtml';
 import { searchEverywhere } from './commands/search';
+import { linkTarget } from './linkTarget.pure';
 import { manageWorktrees, openInWorktree } from './commands/worktrees';
 import { PullRequest } from './providers/types';
 import { Repo } from './git/repo';
@@ -52,10 +56,10 @@ export function activate(context: vscode.ExtensionContext): void {
   const { secrets } = context;
 
   const avatars = new AvatarService(context);
-  // One bubble for the sidebar: on the Changes view, else on the Graph view.
-  const changesBadge = new ChangesBadge(repos, ['gitland.changesView', 'gitland.graphView']);
+  // The sidebar's bubble, shown even before the sidebar is opened.
+  const changesBadge = new ChangesBadge(repos);
   context.subscriptions.push(changesBadge);
-  const graph = new GraphManager(context, repos, avatars, changesBadge);
+  const graph = new GraphManager(context, repos, avatars);
   const blame = new BlameController(repos, avatars, secrets);
   const changes = new ChangesView(context, repos, changesBadge);
   const changesInPanel = new ChangesView(context, repos, changesBadge, ChangesView.panelViewId);
@@ -79,6 +83,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const tickets = new TicketsView(context, repos, secrets);
   const prs = new PullRequestsView(context, repos, secrets);
   const releases = new ReleasesView(context, repos, avatars);
+  const pipelines = new PipelinesView(context, repos);
 
   let lastRoot: string | undefined;
   const repoFor = async (root?: string) => (root ? repos.getRepo(vscode.Uri.file(root)) : repos.activeRepo());
@@ -94,11 +99,16 @@ export function activate(context: vscode.ExtensionContext): void {
       const repo = await repoFor(r.repoRoot as string);
       return repo && ComparePanel.show(context, repos, avatars, repo, r.from as string, r.to as string, false, (r.view as object) ?? {});
     },
+    'gitland.release': async (r) => {
+      const repo = await repoFor(r.repoRoot as string);
+      return repo && ReleasePanel.show(context, repos, avatars, repo, r.tag as string);
+    },
     'gitland.history': async (r) => {
       const repo = await repoFor(r.repoRoot as string);
       return repo && HistoryPanel.show(context, repos, avatars, repo, r.rel as string, r.range as { start: number; end: number } | undefined);
     },
     'gitland.dashboard': () => DashboardPanel.show(context, repos, avatars),
+    'gitland.settings': () => SettingsPanel.show(context),
     'gitland.changes': () => showChangesInEditor(),
     'gitland.cleanup': async (r) => {
       const repo = await repoFor(r.repoRoot as string);
@@ -161,6 +171,9 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
     });
+
+  /** A release in an editor tab: its notes, pull requests, commits and contributors. */
+  const showRelease = (repo: Repo, tag: string) => ReleasePanel.show(context, repos, avatars, repo, tag);
 
   /** Azure DevOps organization of the active repository, if any. */
   const activeAzureOrg = async (): Promise<string | undefined> => {
@@ -315,7 +328,33 @@ export function activate(context: vscode.ExtensionContext): void {
     prStatusBar(repos, secrets),
     ciStatusBar(repos, secrets),
     releases,
+    pipelines,
     command('gitland.releases.refresh', () => releases.refresh()),
+    command('gitland.releases.show', async (tag?: string, repoRoot?: string) => {
+      const repo = await repoFor(repoRoot);
+      if (repo && typeof tag === 'string') {
+        await showRelease(repo, tag);
+      }
+    }),
+    // Links in the pages: a pull request, ticket or release opens its Gitland page, anything else the browser.
+    command('gitland.openLink', async (url: string, repoRoot?: string) => {
+      if (typeof url !== 'string' || !/^https:\/\//.test(url)) {
+        return;
+      }
+      const repo = await repoFor(repoRoot);
+      const provider = repo && (await getProvider(repo, secrets).catch(() => undefined));
+      const target = linkTarget(url, provider);
+      if (target?.kind === 'pr') {
+        return PrPanel.show(context, repos, avatars, target.id);
+      }
+      if (target?.kind === 'ticket') {
+        return TicketPanel.show(context, repos, target.id, target.org);
+      }
+      if (target?.kind === 'release' && repo) {
+        return showRelease(repo, target.tag);
+      }
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    }),
     command('gitland.rebase.interactive', async (base?: string) => {
       const repo = await repoFor();
       if (repo) {
@@ -333,6 +372,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     command('gitland.dashboard', () => DashboardPanel.show(context, repos, avatars)),
+    command('gitland.settings', () => SettingsPanel.show(context)),
     command('gitland.branches.cleanup', async () => {
       const repo = await repoFor();
       if (repo) {

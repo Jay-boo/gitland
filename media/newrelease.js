@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon } = /** @type {any} */ (window).gl;
+  const { esc, icon, loadingHtml, listDate } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // @ts-ignore
@@ -16,10 +16,9 @@
     const rec = init.options.find((o) => o.kind === init.bump) || init.options[0];
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-task">${icon('tag')}</span>
   <div class="t-title">
-    <div class="t-kind"><span>New release</span>${init.latest ? `<span class="k">latest: ${esc(init.latest)}</span>` : '<span class="k">first release</span>'}</div>
-    <div class="branches"><span class="src">${icon('git-commit')} ${esc(init.target.ref)}</span><span class="k">${esc(init.target.sha.slice(0, 7))} · ${esc(init.target.subject)}</span></div>
+    <div class="t-kind"><span class="glyph big g-task">${icon('tag')}</span><span>New release</span><span class="k" title="${esc(init.target.subject)}">from ${esc(init.target.ref)} · <span class="mono">${esc(init.target.sha.slice(0, 7))}</span> · ${init.latest ? `latest ${esc(init.latest)}` : 'first release'}</span></div>
+    <h1 id="relTitle">Release ${esc(rec.version)}</h1>
   </div>
 </header>
 <div class="t-grid">
@@ -48,7 +47,10 @@
       <label class="switch" title="Adds the notes to CHANGELOG.md, commits it (chore: release …), then tags that commit"><input id="changelog" type="checkbox"><span class="track"><span class="knob"></span></span><span>Add to CHANGELOG.md &amp; commit</span></label>
     </section>
     <section><h3>Since ${esc(init.latest || 'the start')} <span class="n">${init.commits.length}</span></h3>
-      ${init.commits.slice(0, 40).map((c) => `<div class="commit-row" title="${esc(c)}"><span class="s">${esc(c)}</span></div>`).join('') || '<div class="none">No commit since the latest release.</div>'}
+      ${(init.log || init.commits.map((/** @type {string} */ s) => ({ subject: s })))
+        .slice(0, 40)
+        .map((/** @type {any} */ c) => `<div class="commit-row" title="${esc(c.subject)}">${c.sha ? `<span class="sha">${esc(c.sha.slice(0, 7))}</span>` : ''}<span class="s">${esc(c.subject)}</span>${c.date ? listDate(c.date) : ''}</div>`)
+        .join('') || '<div class="none">No commit since the latest release.</div>'}
     </section>
   </aside>
 </div>
@@ -86,6 +88,7 @@
     const v = $('version').value.trim();
     page.querySelectorAll('[data-version]').forEach((c) => c.classList.toggle('on', /** @type {HTMLElement} */ (c).dataset.version === v));
     $('createLabel').textContent = v ? `Create release ${v}` : 'Create release';
+    $('relTitle').textContent = v ? `Release ${v}` : 'New release';
     $('btnCreate').disabled = !v || generating;
   }
 
@@ -123,6 +126,6 @@
       $('createLabel').textContent = m.on ? 'Releasing…' : `Create release ${$('version').value.trim()}`;
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Loading…');
   vscode.postMessage({ type: 'ready' });
 })();

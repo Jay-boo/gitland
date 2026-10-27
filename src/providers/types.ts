@@ -78,12 +78,26 @@ export interface PullRequestDetails {
 
 /** A CI run (Azure Pipelines build, GitHub check). */
 export interface PipelineRun {
+  /** Build id (Azure DevOps) / workflow run id (GitHub). */
+  id: string;
+  definitionId?: string;
   name: string;
   state: 'succeeded' | 'failed' | 'running' | 'queued' | 'canceled' | 'partial';
   url: string;
   sha?: string;
   branch?: string;
   finished?: number;
+  started?: number;
+}
+
+/** A job of a pipeline run, with its steps (Azure DevOps timeline Job → Task records; GitHub jobs → steps). */
+export interface PipelineJob {
+  id: string;
+  name: string;
+  state: PipelineRun['state'];
+  /** Azure DevOps log id; GitHub: the job id. */
+  logId?: string;
+  steps?: PipelineJob[];
 }
 
 export type ReviewVote = 'approve' | 'suggestions' | 'wait' | 'reject' | 'reset';
@@ -111,12 +125,21 @@ export interface Provider {
   getTicket(id: string): Promise<Ticket | undefined>;
   getTicketDetails?(id: string, org?: string): Promise<TicketDetails | undefined>;
   activateTicket?(id: string, org?: string): Promise<void>;
+  /** States the ticket can move to (Azure DevOps: its work item type's states; GitHub: open / closed). */
+  ticketStates?(id: string, org?: string): Promise<{ name: string; category?: string }[]>;
+  setTicketState?(id: string, state: string, org?: string): Promise<void>;
+  assignTicketToMe?(id: string, org?: string): Promise<void>;
+  commentTicket?(id: string, text: string, org?: string): Promise<void>;
   /** Where tickets are read from, for the Tickets view title (e.g. "Backlog"). */
   readonly ticketSourceLabel?: string;
   listPullRequests(): Promise<PullRequest[]>;
   getPullRequestDetails?(id: string): Promise<PullRequestDetails>;
   /** Latest CI runs of the repository (by commit), or of a pull request. */
-  pipelineRuns?(o: { prId?: string; max?: number }): Promise<PipelineRun[]>;
+  pipelineRuns?(o: { prId?: string; max?: number; branch?: string }): Promise<PipelineRun[]>;
+  rerunPipeline?(run: PipelineRun): Promise<void>;
+  cancelPipeline?(run: PipelineRun): Promise<void>;
+  pipelineJobs?(run: PipelineRun): Promise<PipelineJob[]>;
+  pipelineLog?(run: PipelineRun, job: PipelineJob): Promise<string>;
   votePullRequest?(id: string, vote: ReviewVote, comment?: string): Promise<void>;
   /** Add the signed-in user as a reviewer, so the PR shows under "to review". */
   requestMyReview?(id: string): Promise<void>;
@@ -131,6 +154,8 @@ export interface Provider {
   branchUrl(branch: string): string;
   ticketUrl(id: number | string): string;
   pullRequestUrl(id: number | string): string;
+  /** The release (GitHub) or the tag (Azure DevOps) on the web. */
+  releaseUrl(tag: string): string;
 }
 
 export class AuthError extends Error {

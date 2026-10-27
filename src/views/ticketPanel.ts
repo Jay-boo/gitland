@@ -13,7 +13,10 @@ type Message =
   | { type: 'openUrl'; url: string }
   | { type: 'showCommit'; sha: string }
   | { type: 'checkout'; branch: string }
-  | { type: 'showTicket'; id: string };
+  | { type: 'showTicket'; id: string }
+  | { type: 'setState'; state: string }
+  | { type: 'assign' }
+  | { type: 'comment'; text: string };
 
 /**
  * A ticket in an editor tab, in the Gitland style: description, acceptance criteria, comments,
@@ -70,17 +73,36 @@ export class TicketPanel {
     }
     this.post({ type: 'loading' });
     try {
-      const [details, local, current] = await Promise.all([
+      const [details, local, current, me] = await Promise.all([
         provider.getTicketDetails(this.id, this.org),
         this.localWork(repo, this.id),
         repo.currentBranch(),
+        repo.getConfig('user.name').catch(() => undefined),
       ]);
       if (!details) {
         return this.post({ type: 'error', message: `${provider.ticketNoun} #${this.id} was not found.` });
       }
       this.details = details;
       this.panel.title = `#${this.id} ${details.ticket.title}`;
-      this.post({ type: 'details', details, ...local, current, prefix: provider.kind === 'github' ? '#' : 'AB#', noun: provider.ticketNoun });
+      const org = this.org ?? details.ticket.org;
+      const states = provider.ticketStates
+        ? await provider.ticketStates(this.id, org).catch((e) => {
+            log.error(`Ticket #${this.id}: could not list its states`, e);
+            return undefined;
+          })
+        : undefined;
+      const assignee = details.ticket.assignee?.toLowerCase();
+      this.post({
+        type: 'details',
+        details,
+        ...local,
+        current,
+        prefix: provider.kind === 'github' ? '#' : 'AB#',
+        noun: provider.ticketNoun,
+        states: provider.setTicketState ? states?.map((x) => x.name) : undefined,
+        canAssign: !!provider.assignTicketToMe && !(assignee && me && assignee.includes(me.toLowerCase())),
+        canComment: !!provider.commentTicket,
+      });
     } catch (e) {
       log.error(`Ticket #${this.id} failed to load`, e);
       this.post({ type: 'error', message: errorMessage(e) });
@@ -133,9 +155,7 @@ export class TicketPanel {
           vscode.window.setStatusBarMessage(`Gitland: #${this.id} copied`, 2000);
           return;
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url);
           return;
         case 'showCommit': {
           const repo = await this.repos.activeRepo(false);
@@ -153,6 +173,29 @@ export class TicketPanel {
         case 'showTicket':
           await TicketPanel.show(this.context, this.repos, m.id, this.org);
           return;
+        case 'setState':
+        case 'assign':
+        case 'comment': {
+          const repo = await this.repos.activeRepo(false);
+          const provider = repo && (await getProvider(repo, this.context.secrets));
+          const org = this.org ?? ticket?.org;
+          if (!provider) {
+            return;
+          }
+          try {
+            if (m.type === 'setState') {
+              await provider.setTicketState?.(this.id, m.state, org);
+            } else if (m.type === 'assign') {
+              await provider.assignTicketToMe?.(this.id, org);
+            } else if (m.text.trim()) {
+              await provider.commentTicket?.(this.id, m.text, org);
+            }
+          } finally {
+            // Also after a failure: the page shows the ticket as it really is (state, comment box enabled again).
+            await this.load();
+          }
+          return;
+        }
       }
     } catch (e) {
       vscode.window.showErrorMessage(`Gitland: ${errorMessage(e)}`);

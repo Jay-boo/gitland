@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#181818; --ed:#1f1f1f; --fg:#cccccc; --muted:#9d9d9d; --faint:#6e6e6e; --line:#363636; --dash:#444; --task:#2b2b2b; --chip:#2f2f2f;
+          --blue:#3794ff; --green:#89d185; --purple:#b180d7; --red:#f14c4c; --yellow:#cca700; --btn:#0078d4; --sel:#04395e;
+          --M:#e2c08d; --A:#81b88b; --D:#c74e39; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #0b0b0b; color: #e5e5e5; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: #9a9a9a; margin: 0 0 20px; font-size: 14px; max-width: 900px; line-height: 1.5; }
+  .lead b { color: #e5e5e5; }
+  .label { font-size: 12px; color: #8a8a8a; margin: 22px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+  .stage { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+
+  /* --- the extension surfaces --- */
+  .v { font-size: 13px; color: var(--fg); position: relative; }
+  .v .mono { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font-size: 11.5px; }
+  .v .row-flex { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .v .grow { flex: 1; min-width: 0; }
+  .v .muted { color: var(--muted); } .v .faint { color: var(--faint); }
+  .v .ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the one filled card */
+  .v .task { background: var(--task); border-radius: 10px; padding: 10px 12px; }
+  .v .task .title { font-weight: 600; }
+  /* chips: small, square-ish, dark */
+  .v .chip { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 18px; padding: 0 7px; border-radius: 5px; background: var(--chip); color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .v .chip.blue { color: var(--blue); } .v .chip.green { color: var(--green); } .v .chip.purple { color: var(--purple); } .v .chip.red { color: var(--red); } .v .chip.yellow { color: var(--yellow); }
+  /* dashed "checkpoint" separators */
+  .v .ck { display: flex; align-items: center; gap: 6px; color: var(--faint); font-size: 11px; margin: 12px 0 8px; }
+  .v .ck .name { color: var(--muted); font-weight: 600; }
+  .v .ck::after { content: ''; order: 1; flex: 1; border-top: 1px dashed var(--dash); }
+  .v .ck .act { order: 2; border: 1px dashed var(--dash); border-radius: 4px; padding: 0 6px; height: 17px; line-height: 15px; color: var(--muted); }
+  /* outlined rows */
+  .v .orow { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; }
+  .v .st { width: 12px; flex: none; text-align: center; font-weight: 700; font-size: 11px; }
+  .v .st.M { color: var(--M); } .v .st.A { color: var(--A); } .v .st.D { color: var(--D); }
+  .v .btn { flex: 1; text-align: center; padding: 6px 0; border-radius: 6px; background: #2a2a2a; }
+  .v .btn.p { background: var(--btn); color: #fff; }
+  .v .seg { display: inline-flex; background: var(--chip); border-radius: 6px; padding: 2px; flex: none; }
+  .v .seg span { padding: 1px 9px; border-radius: 4px; color: var(--muted); font-size: 11.5px; }
+  .v .seg span.on { background: #474747; color: #fff; }
+
+  /* changes (sidebar 300px) */
+  .changes { width: 300px; height: 600px; background: var(--bg); padding: 8px; display: flex; flex-direction: column; }
+  .changes .bottom { margin-top: auto; }
+  .changes .composer { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; height: 60px; color: var(--faint); }
+  .changes .chip-line { display: flex; gap: 6px; margin-top: 8px; }
+
+  /* graph (editor) */
+  .graph { width: 820px; background: var(--ed); padding: 10px 12px; }
+  .graph .tb { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .graph .search { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px; color: var(--faint); font-size: 12px; }
+  .graph .icons { color: var(--muted); letter-spacing: 6px; }
+  .graph .c { display: flex; align-items: center; gap: 8px; height: 22px; padding-right: 6px; border-radius: 4px; }
+  .graph .c.sel { background: var(--sel); }
+  .graph .c svg { flex: none; }
+  .graph .c .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .graph .c .who { width: 120px; flex: none; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .graph .c .when { width: 52px; flex: none; color: var(--faint); font-size: 12px; text-align: right; }
+  .graph .c .sha { width: 60px; flex: none; text-align: right; color: var(--faint); }
+  .graph .details { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+  .pop { position: absolute; width: 340px; background: #252526; border: 1px solid #454545; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.55); padding: 10px 12px; }
+
+  /* pr tab */
+  .tab { width: 820px; background: var(--ed); padding: 16px; }
+  .tab h2 { font-size: 17px; margin: 6px 0 0; font-weight: 600; }
+  .tab .cols { display: grid; grid-template-columns: 1fr 220px; gap: 20px; }
+  .tab .side .head { font-weight: 600; font-size: 12px; margin: 14px 0 6px; display: flex; gap: 6px; align-items: center; }
+  .tab .side .li { display: flex; align-items: center; gap: 8px; height: 24px; font-size: 12px; }
+  .tab .quote { border-left: 2px solid var(--dash); padding: 2px 0 2px 12px; margin: 10px 0; }
+  .tab .quote .who { font-weight: 600; font-size: 12px; }
+  .tab .quote .who span { font-weight: 400; color: var(--faint); margin-left: 6px; }
+  .tab .composer { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; height: 48px; color: var(--faint); margin-top: 12px; }
+</style>
+</head>
+<body>
+<h1>Direction C — Changes, graph and a PR tab</h1>
+<p class="lead">Rules: <b>one filled card per screen</b> (the header / the selected commit). Everything else is unfilled: <b>dashed separators</b> name the sections and carry small dashed actions; <b>outlined rows</b> for short clickable lists; <b>small dark chips</b> instead of round coloured pills; the commit graph stays a <b>plain dense list</b>.</p>
+
+<div class="stage">
+  <div>
+    <div class="label">Changes view (sidebar)</div>
+    <div class="v changes">
+      <div class="task">
+        <div class="row-flex"><span class="muted">⎇</span><span class="title ell grow">feature/18342-login</span><span class="muted" style="letter-spacing:6px">⇣⇡⟳</span></div>
+        <div class="muted ell" style="font-size:12px;margin-top:3px">AB#18342 · Login page redesign: split the form</div>
+        <div class="chip-line"><span class="chip blue">↑ 3 to push</span><span class="chip yellow">↓ 1</span><span class="chip">origin</span></div>
+      </div>
+      <div class="ck"><span class="name">⚑ Staged · 2</span><span class="act">Unstage all</span></div>
+      <div class="orow"><span class="st M">M</span><span>login.ts</span><span class="faint ell grow" style="font-size:12px">src/auth</span><span class="faint" style="font-size:11.5px">+12 −3</span></div>
+      <div class="orow"><span class="st A">A</span><span>form.css</span><span class="faint ell grow" style="font-size:12px">media</span><span class="faint" style="font-size:11.5px">+40</span></div>
+      <div class="ck"><span class="name">✎ Changes · 3</span><span class="act">Stage all</span><span class="act">Discard</span></div>
+      <div class="orow"><span class="st M">M</span><span>session.ts</span><span class="faint ell grow" style="font-size:12px">src/auth</span><span class="faint" style="font-size:11.5px">+5 −1</span></div>
+      <div class="orow"><span class="st D">D</span><span style="text-decoration:line-through" class="muted">oldLogin.ts</span><span class="faint ell grow" style="font-size:12px">src/legacy</span><span class="faint" style="font-size:11.5px">−88</span></div>
+      <div class="orow"><span class="st M">M</span><span>README.md</span><span class="grow"></span><span class="faint" style="font-size:11.5px">+2</span></div>
+      <div class="bottom">
+        <div class="composer">Message · Ctrl+Enter to commit<span style="float:right;color:var(--muted)">✦</span></div>
+        <div class="row-flex" style="margin-top:6px;font-size:11.5px"><span class="chip green">+ AB#18342</span><span class="faint">◯ Amend</span><span class="grow"></span><span class="faint mono">0/72</span></div>
+        <div class="row-flex" style="margin-top:8px"><span class="btn p">✓ Commit 2</span><span class="btn">⇡ Commit &amp; Push</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">Commit graph (editor tab) — a commit selected, hover card open</div>
+    <div class="v graph">
+      <div class="tb"><b>Infra-Toolbox</b><span class="chip">⎇ dev</span><span class="seg"><span class="on">All</span><span>Branch</span><span>Timeline</span></span><span class="search">Search commits, authors, SHAs</span><span class="icons">⚲⇣⟳⌨</span></div>
+      <div class="ck"><span class="name">▁▃▂▅▁▇▃▂ activity</span><span class="act">hide</span></div>
+
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="11" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><circle cx="10" cy="11" r="4" fill="#1f1f1f" stroke="#89d185" stroke-width="2"/></svg><span class="chip green">dev</span><span class="msg">fix: azure pipeline</span><span class="who">ja.morel-ext</span><span class="when">Aug 27</span><span class="sha mono">fb95fe8</span></div>
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><circle cx="10" cy="11" r="4" fill="#1f1f1f" stroke="#89d185" stroke-width="2"/></svg><span class="chip yellow">◇ 0.5.0rc1</span><span class="msg">Update: DTABRICKS_JDBC JARS path</span><span class="who">ja.morel-ext</span><span class="when">Aug 27</span><span class="sha mono">b1aca2b</span></div>
+      <div class="c sel"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><line x1="24" y1="11" x2="24" y2="22" stroke="#3794ff" stroke-width="1.5"/><path d="M10 6 Q10 11 24 11" stroke="#3794ff" stroke-width="1.5" fill="none"/><circle cx="24" cy="11" r="4" fill="#1f1f1f" stroke="#3794ff" stroke-width="2"/></svg><span class="chip blue">origin/main</span><span class="chip yellow">◇ 0.5.0</span><span class="msg">Merged PR 405: Feat: Update dependcy</span><span class="who">Jean-Alain MOREL</span><span class="when">Aug 26</span><span class="sha mono">6317da2</span></div>
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><line x1="24" y1="0" x2="24" y2="22" stroke="#3794ff" stroke-width="1.5"/><circle cx="10" cy="11" r="4" fill="#1f1f1f" stroke="#89d185" stroke-width="2"/></svg><span class="msg muted">Merge branch 'dev' of ssh.dev.azure.com:v3/DataDemocratization/Infra</span><span class="who">ja.morel-ext</span><span class="when">Aug 26</span><span class="sha mono">2e8ff6b</span></div>
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><line x1="24" y1="0" x2="24" y2="22" stroke="#3794ff" stroke-width="1.5"/><circle cx="24" cy="11" r="4" fill="#1f1f1f" stroke="#3794ff" stroke-width="2"/></svg><span class="msg">chore: promote changelog for 0.4.0 [skip ci]</span><span class="who">Azure DevOps Pipeline</span><span class="when">Aug 26</span><span class="sha mono">c01a5dc</span></div>
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><line x1="24" y1="0" x2="24" y2="22" stroke="#3794ff" stroke-width="1.5"/><line x1="38" y1="11" x2="38" y2="22" stroke="#b180d7" stroke-width="1.5"/><circle cx="38" cy="11" r="4" fill="#1f1f1f" stroke="#b180d7" stroke-width="2"/></svg><span class="chip yellow">◇ 0.4.0</span><span class="msg">Merged PR 402: Update dependencies for compatibility to env v5</span><span class="who">Jean-Alain MOREL</span><span class="when">Aug 26</span><span class="sha mono">5dbd725</span></div>
+      <div class="c"><svg width="48" height="22"><line x1="10" y1="0" x2="10" y2="22" stroke="#89d185" stroke-width="1.5"/><line x1="24" y1="0" x2="24" y2="22" stroke="#3794ff" stroke-width="1.5"/><line x1="38" y1="0" x2="38" y2="22" stroke="#b180d7" stroke-width="1.5"/><circle cx="38" cy="11" r="4" fill="#1f1f1f" stroke="#b180d7" stroke-width="2"/></svg><span class="msg">feat: colored logger</span><span class="who">ja.morel-ext</span><span class="when">Aug 26</span><span class="sha mono">66199f8</span></div>
+
+      <div class="ck" style="margin-top:14px"><span class="name">◉ Selected · 6317da2</span><span class="act">⎇ Branch here</span><span class="act">Checkout</span><span class="act">Cherry-pick</span><span class="act">Revert</span><span class="act" style="color:var(--yellow)">✦ Explain</span></div>
+      <div class="details">
+        <div class="task">
+          <div class="title">Merged PR 405: Feat: Update dependcy</div>
+          <div class="muted" style="font-size:12px;margin-top:4px">Jean-Alain MOREL · Aug 26, 18:40 · parent <span class="mono">b1aca2b</span></div>
+          <div class="row-flex" style="margin-top:8px;flex-wrap:wrap"><span class="chip blue">origin/main</span><span class="chip yellow">◇ 0.5.0</span><span class="chip purple">PR 405</span><span class="chip green">✓ CI</span><span class="chip">not released</span></div>
+        </div>
+        <div>
+          <div class="orow"><span class="st M">M</span><span class="ell">azure-pipelines.yml</span><span class="grow"></span><span class="faint" style="font-size:11.5px">+23 −22</span></div>
+          <div class="orow"><span class="st M">M</span><span class="ell">requirements.txt</span><span class="grow"></span><span class="faint" style="font-size:11.5px">+4 −4</span></div>
+          <div class="orow"><span class="st A">A</span><span class="ell">jars/README.md</span><span class="grow"></span><span class="faint" style="font-size:11.5px">+2</span></div>
+        </div>
+      </div>
+
+      <div class="pop" style="left:330px;top:150px">
+        <div class="row-flex"><b class="ell grow">Jean-Alain MOREL</b><span class="faint mono">Aug 26</span></div>
+        <div style="margin-top:6px;font-weight:600">chore: promote changelog for 0.4.0 [skip ci]</div>
+        <div class="row-flex" style="margin-top:8px"><span class="chip blue">origin/main</span><span class="chip purple">PR 401</span><span class="chip green">✓ CI</span></div>
+        <div class="ck" style="margin-bottom:0"><span class="name mono" style="font-weight:400">c01a5dc · 2 files</span><span class="act" style="color:var(--green);border:0">+12</span><span class="act" style="color:#c74e39;border:0">−3</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="label">Pull request tab</div>
+<div class="v tab">
+  <div class="task">
+    <div class="row-flex"><span class="faint mono">!4821</span><span class="chip blue">in review</span><span class="faint ell" style="font-size:12px">feature/18342-login → main</span></div>
+    <h2>Restyle the login page and split the form into reusable cards</h2>
+    <div class="row-flex" style="margin-top:12px;max-width:520px"><span class="btn p">⎇ Checkout</span><span class="btn">Files changed</span><span class="btn">Open in browser</span></div>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="ck"><span class="name">✎ Description</span></div>
+      <div class="muted" style="font-size:12.5px;line-height:1.55">Split the login form into a <b style="color:var(--fg)">card</b>, add the <i>remember me</i> switch.<br>☑ Tests &nbsp; ☐ Docs</div>
+      <div class="ck"><span class="name">💬 Discussion · 2</span><span class="act">✓ Approve</span><span class="act">Wait for author</span><span class="act">Reject</span></div>
+      <div class="quote"><div class="who">Marie Dupont<span>5h ago · active</span></div><div style="font-size:12.5px;margin-top:2px">Can we keep the SSO button above the fold?</div></div>
+      <div class="quote" style="margin-left:16px"><div class="who">Jay Morel<span>4h ago</span></div><div style="font-size:12.5px;margin-top:2px">Done in b2c3d4e.</div></div>
+      <div class="composer">Write a comment…</div>
+    </div>
+    <div class="side">
+      <div class="head"><span class="muted">✓</span>Checks</div>
+      <div class="li"><span style="color:var(--green)">●</span>CI<span class="grow"></span><span class="faint">passed</span></div>
+      <div class="li"><span style="color:var(--blue)">◌</span>Lint<span class="grow"></span><span class="faint">running</span></div>
+      <div class="li"><span style="color:var(--red)">●</span>Deploy QUAL<span class="grow"></span><span class="faint">failed</span></div>
+      <div class="head"><span class="muted">◎</span>Reviewers</div>
+      <div class="li">Marie Dupont<span class="grow"></span><span class="chip green">approved</span></div>
+      <div class="li">Alex Martin<span class="grow"></span><span class="chip yellow">waiting</span></div>
+      <div class="head"><span class="muted">⎔</span>Work items</div>
+      <div class="orow" style="font-size:12px;padding:5px 8px">AB#18342 · Login page redesign</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

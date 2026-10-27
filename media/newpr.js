@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, listDate, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // @ts-ignore
@@ -20,11 +20,10 @@
   function renderPage() {
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-waiting">${icon('git-pull-request-create')}</span>
   <div class="t-title">
-    <div class="t-kind"><span>New pull request</span></div>
-    <div class="branches"><span class="src">${icon('git-branch')} ${esc(init.source)}</span>${icon('arrow-right')}
-      <select id="target">${init.targets.map((t) => `<option value="${esc(t)}"${info && t === info.target ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+    <div class="t-kind"><span class="glyph big g-waiting">${icon('git-pull-request-create')}</span><span class="branches"><span class="src">${esc(init.source)}</span>${icon('arrow-right')}
+      <select id="target" aria-label="Target branch">${init.targets.map((t) => `<option value="${esc(t)}"${info && t === info.target ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></span></div>
+    <h1>New pull request</h1>
   </div>
 </header>
 <div class="t-grid">
@@ -103,7 +102,7 @@
     }`;
     $('summary').innerHTML = `<h3>Changes <span class="n">${info.commits.length} commit${info.commits.length === 1 ? '' : 's'}</span></h3>
       <div class="stats"><span>${info.files} file${info.files === 1 ? '' : 's'}</span>${info.added ? `<span class="plus">+${info.added}</span>` : ''}${info.deleted ? `<span class="minus">−${info.deleted}</span>` : ''}</div>
-      ${info.commits.slice(0, 30).map((c) => `<div class="commit-row" title="${esc(c.subject)}"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span><span class="k">${esc(relShort(c.date))}</span></div>`).join('')}
+      ${info.commits.slice(0, 30).map((c) => `<div class="commit-row" title="${esc(c.subject)}"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span>${listDate(c.date)}</div>`).join('')}
       ${info.commits.length ? '' : `<div class="none">No commit ahead of ${esc(info.target)}.</div>`}`;
     $('pushInfo').innerHTML = info.needsPush ? `${icon('cloud-upload')} ${esc(init.source)} will be pushed first` : `${icon('check')} ${esc(init.source)} is pushed`;
     autosize();
@@ -178,6 +177,6 @@
       $('createLabel').textContent = m.on ? 'Creating…' : 'Create pull request';
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Loading…');
   vscode.postMessage({ type: 'ready' });
 })();

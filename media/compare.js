@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relTime } = /** @type {any} */ (window).gl;
+  const { esc, icon, relTime, listDate, displayName, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -43,6 +43,7 @@
   <span class="grow"></span>
   <button data-act="copyNotes" title="Copy the list of changes as markdown">${icon('copy')}Copy as list</button>
   <button class="gen-btn" data-act="notes" title="Write release notes with AI, in the style of the repository's CHANGELOG">${icon('sparkle')}Release notes</button>
+  ${data && data.release && data.release.url && data.release.tag === to ? `<button class="icon" data-act="openRelease" title="Open release ${esc(to)} on the remote">${icon('link-external')}</button>` : ''}
   <button class="icon" data-act="refresh" title="Refresh">${icon('refresh')}</button>
 </header>`;
   }
@@ -56,14 +57,14 @@
   ${av ? `<img class="av" src="${esc(av)}" alt="">` : '<span class="av"></span>'}
   ${pr ? `<span class="pr-chip" data-url="${esc(prUrl(pr.id))}">${icon('git-pull-request')}${esc(pr.id)}</span>` : ''}
   <span class="s">${esc(title)}</span>
-  <span class="a">${esc(c.author)}</span><span class="k">${esc(relTime(c.date))}</span><span class="sha">${esc(c.sha.slice(0, 7))}</span>
+  <span class="a" title="${esc(c.author)}">${esc(displayName(c.author))}</span>${listDate(c.date)}<span class="sha">${esc(c.sha.slice(0, 7))}</span>
 </div>`;
   }
 
   function commitsTab() {
-    const side = (list, label, empty) => {
+    const side = (list, label, empty, tools = '') => {
       const shown = state.merges ? list : list.filter((c) => c.parents.length <= 1);
-      return `<section><h3>${label} <span class="n">${list.length}</span></h3>${shown.length ? shown.map(commitRow).join('') : `<div class="none">${empty}</div>`}</section>`;
+      return `<section><h3>${label} <span class="n">${list.length}</span>${tools}</h3>${shown.length ? shown.map(commitRow).join('') : `<div class="none">${empty}</div>`}</section>`;
     };
     const prs = data.ahead.map((c) => ({ c, pr: prOf(c.subject) })).filter((x) => x.pr);
     const prSection = prs.length
@@ -71,21 +72,20 @@
           .map(({ c, pr }) => `<div class="pr-row" data-url="${esc(prUrl(pr.id))}">${icon('git-pull-request')}<span class="id">${esc(pr.id)}</span><span class="s">${esc(pr.title || pr.branch || c.subject)}</span>${pr.branch ? `<span class="br">${esc(pr.branch)}${pr.into ? ` → ${esc(pr.into)}` : ''}</span>` : ''}</div>`)
           .join('')}</div></section>`
       : '';
-    return `<div class="c-tools"><label class="switch"><input id="merges" type="checkbox"${state.merges ? ' checked' : ''}><span class="track"><span class="knob"></span></span><span>merge commits</span></label></div>
-${prSection}
-${side(data.ahead, `In <b>${esc(data.to)}</b>, not in <b>${esc(data.from)}</b>`, 'Nothing new.')}
+    const mergesToggle = `<label class="switch" title="Show the merge commits in the lists below"><input id="merges" type="checkbox"${state.merges ? ' checked' : ''}><span class="track"><span class="knob"></span></span><span>merge commits</span></label>`;
+    return `${prSection}
+${side(data.ahead, `In <b>${esc(data.to)}</b>, not in <b>${esc(data.from)}</b>`, 'Nothing new.', mergesToggle)}
 ${data.behind.length ? side(data.behind, `In <b>${esc(data.from)}</b>, not in <b>${esc(data.to)}</b>`, '') : ''}`;
   }
 
   function filesTab() {
     if (!data.files.length) return '<div class="none">No differences.</div>';
     return `<div class="f-tools">
-  <input id="fFilter" class="f-filter" type="text" placeholder="Filter files" value="${esc(filter)}" spellcheck="false">
+  <input id="fFilter" class="f-filter" type="text" placeholder="Filter files" value="${esc(filter)}" spellcheck="false" title="Click a file to see its diff beside this list · ↑ ↓ next / previous file · v mark as viewed">
   <span class="f-progress" id="fProgress">${progress()}</span>
   <label class="switch"><input id="hideViewed" type="checkbox"${state.hideViewed ? ' checked' : ''}><span class="track"><span class="knob"></span></span><span>hide viewed</span></label>
   <button class="primary" data-act="openAll" title="Every diff in one scrollable editor">${icon('diff-multiple')}Open all changes</button>
 </div>
-<div class="f-hint">click a file to see its diff beside this list · ↑ ↓ next / previous · v mark as viewed</div>
 <div id="fList">${fileList()}</div>`;
   }
 
@@ -173,6 +173,7 @@ ${data.behind.length ? side(data.behind, `In <b>${esc(data.from)}</b>, not in <b
     const el = /** @type {HTMLElement | null} */ (t.closest('[data-url],[data-act],[data-pick],[data-tab],[data-sha],.f-row'));
     if (!el) return;
     if (el.dataset.url) return vscode.postMessage({ type: 'openUrl', url: el.dataset.url });
+    if (el.dataset.act === 'openRelease') return vscode.postMessage({ type: 'openExternal', url: data.release.url });
     if (el.dataset.act === 'copyNotes') return vscode.postMessage({ type: 'copy', text: releaseNotes() });
     if (el.dataset.act === 'copyGenerated') return vscode.postMessage({ type: 'copy', text: currentNotes() });
     if (el.dataset.act === 'insertChangelog') return vscode.postMessage({ type: 'insertChangelog', text: currentNotes() });
@@ -292,9 +293,9 @@ ${data.behind.length ? side(data.behind, `In <b>${esc(data.from)}</b>, not in <b
       if (typeof m.text === 'string') notesText = m.text;
       render();
     } else if (m.type === 'loading') {
-      page.innerHTML = `${header(m.from, m.to)}<div class="skeleton"><div></div><div></div><div></div><div></div></div>`;
+      page.innerHTML = `${header(m.from, m.to)}${loadingHtml('Comparing…')}`;
     } else if (m.type === 'error') {
-      page.innerHTML = `<div class="state error">${icon('warning')}<b>Could not compare</b><span>${esc(m.message)}</span><button data-act="refresh">${icon('refresh')}Retry</button></div>`;
+      page.innerHTML = `<div class="gl-empty error">${icon('warning')}<b>Could not compare</b><span>${esc(m.message)}</span><button data-act="refresh">${icon('refresh')}Retry</button></div>`;
     }
   });
   vscode.postMessage({ type: 'ready' });

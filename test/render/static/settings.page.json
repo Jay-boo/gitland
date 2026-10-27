@@ -1,0 +1,14 @@
+{
+ "title": "Gitland Settings",
+ "body": "<main id=\"page\"></main>",
+ "script": [
+  "md.js",
+  "settings.js"
+ ],
+ "styles": [
+  "list.css",
+  "ticket.css",
+  "settings.css"
+ ],
+ "bodyClass": "ticket-page"
+}

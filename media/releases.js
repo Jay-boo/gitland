@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, relShort, loadingHtml, stateHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const listEl = /** @type {HTMLElement} */ (document.getElementById('list'));
@@ -25,7 +25,7 @@
 </div>`
         : '';
     if (!data.releases.length) {
-      listEl.innerHTML = `<div class="state done">${icon('tag')}<b>No release yet</b><span>Tags show up here.</span><button class="primary" data-act="newRelease">${icon('tag')}Create the first release…</button></div>`;
+      listEl.innerHTML = `<div class="gl-empty empty">${icon('tag')}<b>No release yet</b><span>Tags show up here.</span><button class="primary" data-act="newRelease">${icon('tag')}New release…</button></div>`;
       return;
     }
     listEl.innerHTML =
@@ -38,7 +38,7 @@
   <span class="glyph ${pre ? 'g-draft' : 'g-task'}">${icon('tag')}</span>
   <div class="body">
     <div class="title"><span class="ver">${esc(r.name)}</span>${i === 0 && !q ? '<span class="cur-chip">latest</span>' : ''}${pre ? '<span class="pill p-draft">pre-release</span>' : ''}</div>
-    <div class="meta"><span>${plural(r.commits, 'commit')}</span>${r.pullRequests ? `<span>${icon('git-pull-request')} ${r.pullRequests}</span>` : ''}${r.previous ? `<span>since ${esc(r.previous)}</span>` : ''}</div>
+    <div class="meta"><span>${plural(r.commits, 'commit')}</span>${r.pullRequests ? `<span>${icon('git-pull-request')} ${r.pullRequests}</span>` : ''}${r.previous ? `<span class="since">since ${esc(r.previous)}</span>` : ''}</div>
   </div>
   <span class="age side">${esc(relShort(r.date))}</span>
   <span class="acts">
@@ -69,10 +69,14 @@
       data = m;
       render();
     } else if (m.type === 'loading' && !data) {
-      listEl.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+      listEl.innerHTML = loadingHtml('Loading releases…');
     } else if (m.type === 'state') {
-      listEl.innerHTML = `<div class="state ${m.state}">${icon(m.state === 'error' ? 'warning' : 'info')}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span></div>`;
+      listEl.innerHTML = stateHtml(m);
     }
   });
+  // No data yet (loading, empty, sign-in, error): hide the filter box above the state block.
+  const noData = () => document.body.classList.toggle('no-data', !!listEl.querySelector(':scope > .gl-empty') && !(/** @type {HTMLInputElement | null} */ (document.querySelector('.lv-head input'))?.value));
+  new MutationObserver(noData).observe(listEl, { childList: true });
+  noData();
   vscode.postMessage({ type: 'ready' });
 })();

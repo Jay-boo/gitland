@@ -46,10 +46,10 @@ test('keyboard focus stays visible', () => {
 });
 
 test('cards, lists, pills and pop-overs show the high-contrast border', () => {
-  for (const sel of ['.gl-card', '.gl-list', '.gl-pill', '.gl-pop']) {
-    const rule = base().match(new RegExp(`(^|\\n)${sel.replace('.', '\\.')}\\s*\\{[^}]*\\}`));
+  for (const sel of ['.gl-task', '.gl-orow', '.gl-chip', '.gl-pop']) {
+    const rule = base().match(new RegExp(`(^|\\n)${sel.replace('.', '\\.')}[^{\\n]*\\{[^}]*\\}`));
     assert.ok(rule, `${sel} rule exists`);
-    assert.match(rule[0], /--gl-border/, `${sel} uses --gl-border`);
+    assert.match(rule[0], /--gl-border|contrastBorder/, `${sel} keeps an edge in high contrast`);
   }
 });
 
@@ -74,20 +74,101 @@ test('graph theme watcher ignores the graph writing its own <html style> vars', 
 });
 
 test('every tinted chip shows the high-contrast border', () => {
-  const rules = [
-    ['graph.css', '.rel-chip'], ['graph.css', '.ci-label'], ['graph.css', '.sig-chip'],
-    ['history.css', '.hchip'], ['compare.css', '.pr-chip'], ['pr.css', '.rev .req'], ['ticket.css', '.cur-chip.big'],
-  ];
-  for (const [file, sel] of rules) {
-    const css = read(path.join(media, file));
-    const esc = sel.replace(/[.]/g, '\\.').replace(/ /g, '\\s+');
-    const rule = css.match(new RegExp(`(^|\\n)${esc}\\s*\\{[^}]*\\}`));
-    assert.ok(rule, `${file} ${sel} exists`);
-    assert.match(rule[0], /--gl-border/, `${file} ${sel} uses --gl-border`);
+  // All chips share one shape rule in base.css (it carries the border); views only colour them.
+  const shared = rules(base()).find(([s]) => s.split(',').map((x) => x.trim()).includes('.gl-chip'));
+  assert.ok(shared, 'base.css shared chip rule exists');
+  assert.match(shared[1], /border:\s*1px solid var\(--gl-border\)/, 'the shared chip rule uses --gl-border');
+  const names = shared[0].split(',').map((x) => x.trim());
+  for (const sel of ['.rel-chip', '.ci-label', '.sig-chip', '.hchip', '.pr-chip', '.ref', '.pill', '.tag', '.chip', '.link-chip', '.pr-badge', '.merged-chip', '.hook-chip']) {
+    assert.ok(names.includes(sel), `${sel} uses the shared chip shape`);
+  }
+  // No view rule takes the border away from a chip.
+  for (const f of files(media, '.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (names.includes(sel.trim()) && /border:\s*(0|none)\b/.test(body)) assert.fail(`${path.basename(f)} ${sel} drops the chip border`);
+    }
   }
 });
 
 test('the active segment is outlined in high contrast', () => {
   assert.match(read(path.join(media, 'base.css')), /\.gl-seg > button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
   assert.match(read(path.join(media, 'graph.css')), /\.seg button\.on[^{]*\{[^}]*--vscode-contrastActiveBorder/);
+});
+
+test('the ticket reminder is a modal question, asked after the staging checks and not on the hook retry', () => {
+  const ts = read(path.join(src, 'views', 'changesView.ts'));
+  assert.match(ts, /showWarningMessage\(`\$\{branch\} has no ticket[^`]*`, \{ modal: true \}/);
+  const commit = ts.slice(ts.indexOf('private async commit('));
+  assert.ok(commit.indexOf('remindTicket') > commit.indexOf("repo.exec(['add', '-A'])"), 'after staging');
+  assert.match(commit, /!amend && !noVerify/);
+});
+
+test('graph merge-base only takes a SHA', () => {
+  assert.match(read(path.join(src, 'graph', 'graphPanel.ts')), /case 'mergeBase': \{\n\s+if \(!\/\^\[0-9a-f\]\{7,64\}\$\/i\.test\(m\.sha\)\)/);
+});
+
+// ---------- stream restyle (docs/superpowers/specs/2026-10-22-stream-restyle-design.md) ----------
+
+/** [selector, declarations] of every rule in a stylesheet (flat; @media blocks are scanned too). */
+function rules(css) {
+  const out = [];
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  let m;
+  while ((m = re.exec(src))) out.push([m[1].trim().replace(/^@media[^{]*$/, '').trim(), m[2]]);
+  return out;
+}
+
+test('filled surfaces are rare (one card per screen)', () => {
+  const allowed = ['.sync', '#details .info', '.t-head', '.t-actions', '.c-head', '.preview'];
+  const bad = [];
+  for (const f of files(media, '.css').filter((f) => path.basename(f) !== 'base.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (/background(-color)?:\s*var\(--(gl-card|surface-2|surface)\)/.test(body) && !sel.split(',').every((s) => allowed.some((a) => s.trim().endsWith(a)))) {
+        bad.push(`${path.basename(f)}: ${sel}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(bad, []);
+});
+
+test('chips are square-ish (no round pills)', () => {
+  const ok = /switch|knob|track|avatar|\.av\b|bubble|dot|legend i|scrollbar|gl-seg|gl-skeleton|loading/;
+  const bad = [];
+  for (const f of files(media, '.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (/border-radius:\s*(999px|50%)/.test(body) && !ok.test(sel)) bad.push(`${path.basename(f)}: ${sel}`);
+    }
+  }
+  assert.deepStrictEqual(bad, []);
+});
+
+test('stream components exist with high-contrast borders', () => {
+  const css = base();
+  for (const sel of ['.gl-task', '.gl-orow', '.gl-ck .act', '.gl-chip']) {
+    const rule = rules(css).find(([s]) => s.split(',').map((x) => x.trim()).includes(sel));
+    assert.ok(rule, `${sel} rule exists`);
+    assert.match(rule[1], /--gl-border|contrastBorder|--gl-dash/, `${sel} keeps an edge in high contrast`);
+  }
+  assert.match(css, /--gl-chip:/);
+  assert.match(css, /--gl-dash:/);
+});
+
+test('a refused commit shows its hook output next to the Commit button', () => {
+  const ts = read(path.join(src, 'views', 'changesView.ts'));
+  const body = ts.slice(ts.indexOf('export const CHANGES_BODY'));
+  const compose = body.indexOf('<section class="compose">');
+  const hook = body.indexOf('id="hookOut"');
+  const end = body.indexOf('</section>', compose);
+  assert.ok(hook > compose && hook < end, '#hookOut is inside the pinned composer');
+});
+
+test('markdown headings in descriptions are not section separators', () => {
+  assert.match(read(path.join(media, 'ticket.css')), /\.rich h3::after\s*\{[^}]*content:\s*none/);
+});
+
+test('dashed lines and selected rows keep high-contrast edges', () => {
+  assert.match(base(), /--gl-dash:\s*var\(--vscode-contrastBorder,/);
+  assert.match(base(), /\.gl-orow\.sel\s*\{[^}]*contrastActiveBorder/);
+  assert.match(read(path.join(media, 'changes.css')), /\.gb \.file\.sel\s*\{[^}]*contrastActiveBorder/);
 });

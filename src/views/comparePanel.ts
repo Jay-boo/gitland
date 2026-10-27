@@ -18,7 +18,7 @@ type Message =
   | { type: 'preview'; key: string; path: string; oldPath?: string }
   | { type: 'viewed'; paths: string[]; on: boolean }
   | { type: 'showCommit'; sha: string }
-  | { type: 'openUrl'; url: string }
+  | { type: 'openUrl' | 'openExternal'; url: string }
   | { type: 'copy'; text: string }
   | { type: 'notes' | 'stopNotes' }
   | { type: 'insertChangelog'; text: string };
@@ -28,6 +28,8 @@ export interface CompareView {
   tab?: 'commits' | 'files';
   key?: string;
   title?: string;
+  /** Shown as the page of this release (tag): "Open on remote" goes to the release on the web. */
+  release?: string;
 }
 
 const VIEWED = 'gitland.compare.viewed';
@@ -144,6 +146,7 @@ export class ComparePanel {
         ...c,
         avatars,
         links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
+        release: this.view.release && this.view.release === this.to ? { tag: this.to, url: provider?.releaseUrl(this.to) } : undefined,
       });
     } catch (e) {
       log.error(`Compare ${this.from}..${this.to} failed`, e);
@@ -211,6 +214,9 @@ export class ComparePanel {
           await vscode.commands.executeCommand('gitland.showGraph', { repoRoot: this.repo.root, sha: m.sha });
           return;
         case 'openUrl':
+          await vscode.commands.executeCommand('gitland.openLink', m.url, this.repo.root);
+          return;
+        case 'openExternal':
           if (/^https:\/\//.test(m.url)) {
             await vscode.env.openExternal(vscode.Uri.parse(m.url));
           }
