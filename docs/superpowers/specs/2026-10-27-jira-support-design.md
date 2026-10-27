@@ -103,7 +103,7 @@ Payload → `Ticket` / `TicketDetails` mapping lives in `src/providers/jiraMap.p
 - Implements `Provider`. Ticket members (`ticketNoun`, `ticketSourceLabel`, `listMyTickets`, `searchTickets`,
   `getTicket`, `getTicketDetails`, `activateTicket`, `ticketStates`, `setTicketState`, `assignTicketToMe`,
   `commentTicket`, `ticketUrl`) → `JiraTickets`; all others → host. `kind` and `displayName` stay the host's.
-- New optional `Provider` members: `ticketKind?: 'jira'` and `ticketKeys?: string[]` (configured project keys).
+- New optional `Provider` members: `ticketKind?: 'jira'` and `ticketKeys?: Record<string, string>` (configured project key → site).
 - `createPullRequest`: `ticketIds` are **not** forwarded to the host; the first ticket key prefixes the title
   (`DATA-123: …`) unless already present, so Jira's GitHub / GitLab / Azure integrations link it.
 - Start Work's draft-PR offer (Azure only) uses the same rule.
@@ -115,9 +115,9 @@ Payload → `Ticket` / `TicketDetails` mapping lives in `src/providers/jiraMap.p
 - Branch template `${id}` gives `feature/DATA-123-fix-login`; `branch.<name>.gitlandTicket` stores the key.
 - `src/links.ts` `findLinks` and `media/graph.js` `linksIn` (kept identical): when `ticketKeys` is set, match
   `\b(KEY)-(\d+)\b` for those keys only (so `UTF-8`, `SHA-256` never link) and stop treating `#n` as a ticket;
-  PR rules unchanged. Webviews receive `links.ticketKeys`. Chips: `Jira DATA-123`.
+  PR rules unchanged. Webviews receive `links.ticketKeys` (key → site; chip URL `<site>/browse/<KEY-n>`). Chips: `Jira DATA-123`.
 - `src/linkTarget.pure.ts`: `<site>/browse/<KEY-n>` for a configured site → `{ kind: 'ticket', id, org: site }`,
-  so it opens Gitland's ticket page. `LinkUrls` gains `ticketKeys?` / `jiraSites?`.
+  so it opens Gitland's ticket page. `LinkUrls` gains `ticketKeys?` (key → site).
 - Ticket labels: places printing `#${id}` (ticket page, history, Start Work titles / messages, new PR page)
   print the bare key when `ticketKind === 'jira'`. A small `ticketLabel(provider, id)` helper replaces the
   inline prefixes.
