@@ -1,4 +1,5 @@
-import type { CreatePullRequestOptions, PullRequest, Provider } from './types';
+import { jiraKeysIn } from './jiraMap.pure';
+import type { CreatePullRequestOptions, PullRequest, PullRequestDetails, Provider } from './types';
 
 /** What a ticket tracker that is not the code host (Jira) provides. */
 export type TicketBackend = Pick<
@@ -53,6 +54,17 @@ export class TicketOverlay {
         self[name] = typeof fn === 'function' ? fn.bind(from) : undefined;
       }
     }
+    const details = host.getPullRequestDetails?.bind(host);
+    if (details) {
+      self.getPullRequestDetails = async (id: string) => this.withJiraWorkItems(await details(id));
+    }
+  }
+
+  /** A PR's tickets are the Jira keys of its title and description (the host's own work items do not apply). */
+  private withJiraWorkItems(d: PullRequestDetails): PullRequestDetails {
+    const keys = this.ticketKeys ?? {};
+    const ids = jiraKeysIn(`${d.pr.title}\n${d.description ?? ''}`, Object.keys(keys));
+    return { ...d, workItems: ids.map((id) => ({ id, url: `${keys[id.replace(/-\d+$/, '')]}/browse/${id}` })) };
   }
 
   /** Signed in to the code host (pull requests, pipelines). */

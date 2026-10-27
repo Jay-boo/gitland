@@ -72,3 +72,9 @@ test('themeColors reads the 11 lane tokens', () => {
   assert.strictEqual(got[0], '--gl-lane-0');
   assert.strictEqual(got[10], '--gl-lane-10');
 });
+
+test('ticketLabel: #12 for numbers, Jira keys as they are', () => {
+  assert.strictEqual(gl.ticketLabel('12'), '#12');
+  assert.strictEqual(gl.ticketLabel(12), '#12');
+  assert.strictEqual(gl.ticketLabel('DATA-12'), 'DATA-12');
+});

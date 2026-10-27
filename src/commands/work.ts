@@ -6,6 +6,7 @@ import { Provider, Ticket } from '../providers/types';
 import { config, errorMessage, slugify } from '../util';
 import { ticketIcon } from '../views/ticketsView';
 import { createWorktree, listWorktrees, openFolderInNewWindow } from './worktrees';
+import { ticketLabel } from '../providers/ticketPrefix.pure';
 
 export async function pickTicket(provider: Provider): Promise<Ticket | undefined> {
   const qp = vscode.window.createQuickPick<vscode.QuickPickItem & { ticket?: Ticket }>();
@@ -15,7 +16,7 @@ export async function pickTicket(provider: Provider): Promise<Ticket | undefined
   const toItems = (tickets: Ticket[]) =>
     tickets.map((t) => ({
       label: `$(${ticketIcon(t.type).id}) ${t.title}`,
-      description: `#${t.id} · ${t.type} · ${t.state}`,
+      description: `${ticketLabel(t.id)} · ${t.type} · ${t.state}`,
       ticket: t,
       alwaysShow: true,
     }));
@@ -115,7 +116,7 @@ async function pickBaseBranch(repo: Repo, remote: string | undefined): Promise<s
 async function pickWhere(repo: Repo, ticket: Ticket, create: boolean): Promise<'here' | 'worktree' | undefined> {
   const [current, dirty] = await Promise.all([repo.currentBranch(), repo.isDirty()]);
   const currentTicket = current ? await repo.getConfig(`branch.${current}.gitlandTicket`) : undefined;
-  const busy = currentTicket && currentTicket !== ticket.id ? `#${currentTicket} keeps going in this window` : dirty ? 'your uncommitted changes stay in this window' : 'a separate folder, opened in a new window';
+  const busy = currentTicket && currentTicket !== ticket.id ? `${ticketLabel(currentTicket)} keeps going in this window` : dirty ? 'your uncommitted changes stay in this window' : 'a separate folder, opened in a new window';
   const pick = await vscode.window.showQuickPick(
     [
       {
@@ -129,7 +130,7 @@ async function pickWhere(repo: Repo, ticket: Ticket, create: boolean): Promise<'
         where: 'worktree' as const,
       },
     ],
-    { placeHolder: `#${ticket.id} ${ticket.title}` },
+    { placeHolder: `${ticketLabel(ticket.id)} ${ticket.title}` },
   );
   return pick?.where;
 }
@@ -166,7 +167,7 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
         ...linked.map((b) => ({ label: `$(git-branch) ${b}`, description: 'existing branch for this ticket', branch: b })),
         { label: '$(add) Create a new branch…', description: '', branch: '' },
       ],
-      { placeHolder: `#${ticket.id} ${ticket.title}` },
+      { placeHolder: `${ticketLabel(ticket.id)} ${ticket.title}` },
     );
     if (!choice) {
       return false;
@@ -200,7 +201,7 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   }
 
   const name = await vscode.window.showInputBox({
-    title: `Start work on #${ticket.id}: ${ticket.title}`,
+    title: `Start work on ${ticketLabel(ticket.id)}: ${ticket.title}`,
     prompt: 'Branch name',
     value: branchNameFor(ticket, await repo.getConfig('user.name')),
     validateInput: (v) =>
@@ -254,8 +255,9 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   await repo.setConfig(`branch.${branch}.gitlandTicket`, ticket.id);
   await repo.setConfig(`branch.${branch}.gitlandTicketTitle`, ticket.title);
 
-  if (provider?.activateTicket && config('azureDevOps.activateOnStartWork', false)) {
-    provider.activateTicket(ticket.id, ticket.org).catch((e) => vscode.window.showWarningMessage(`Could not activate work item: ${errorMessage(e)}`));
+  const activate = provider?.ticketKind === 'jira' ? config('jira.transitionOnStartWork', false) : config('azureDevOps.activateOnStartWork', false);
+  if (provider?.activateTicket && activate) {
+    provider.activateTicket(ticket.id, ticket.org).catch((e) => vscode.window.showWarningMessage(`Could not move the ${provider.ticketNoun} to In Progress: ${errorMessage(e)}`));
   }
   // GitHub refuses a pull request with no commits; Azure DevOps accepts a draft right away.
   if (provider?.kind === 'azure' && prTarget && prRemote) {
@@ -267,8 +269,8 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   }
   const open = 'Open ticket';
   const msg = worktree
-    ? `Working on #${ticket.id} in branch '${branch}', in a new window (${worktree}).`
-    : `Working on #${ticket.id} in branch '${branch}'.`;
+    ? `Working on ${ticketLabel(ticket.id)} in branch '${branch}', in a new window (${worktree}).`
+    : `Working on ${ticketLabel(ticket.id)} in branch '${branch}'.`;
   vscode.window.showInformationMessage(msg, open).then((c) => {
     if (c === open) {
       vscode.commands.executeCommand('gitland.tickets.show', { ticket });
@@ -282,7 +284,7 @@ async function offerDraftPullRequest(repo: Repo, provider: Provider, ticket: Tic
   const pick = await vscode.window.showQuickPick(
     [
       { label: '$(git-branch) Branch only', draft: false },
-      { label: '$(git-pull-request-draft) Branch + draft pull request', description: `into ${target}, linked to #${ticket.id}`, draft: true },
+      { label: '$(git-pull-request-draft) Branch + draft pull request', description: `into ${target}, linked to ${ticketLabel(ticket.id)}`, draft: true },
     ],
     { placeHolder: `Also create a draft pull request for ${branch}?` },
   );

@@ -72,3 +72,10 @@ test('hostOf unwraps the overlay', () => {
   assert.strictEqual(mod.exports.hostOf(host), host);
   assert.strictEqual(mod.exports.hostOf(undefined), undefined);
 });
+
+test('pull request work items are the Jira keys of its title and description', async () => {
+  const { host, tickets } = fakes();
+  host.getPullRequestDetails = async () => ({ pr: { title: 'DATA-1: login' }, description: 'also OPS-2, #4', workItems: [{ id: '4', url: 'x' }] });
+  const d = await new TicketOverlay(host, { ...tickets, ticketKeys: { DATA: 'https://a', OPS: 'https://b' } }).getPullRequestDetails('9');
+  assert.deepStrictEqual(d.workItems, [{ id: 'DATA-1', url: 'https://a/browse/DATA-1' }, { id: 'OPS-2', url: 'https://b/browse/OPS-2' }]);
+});

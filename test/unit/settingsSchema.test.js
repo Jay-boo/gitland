@@ -48,3 +48,10 @@ test('GitLab settings get their own group', () => {
   assert.strictEqual(g.title, 'GitLab');
   assert.deepStrictEqual(g.settings.map((s) => s.key), ['gitlab.hosts']);
 });
+
+test('Jira settings get their own group', () => {
+  const g = settingsGroups({ 'gitland.jira.transitionOnStartWork': { type: 'boolean', default: false } }).find((x) => x.id === 'jira');
+  assert.ok(g, 'jira group exists');
+  assert.strictEqual(g.title, 'Jira');
+  assert.deepStrictEqual(g.settings.map((s) => s.key), ['jira.transitionOnStartWork']);
+});

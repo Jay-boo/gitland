@@ -7,6 +7,7 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { capture } from '../devCapture';
+import { ticketLabel, ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'start' | 'open' | 'copy' }
@@ -32,7 +33,7 @@ export class TicketPanel {
       open.panel.reveal();
       return;
     }
-    const panel = createPanel('gitland.ticket', `#${id}`, vscode.ViewColumn.Active, {
+    const panel = createPanel('gitland.ticket', ticketLabel(id), vscode.ViewColumn.Active, {
       ...webviewOptions(context.extensionUri),
       retainContextWhenHidden: true,
     });
@@ -49,7 +50,7 @@ export class TicketPanel {
   ) {
     panel.webview.html = webviewHtml(panel.webview, context.extensionUri, {
       view: 'ticket',
-      title: `#${id}`,
+      title: ticketLabel(id),
       body: '<main id="page"></main>',
       script: ['md.js', 'ticket.js'],
       styles: ['list.css', 'ticket.css'],
@@ -80,10 +81,10 @@ export class TicketPanel {
         repo.getConfig('user.name').catch(() => undefined),
       ]);
       if (!details) {
-        return this.post({ type: 'error', message: `${provider.ticketNoun} #${this.id} was not found.` });
+        return this.post({ type: 'error', message: `${provider.ticketNoun} ${ticketLabel(this.id)} was not found.` });
       }
       this.details = details;
-      this.panel.title = `#${this.id} ${details.ticket.title}`;
+      this.panel.title = `${ticketLabel(this.id)} ${details.ticket.title}`;
       const org = this.org ?? details.ticket.org;
       const states = provider.ticketStates
         ? await provider.ticketStates(this.id, org).catch((e) => {
@@ -97,7 +98,7 @@ export class TicketPanel {
         details,
         ...local,
         current,
-        prefix: provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#',
+        prefix: ticketPrefix(provider),
         noun: provider.ticketNoun,
         states: provider.setTicketState ? states?.map((x) => x.name) : undefined,
         canAssign: !!provider.assignTicketToMe && !(assignee && me && assignee.includes(me.toLowerCase())),

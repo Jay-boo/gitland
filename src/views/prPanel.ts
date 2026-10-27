@@ -10,6 +10,7 @@ import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtm
 import { ComparePanel } from './comparePanel';
 import { TicketPanel } from './ticketPanel';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'refresh' | 'checkout' | 'open' | 'copy' | 'files' }
@@ -82,7 +83,7 @@ export class PrPanel {
         type: 'details',
         details: d,
         current,
-        prefix: provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#',
+        prefix: ticketPrefix(provider),
         can: { vote: !!provider.votePullRequest, requestReview: !!provider.requestMyReview, comment: !!provider.commentPullRequest, resolve: !!provider.resolveThread, update: !!provider.updatePullRequest, kind: provider.kind },
       });
       provider

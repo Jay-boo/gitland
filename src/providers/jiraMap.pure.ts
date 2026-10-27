@@ -56,6 +56,23 @@ export function parseTicketId(text: string, keys: string[]): string | undefined 
   return n && keys.length ? `${keys[0]}-${n[1]}` : undefined;
 }
 
+/** "DATA-12" for the given project keys, as a whole word (not "XDATA-12", "UTF-8", nor inside a URL path). */
+export function jiraKeyPattern(keys: string[]): RegExp {
+  const alt = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return new RegExp(`(?<![\\w/-])(${alt || '(?!)'})-\\d+\\b`, 'g');
+}
+
+/** Issue keys of the given projects mentioned in a text, in order of first appearance. */
+export function jiraKeysIn(text: string, keys: string[]): string[] {
+  return [...new Set([...text.matchAll(jiraKeyPattern(keys))].map((m) => m[0]))];
+}
+
+/** "feature/DATA-12-fix-login" → "DATA-12" (case-insensitive, configured projects only). */
+export function jiraKeyFromBranch(branch: string, keys: string[]): string | undefined {
+  const m = /(?:^|[/_])([a-z][a-z0-9_]*)-(\d+)(?=$|[/_-])/i.exec(branch);
+  return m && keys.includes(m[1].toUpperCase()) ? `${m[1].toUpperCase()}-${m[2]}` : undefined;
+}
+
 export function keyOf(id: string): string {
   return id.replace(/-\d+$/, '').toUpperCase();
 }

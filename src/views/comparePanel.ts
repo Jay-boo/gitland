@@ -9,6 +9,7 @@ import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { generateReleaseNotes, insertIntoChangelog } from '../commitMessage';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'swap' | 'refresh' }
@@ -249,7 +250,7 @@ export class ComparePanel {
     try {
       const text = await generateReleaseNotes(
         this.repo,
-        { from: this.from, to: this.to, version: /^v?\d/.test(this.to) ? this.to : 'Unreleased', ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
+        { from: this.from, to: this.to, version: /^v?\d/.test(this.to) ? this.to : 'Unreleased', ticketPrefix: ticketPrefix(provider) },
         (t) => this.post({ type: 'notesText', text: t }),
         cts.token,
       );

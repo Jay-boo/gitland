@@ -1,3 +1,4 @@
+import { jiraKeyPattern } from './providers/jiraMap.pure';
 import { Provider } from './providers/types';
 
 export interface MessageLink {
@@ -55,8 +56,3 @@ export function findLinks(text: string, provider: Provider | undefined): Message
   return out;
 }
 
-/** "DATA-12" for the given project keys, as a whole word (not "XDATA-12", "UTF-8"). */
-export function jiraKeyPattern(keys: string[]): RegExp {
-  const alt = keys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  return new RegExp(`(?<![\\w/-])(${alt || '(?!)'})-\\d+\\b`, 'g');
-}

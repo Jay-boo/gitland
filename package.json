@@ -650,7 +650,9 @@
             "Product Backlog Item": "feature",
             "Feature": "feature",
             "Epic": "feature",
-            "Issue": "feature"
+            "Issue": "feature",
+            "Story": "feature",
+            "Sub-task": "feature"
           },
           "description": "Branch prefix per ticket type. Unknown types use 'feature'."
         },
@@ -720,6 +722,11 @@
           "type": "string",
           "default": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Done', 'Removed', 'Resolved', 'Completed') ORDER BY [System.ChangedDate] DESC",
           "description": "WIQL query used to list 'My Tickets' in Azure DevOps."
+        },
+        "gitland.jira.transitionOnStartWork": {
+          "type": "boolean",
+          "default": false,
+          "description": "Move the Jira issue to In Progress when you start work on it."
         },
         "gitland.azureDevOps.activateOnStartWork": {
           "type": "boolean",

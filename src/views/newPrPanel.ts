@@ -12,6 +12,8 @@ import { config, errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { PrPanel } from './prPanel';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
+import { jiraKeyFromBranch, jiraKeysIn } from '../providers/jiraMap.pure';
 
 type Message =
   | { type: 'ready' | 'stopGenerate' }
@@ -104,13 +106,16 @@ export class NewPrPanel {
   }
 
   private async ticket(): Promise<{ id: string; title?: string; prefix: string } | undefined> {
-    const id = (await this.repo.getConfig(`branch.${this.branch}.gitlandTicket`)) ?? ticketIdFromBranch(this.branch);
+    const keys = Object.keys(this.provider.ticketKeys ?? {});
+    const id =
+      (await this.repo.getConfig(`branch.${this.branch}.gitlandTicket`)) ??
+      (keys.length ? jiraKeyFromBranch(this.branch, keys) : ticketIdFromBranch(this.branch));
     if (!id) {
       return undefined;
     }
     let title = await this.repo.getConfig(`branch.${this.branch}.gitlandTicketTitle`);
     title ??= (await this.provider.getTicket(id).catch(() => undefined))?.title;
-    return { id, title, prefix: this.provider.kind === 'github' || this.provider.kind === 'gitlab' ? '#' : 'AB#' };
+    return { id, title, prefix: ticketPrefix(this.provider) };
   }
 
   /**
@@ -118,9 +123,11 @@ export class NewPrPanel {
    * that is where Azure DevOps writes "Related work items: #12").
    */
   private async linkedTickets(base: string, branchTicket: Awaited<ReturnType<NewPrPanel['ticket']>>): Promise<LinkedTicket[]> {
-    const prefix = this.provider.kind === 'github' || this.provider.kind === 'gitlab' ? '#' : 'AB#';
+    const prefix = ticketPrefix(this.provider);
     const bodies = await this.repo.exec(['log', '--format=%B%x1e', `${base}..HEAD`]).catch(() => '');
-    const ids = ticketIdsFromMessages(bodies.split('\x1e').map((m) => m.trim()).filter(Boolean), this.provider.kind)
+    const messages = bodies.split('\x1e').map((m) => m.trim()).filter(Boolean);
+    const keys = Object.keys(this.provider.ticketKeys ?? {});
+    const ids = (keys.length ? jiraKeysIn(messages.join('\n'), keys) : ticketIdsFromMessages(messages, this.provider.kind))
       .filter((id) => id !== branchTicket?.id)
       .slice(0, 50);
     const found = await Promise.all(

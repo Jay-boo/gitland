@@ -5,3 +5,8 @@ export function ticketPrefix(provider: { kind: string; ticketKind?: 'jira' } | u
   }
   return provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#';
 }
+
+/** A ticket in titles and messages: "#12" for numbered tickets, a Jira key as it is ("DATA-12"). */
+export function ticketLabel(id: string): string {
+  return /^\d+$/.test(id) ? `#${id}` : id;
+}

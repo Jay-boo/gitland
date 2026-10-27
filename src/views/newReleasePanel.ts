@@ -10,6 +10,7 @@ import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { suggestVersions } from './releasesView';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'stopGenerate' }
@@ -96,7 +97,7 @@ export class NewReleasePanel {
     try {
       const text = await generateReleaseNotes(
         this.repo,
-        { from: latest ?? (await this.repo.exec(['rev-list', '--max-parents=0', 'HEAD'])).trim().split('\n')[0], to: this.target, version, ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
+        { from: latest ?? (await this.repo.exec(['rev-list', '--max-parents=0', 'HEAD'])).trim().split('\n')[0], to: this.target, version, ticketPrefix: ticketPrefix(provider) },
         (t) => this.post({ type: 'genText', text: t }),
         cts.token,
       );

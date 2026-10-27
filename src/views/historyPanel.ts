@@ -11,6 +11,7 @@ import { log } from '../log';
 import { errorMessage } from '../util';
 import { createPanel, webviewHtml, webviewOptions, pageIcon } from './webviewHtml';
 import { capture } from '../devCapture';
+import { ticketPrefix } from '../providers/ticketPrefix.pure';
 
 type Message =
   | { type: 'ready' | 'explain' | 'stopExplain' }
@@ -186,7 +187,7 @@ export async function mentionedContext(provider: Provider | undefined, texts: st
   const ids = [...new Set(links.filter((l) => l.kind === 'ticket').map((l) => l.id))].slice(0, 8);
   const tickets = await Promise.all(ids.map((id) => provider.getTicket(id).catch(() => undefined)));
   return [
-    ...tickets.filter((t): t is NonNullable<typeof t> => !!t).map((t) => `${provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#'}${t.id} (${t.type}, ${t.state}): ${t.title}`),
+    ...tickets.filter((t): t is NonNullable<typeof t> => !!t).map((t) => `${ticketPrefix(provider)}${t.id} (${t.type}, ${t.state}): ${t.title}`),
     ...prs,
   ];
 }

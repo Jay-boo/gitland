@@ -3,9 +3,9 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   isJiraSource, jiraFlavour, normalizeSite, apiBase, parseTicketId, myTicketsJql, searchJql,
-  toTicket, mergeTickets, toDetails, adfBody, jiraErrorMessage,
+  toTicket, mergeTickets, toDetails, adfBody, jiraErrorMessage, jiraKeysIn, jiraKeyFromBranch,
 } = require('../../out/unit/jiraMap.js');
-const { ticketPrefix } = require('../../out/unit/ticketPrefix.js');
+const { ticketPrefix, ticketLabel } = require('../../out/unit/ticketPrefix.js');
 
 test('jiraFlavour', () => {
   assert.strictEqual(jiraFlavour('https://acme.atlassian.net'), 'cloud');
@@ -129,4 +129,21 @@ test('ticketPrefix', () => {
   assert.strictEqual(ticketPrefix({ kind: 'gitlab' }), '#');
   assert.strictEqual(ticketPrefix({ kind: 'azure', ticketKind: 'jira' }), '');
   assert.strictEqual(ticketPrefix(undefined), 'AB#');
+});
+
+test('jiraKeysIn: configured keys, first appearance order, no duplicates', () => {
+  assert.deepStrictEqual(jiraKeysIn('OPS-2 and DATA-1, again OPS-2; UTF-8 XDATA-3 /browse/DATA-9', ['DATA', 'OPS']), ['OPS-2', 'DATA-1']);
+  assert.deepStrictEqual(jiraKeysIn('DATA-1', []), []);
+});
+
+test('jiraKeyFromBranch', () => {
+  assert.strictEqual(jiraKeyFromBranch('feature/DATA-123-fix-login', ['DATA']), 'DATA-123');
+  assert.strictEqual(jiraKeyFromBranch('fix/data-7', ['DATA']), 'DATA-7');
+  assert.strictEqual(jiraKeyFromBranch('feature/OPS-1-x', ['DATA']), undefined);
+  assert.strictEqual(jiraKeyFromBranch('feature/123-x', ['DATA']), undefined);
+});
+
+test('ticketLabel: #12 for numbers, keys as they are', () => {
+  assert.strictEqual(ticketLabel('12'), '#12');
+  assert.strictEqual(ticketLabel('DATA-12'), 'DATA-12');
 });

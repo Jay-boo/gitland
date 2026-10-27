@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, loadingHtml, stateClass } = /** @type {any} */ (window).gl;
+  const { esc, ticketLabel, icon, loadingHtml, stateClass } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -60,10 +60,10 @@
   function item(t) {
     const [cls, ic] = kind(t.type);
     const current = t.id === data.currentId;
-    return `<div class="item${current ? ' current' : ''}" data-id="${esc(t.id)}" title="${esc(t.type)} #${esc(t.id)} — ${esc(t.title)}${t.project ? `\n${esc(t.project)}` : ''}\nClick to see the ticket">
+    return `<div class="item${current ? ' current' : ''}" data-id="${esc(t.id)}" title="${esc(t.type)} ${esc(ticketLabel(t.id))} — ${esc(t.title)}${t.project ? `\n${esc(t.project)}` : ''}\nClick to see the ticket">
   <span class="glyph g-${cls}">${icon(ic)}</span>
   <div class="body"><div class="title">${esc(t.title)}</div>
-    <div class="meta"><span class="id">#${esc(t.id)}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${current ? '<span class="cur-chip">● current branch</span>' : `<span>${esc(t.type)}</span>`}</div></div>
+    <div class="meta"><span class="id">${esc(ticketLabel(t.id))}</span><span class="pill p-${stateClass(t.state)}">${esc(t.state)}</span>${current ? '<span class="cur-chip">● current branch</span>' : `<span>${esc(t.type)}</span>`}</div></div>
   <span class="acts">
     <button class="icon" data-act="start" title="Start work (creates / switches the branch)">${icon('git-branch')}</button>
     <button class="icon" data-act="copy" title="Copy ID">${icon('copy')}</button>
