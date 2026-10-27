@@ -34,6 +34,7 @@ const GROUPS: { id: string; title: string; prefixes: string[] }[] = [
   { id: 'pipelines', title: 'Pipelines', prefixes: ['pipelines.'] },
   { id: 'avatars', title: 'Avatars', prefixes: ['avatars.'] },
   { id: 'azure', title: 'Azure DevOps', prefixes: ['azureDevOps.'] },
+  { id: 'gitlab', title: 'GitLab', prefixes: ['gitlab.'] },
 ];
 
 function controlType(key: string, p: SchemaProperty): Setting['type'] {

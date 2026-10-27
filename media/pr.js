@@ -57,6 +57,8 @@
     if (!can.vote || /completed|merged|abandoned|closed/.test(d.status)) return '';
     const votes = can.kind === 'github'
       ? [['approve', 'pass-filled', 'Approve', 'approved'], ['reject', 'request-changes', 'Request changes', 'changes']]
+      : can.kind === 'gitlab'
+      ? [['approve', 'pass-filled', 'Approve', 'approved'], ['reset', 'circle-large-outline', 'Revoke approval', 'draft']]
       : [['approve', 'pass-filled', 'Approve', 'approved'], ['suggestions', 'pass', 'Approve with suggestions', 'approved'], ['wait', 'watch', 'Wait for author', 'changes'], ['reject', 'error', 'Reject', 'changes'], ['reset', 'circle-large-outline', 'Reset', 'draft']];
     const mine = d.myVote && d.myVote !== 'none' ? `your vote: <b>${esc(d.myVote)}</b>` : d.amReviewer ? 'waiting for your review' : 'you are not a reviewer';
     const ask = !d.amReviewer && d.pr.group !== 'mine' && can.requestReview

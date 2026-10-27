@@ -263,7 +263,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const repo = await repoFor(a.repoRoot);
       const provider = repo && (await getProvider(repo, secrets));
       if (!provider) {
-        vscode.window.showInformationMessage('Gitland: no Azure DevOps / GitHub remote found.');
+        vscode.window.showInformationMessage('Gitland: no Azure DevOps / GitHub / GitLab remote found.');
         return;
       }
       await vscode.env.openExternal(vscode.Uri.parse(provider.commitUrl(a.sha)));

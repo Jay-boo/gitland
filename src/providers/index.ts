@@ -6,6 +6,13 @@ import { GitLabProvider } from './gitlab';
 import { resolveRemoteUrl } from './remote';
 import { Provider } from './types';
 
+/** Command that signs in to the provider's host, and the host's name for "Sign in to …". */
+export function signIn(kind: Provider['kind']): { command: string; host: string } {
+  return kind === 'azure' ? { command: 'gitland.switchAzureAccount', host: 'Azure DevOps' }
+    : kind === 'gitlab' ? { command: 'gitland.setGitLabToken', host: 'GitLab' }
+    : { command: 'gitland.switchGitHubAccount', host: 'GitHub' };
+}
+
 const cache = new Map<string, { key: string; provider: Provider }>();
 
 /** Returns the hosting provider for the repo's default remote (origin first). */

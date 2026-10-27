@@ -139,7 +139,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
         repoName: path.basename(repo.root),
         status,
         ticket,
-        ticketPrefix: provider?.kind === 'github' ? '#' : 'AB#',
+        ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#',
         operation,
         hooks,
         signing: { always: gpgsign === 'true', available: !!signingKey || gpgFormat === 'ssh' },
@@ -162,7 +162,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
       branch ? repo.getConfig(`branch.${branch}.gitlandNoTicket`) : undefined,
       getProvider(repo, this.context.secrets).catch(() => undefined),
     ]);
-    const prefix = provider?.kind === 'github' ? '#' : 'AB#';
+    const prefix = provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#';
     if (!provider || !needsTicketReminder({ enabled: config('changes.ticketReminder', true), branch, linkedTicket: linked, skipped: skipped === 'true', message, prefix })) {
       return message;
     }
@@ -285,7 +285,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
     try {
       const text = await generateCommitMessage(
         repo,
-        ticket && { ...ticket, prefix: provider?.kind === 'github' ? '#' : 'AB#' },
+        ticket && { ...ticket, prefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
         (t) => this.post({ type: 'genText', text: t }),
         cts.token,
       );

@@ -661,7 +661,7 @@ export class GraphController implements vscode.Disposable {
       case 'openBranchRemote': {
         const provider = await getProvider(repo, this.context.secrets);
         if (!provider) {
-          vscode.window.showInformationMessage('No Azure DevOps / GitHub remote found for this repository.');
+          vscode.window.showInformationMessage('No Azure DevOps / GitHub / GitLab remote found for this repository.');
           return;
         }
         const url = action === 'openRemote' ? provider.commitUrl(sha!) : provider.branchUrl(stripRemote(ref!, await repo.remoteNames()));

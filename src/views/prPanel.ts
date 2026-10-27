@@ -71,7 +71,7 @@ export class PrPanel {
     const repo = await this.repos.activeRepo(false);
     const provider = repo && (await getProvider(repo, this.context.secrets));
     if (!repo || !provider?.getPullRequestDetails) {
-      return this.post({ type: 'error', message: 'Open a repository with an Azure DevOps or GitHub remote.' });
+      return this.post({ type: 'error', message: 'Open a repository with an Azure DevOps, GitHub or GitLab remote.' });
     }
     this.post({ type: 'loading' });
     try {
@@ -82,7 +82,7 @@ export class PrPanel {
         type: 'details',
         details: d,
         current,
-        prefix: provider.kind === 'github' ? '#' : 'AB#',
+        prefix: provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#',
         can: { vote: !!provider.votePullRequest, requestReview: !!provider.requestMyReview, comment: !!provider.commentPullRequest, resolve: !!provider.resolveThread, update: !!provider.updatePullRequest, kind: provider.kind },
       });
       provider
@@ -131,7 +131,7 @@ export class PrPanel {
           [
             { label: '$(git-merge) Squash commit', description: 'one commit on the target', value: 'squash' as const },
             { label: '$(git-merge) Merge (no fast-forward)', description: 'keep the commits and a merge commit', value: 'noFastForward' as const },
-            { label: '$(git-compare) Rebase and fast-forward', description: 'replay the commits, no merge commit', value: 'rebase' as const },
+            ...(provider.kind !== 'gitlab' ? [{ label: '$(git-compare) Rebase and fast-forward', description: 'replay the commits, no merge commit', value: 'rebase' as const }] : []),
             ...(provider.kind === 'azure' ? [{ label: '$(git-compare) Semi-linear merge', description: 'rebase, then a merge commit', value: 'rebaseMerge' as const }] : []),
           ],
           { title: `Complete ${d.pr.label} into ${d.pr.targetBranch}`, placeHolder: 'Merge strategy' },

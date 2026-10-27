@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
-import { getProvider } from '../providers';
+import { getProvider, signIn } from '../providers';
 import { AuthError, PipelineJob, PipelineRun, Provider } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
@@ -85,11 +85,11 @@ export class PipelinesView implements vscode.WebviewViewProvider, vscode.Disposa
     }
     const provider = await getProvider(repo, this.context.secrets);
     if (!provider?.pipelineRuns) {
-      return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps or GitHub remote', text: 'Pipelines come from the remote of this repository.' });
+      return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps, GitHub or GitLab remote', text: 'Pipelines come from the remote of this repository.' });
     }
-    this.signInCommand = provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount';
+    this.signInCommand = signIn(provider.kind).command;
     if (!(await provider.isSignedIn())) {
-      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'}`, text: 'to see the pipeline runs' });
+      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${signIn(provider.kind).host}`, text: 'to see the pipeline runs' });
     }
     const branch = await repo.currentBranch();
     if (!this.runs.length) {
