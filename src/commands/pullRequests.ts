@@ -12,9 +12,9 @@ export function ticketIdFromBranch(branch: string): string | undefined {
  * Ticket ids mentioned in commit messages (subject + body), in order of first appearance. Catches the
  * Azure DevOps PR merge commits ("Related work items: #12, #34", "AB#12", "Merge feature/12-x into dev"),
  * so a dev → main pull request links every ticket merged into dev since the last release.
- * GitHub: only closing keywords ("Fixes #12") and merged branch names; "#12" alone is often a PR.
+ * GitHub / GitLab: only closing keywords ("Fixes #12") and merged branch names; "#12" alone is often a PR.
  */
-export function ticketIdsFromMessages(messages: string[], kind: 'azure' | 'github'): string[] {
+export function ticketIdsFromMessages(messages: string[], kind: 'azure' | 'github' | 'gitlab'): string[] {
   const ids = new Set<string>();
   const add = (id: string | undefined) => id && ids.add(String(Number(id)));
   for (const msg of messages) {

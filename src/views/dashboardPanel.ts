@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { Repo } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
 import { AvatarService } from '../avatars';
-import { getProvider } from '../providers';
+import { getProvider, signIn } from '../providers';
 import { PipelineRun, PullRequest, Ticket } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
@@ -134,9 +134,11 @@ export class DashboardPanel {
       case 'ready':
       case 'refresh':
         return this.load();
-      case 'signIn':
-        await vscode.commands.executeCommand('gitland.switchAzureAccount');
+      case 'signIn': {
+        const provider = repo && (await getProvider(repo, this.context.secrets));
+        await vscode.commands.executeCommand(signIn(provider?.kind ?? 'azure').command);
         return this.load();
+      }
       case 'ticket':
         return TicketPanel.show(this.context, this.repos, m.id, m.org);
       case 'startWork': {

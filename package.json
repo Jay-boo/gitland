@@ -1,7 +1,7 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps & GitHub.",
+  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps, GitHub & GitLab.",
   "version": "0.3.1",
   "publisher": "jay-boo",
   "license": "MIT",
@@ -27,6 +27,7 @@
     "graph",
     "blame",
     "azure devops",
+    "gitlab",
     "pull request",
     "work items"
   ],
@@ -159,6 +160,11 @@
       {
         "command": "gitland.setAzurePat",
         "title": "Set Azure DevOps Personal Access Token",
+        "category": "Gitland"
+      },
+      {
+        "command": "gitland.setGitLabToken",
+        "title": "Set GitLab Token",
         "category": "Gitland"
       },
       {
@@ -698,6 +704,12 @@
               }
             }
           }
+        },
+        "gitland.gitlab.hosts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "markdownDescription": "Host names of self-hosted GitLab instances, e.g. `git.mycompany.com`. `gitlab.com` and hosts starting with `gitlab.` are recognized without it. Set a token with **Gitland: Set GitLab Token**."
         },
         "gitland.azureDevOps.wiql": {
           "type": "string",

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
-import { getProvider } from '../providers';
+import { getProvider, signIn } from '../providers';
 import { AuthError, PullRequest } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
@@ -61,16 +61,16 @@ export class PullRequestsView implements vscode.WebviewViewProvider, vscode.Disp
     }
     const repo = await this.repos.activeRepo(false);
     if (!repo) {
-      return this.post({ type: 'state', state: 'empty', title: 'No git repository', text: 'Open a folder with an Azure DevOps or GitHub remote.' });
+      return this.post({ type: 'state', state: 'empty', title: 'No git repository', text: 'Open a folder with an Azure DevOps, GitHub or GitLab remote.' });
     }
     const provider = await getProvider(repo, this.secrets);
     if (!provider) {
-      return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps or GitHub remote', text: 'Pull requests come from the remote of this repository.' });
+      return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps, GitHub or GitLab remote', text: 'Pull requests come from the remote of this repository.' });
     }
-    this.signInCommand = provider.kind === 'azure' ? 'gitland.switchAzureAccount' : 'gitland.switchGitHubAccount';
+    this.signInCommand = signIn(provider.kind).command;
     this.view.description = provider.displayName.replace(/^(Azure DevOps|GitHub) · /, '');
     if (!(await provider.isSignedIn())) {
-      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${provider.kind === 'azure' ? 'Azure DevOps' : 'GitHub'}`, text: 'to see the pull requests' });
+      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${signIn(provider.kind).host}`, text: 'to see the pull requests' });
     }
     this.post({ type: 'loading' });
     try {

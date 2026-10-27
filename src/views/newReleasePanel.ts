@@ -96,7 +96,7 @@ export class NewReleasePanel {
     try {
       const text = await generateReleaseNotes(
         this.repo,
-        { from: latest ?? (await this.repo.exec(['rev-list', '--max-parents=0', 'HEAD'])).trim().split('\n')[0], to: this.target, version, ticketPrefix: provider?.kind === 'github' ? '#' : 'AB#' },
+        { from: latest ?? (await this.repo.exec(['rev-list', '--max-parents=0', 'HEAD'])).trim().split('\n')[0], to: this.target, version, ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
         (t) => this.post({ type: 'genText', text: t }),
         cts.token,
       );

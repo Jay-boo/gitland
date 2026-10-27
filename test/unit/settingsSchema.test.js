@@ -41,3 +41,10 @@ test('descriptions come from description or markdownDescription', () => {
   assert.strictEqual(all['graph.maxCommits'].description, 'Commits to load.');
   assert.strictEqual(all['graph.statusBar.enabled'].description, 'Show **Graph** in the status bar.');
 });
+
+test('GitLab settings get their own group', () => {
+  const g = settingsGroups({ 'gitland.gitlab.hosts': { type: 'array', default: [] } }).find((x) => x.id === 'gitlab');
+  assert.ok(g, 'gitlab group exists');
+  assert.strictEqual(g.title, 'GitLab');
+  assert.deepStrictEqual(g.settings.map((s) => s.key), ['gitlab.hosts']);
+});

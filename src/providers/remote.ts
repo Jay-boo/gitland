@@ -1,8 +1,10 @@
 import { execFile } from 'child_process';
+import { normalizeHost } from './gitlabMap.pure';
 
 export type RemoteInfo =
   | { kind: 'azure'; org: string; project: string; repo: string }
-  | { kind: 'github'; owner: string; repo: string };
+  | { kind: 'github'; owner: string; repo: string }
+  | { kind: 'gitlab'; host: string; path: string };
 
 const dec = (s: string) => {
   try {
@@ -12,7 +14,13 @@ const dec = (s: string) => {
   }
 };
 
-export function parseRemoteUrl(url: string): RemoteInfo | undefined {
+/** gitlab.com, a host of setting gitland.gitlab.hosts, or any `gitlab.*` host (port ignored). */
+export function isGitLabHost(host: string, gitlabHosts: string[]): boolean {
+  const name = host.replace(/:\d+$/, '').toLowerCase();
+  return name === 'gitlab.com' || name.startsWith('gitlab.') || gitlabHosts.some((h) => normalizeHost(h) === name);
+}
+
+export function parseRemoteUrl(url: string, gitlabHosts: string[] = []): RemoteInfo | undefined {
   let m: RegExpExecArray | null;
 
   // git@ssh.dev.azure.com:v3/org/project/repo
@@ -34,6 +42,18 @@ export function parseRemoteUrl(url: string): RemoteInfo | undefined {
   // GitHub: git@github.com:owner/repo.git, ssh://git@github.com/owner/repo, https://github.com/owner/repo(.git)
   if ((m = /^(?:[^@]+@github\.com:|ssh:\/\/[^@]+@github\.com(?::\d+)?\/|https?:\/\/(?:[^@/]+@)?github\.com\/)([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(url))) {
     return { kind: 'github', owner: m[1], repo: m[2] };
+  }
+  // GitLab: git@host:group/sub/repo.git, ssh://git@host[:port]/group/repo, https://host[:port]/group/repo(.git)
+  // The SSH port is dropped (the web stays on 443); an HTTPS port is kept.
+  if (
+    (m = /^[^@/:]+@([^:/]+):(?!\d+\/)(.+)$/.exec(url)) ??
+    (m = /^ssh:\/\/[^@/]+@([^:/]+)(?::\d+)?\/(.+)$/i.exec(url)) ??
+    (m = /^https?:\/\/(?:[^@/]+@)?([^/]+)\/(.+)$/i.exec(url))
+  ) {
+    const path = m[2].replace(/\/+$/, '').replace(/\.git$/i, '');
+    if (isGitLabHost(m[1], gitlabHosts) && /^[^/]+(?:\/[^/]+)+$/.test(path)) {
+      return { kind: 'gitlab', host: m[1].toLowerCase(), path: dec(path) };
+    }
   }
   return undefined;
 }
@@ -65,8 +85,9 @@ function splitSshHost(url: string): { before: string; host: string; after: strin
 export async function resolveRemoteUrl(
   url: string,
   resolveHost: (alias: string) => Promise<string | undefined> = resolveSshHost,
+  gitlabHosts: string[] = [],
 ): Promise<RemoteInfo | undefined> {
-  const info = parseRemoteUrl(url);
+  const info = parseRemoteUrl(url, gitlabHosts);
   if (info) {
     return info;
   }
@@ -75,5 +96,5 @@ export async function resolveRemoteUrl(
     return undefined;
   }
   const host = await resolveHost(parts.host);
-  return host ? parseRemoteUrl(parts.before + host + parts.after) : undefined;
+  return host ? parseRemoteUrl(parts.before + host + parts.after, gitlabHosts) : undefined;
 }

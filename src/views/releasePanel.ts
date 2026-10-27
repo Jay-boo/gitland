@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { compareVersions, Repo } from '../git/repo';
 import { RepoManager } from '../git/repoManager';
 import { AvatarService } from '../avatars';
-import { getProvider } from '../providers';
+import { getProvider, signIn } from '../providers';
 import { findLinks } from '../links';
 import { log } from '../log';
 import { errorMessage } from '../util';
@@ -151,7 +151,7 @@ export class ReleasePanel {
         contributors,
         files: { count: files.length, added: files.reduce((n, f) => n + (f.added ?? 0), 0), deleted: files.reduce((n, f) => n + (f.deleted ?? 0), 0) },
         remote: !!this.remoteUrl,
-        remoteName: provider?.kind === 'github' ? 'GitHub' : provider ? 'Azure DevOps' : undefined,
+        remoteName: provider && signIn(provider.kind).host,
         links: provider && { kind: provider.kind, pr: provider.pullRequestUrl('{id}'), ticket: provider.ticketUrl('{id}') },
       });
     } catch (e) {

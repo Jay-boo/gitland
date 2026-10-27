@@ -249,7 +249,7 @@ export class ComparePanel {
     try {
       const text = await generateReleaseNotes(
         this.repo,
-        { from: this.from, to: this.to, version: /^v?\d/.test(this.to) ? this.to : 'Unreleased', ticketPrefix: provider?.kind === 'github' ? '#' : 'AB#' },
+        { from: this.from, to: this.to, version: /^v?\d/.test(this.to) ? this.to : 'Unreleased', ticketPrefix: provider?.kind === 'github' || provider?.kind === 'gitlab' ? '#' : 'AB#' },
         (t) => this.post({ type: 'notesText', text: t }),
         cts.token,
       );

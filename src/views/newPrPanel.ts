@@ -40,7 +40,7 @@ export class NewPrPanel {
   static async show(context: vscode.ExtensionContext, repos: RepoManager, avatars: AvatarService, repo: Repo): Promise<void> {
     const provider = await getProvider(repo, context.secrets);
     if (!provider) {
-      vscode.window.showWarningMessage('Gitland: no Azure DevOps or GitHub remote found for this repository.');
+      vscode.window.showWarningMessage('Gitland: no Azure DevOps, GitHub or GitLab remote found for this repository.');
       return;
     }
     const branch = await repo.currentBranch();
@@ -110,7 +110,7 @@ export class NewPrPanel {
     }
     let title = await this.repo.getConfig(`branch.${this.branch}.gitlandTicketTitle`);
     title ??= (await this.provider.getTicket(id).catch(() => undefined))?.title;
-    return { id, title, prefix: this.provider.kind === 'github' ? '#' : 'AB#' };
+    return { id, title, prefix: this.provider.kind === 'github' || this.provider.kind === 'gitlab' ? '#' : 'AB#' };
   }
 
   /**
@@ -118,7 +118,7 @@ export class NewPrPanel {
    * that is where Azure DevOps writes "Related work items: #12").
    */
   private async linkedTickets(base: string, branchTicket: Awaited<ReturnType<NewPrPanel['ticket']>>): Promise<LinkedTicket[]> {
-    const prefix = this.provider.kind === 'github' ? '#' : 'AB#';
+    const prefix = this.provider.kind === 'github' || this.provider.kind === 'gitlab' ? '#' : 'AB#';
     const bodies = await this.repo.exec(['log', '--format=%B%x1e', `${base}..HEAD`]).catch(() => '');
     const ids = ticketIdsFromMessages(bodies.split('\x1e').map((m) => m.trim()).filter(Boolean), this.provider.kind)
       .filter((id) => id !== branchTicket?.id)

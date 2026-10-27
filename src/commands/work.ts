@@ -143,7 +143,7 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
   const provider = await getProvider(repo, secrets);
   if (!ticket) {
     if (!provider) {
-      vscode.window.showWarningMessage('Gitland: no Azure DevOps or GitHub remote found for this repository.');
+      vscode.window.showWarningMessage('Gitland: no Azure DevOps, GitHub or GitLab remote found for this repository.');
       return false;
     }
     ticket = await pickTicket(provider);

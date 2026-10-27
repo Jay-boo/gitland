@@ -114,7 +114,7 @@ export interface CreatePullRequestOptions {
 }
 
 export interface Provider {
-  readonly kind: 'azure' | 'github';
+  readonly kind: 'azure' | 'github' | 'gitlab';
   readonly displayName: string;
   /** Name used in the UI for tickets, e.g. "work item" or "issue". */
   readonly ticketNoun: string;

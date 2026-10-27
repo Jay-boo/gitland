@@ -69,7 +69,7 @@ export class TicketPanel {
     const repo = await this.repos.activeRepo(false);
     const provider = repo && (await getProvider(repo, this.context.secrets));
     if (!repo || !provider?.getTicketDetails) {
-      return this.post({ type: 'error', message: 'Open a repository with an Azure DevOps or GitHub remote to see its tickets.' });
+      return this.post({ type: 'error', message: 'Open a repository with an Azure DevOps, GitHub or GitLab remote to see its tickets.' });
     }
     this.post({ type: 'loading' });
     try {
@@ -97,7 +97,7 @@ export class TicketPanel {
         details,
         ...local,
         current,
-        prefix: provider.kind === 'github' ? '#' : 'AB#',
+        prefix: provider.kind === 'github' || provider.kind === 'gitlab' ? '#' : 'AB#',
         noun: provider.ticketNoun,
         states: provider.setTicketState ? states?.map((x) => x.name) : undefined,
         canAssign: !!provider.assignTicketToMe && !(assignee && me && assignee.includes(me.toLowerCase())),
