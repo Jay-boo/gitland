@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
 import { getProvider, signIn } from '../providers';
+import { TicketOverlay } from '../providers/ticketOverlay';
 import { AuthError, Ticket } from '../providers/types';
 import { log } from '../log';
 import { errorMessage } from '../util';
@@ -77,11 +78,12 @@ export class TicketsView implements vscode.WebviewViewProvider, vscode.Disposabl
     if (!provider) {
       return this.post({ type: 'state', state: 'empty', title: 'No Azure DevOps, GitHub or GitLab remote', text: 'Tickets come from the remote of this repository.' });
     }
-    this.signInCommand = signIn(provider.kind).command;
+    const login = signIn(provider, 'tickets');
+    this.signInCommand = login.command;
     const source = provider.ticketSourceLabel ?? provider.displayName;
     this.view.description = source;
-    if (!(await provider.isSignedIn())) {
-      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${signIn(provider.kind).host}`, text: `to see your ${provider.ticketNoun}s` });
+    if (!(await (provider instanceof TicketOverlay ? provider.ticketsSignedIn() : provider.isSignedIn()))) {
+      return this.post({ type: 'state', state: 'signin', title: `Sign in to ${login.host}`, text: `to see your ${provider.ticketNoun}s` });
     }
     this.post({ type: 'loading' });
     try {

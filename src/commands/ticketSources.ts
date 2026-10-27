@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { RepoManager } from '../git/repoManager';
 import { getProvider } from '../providers';
 import { AzureDevOpsProvider } from '../providers/azureDevOps';
+import { hostOf } from '../providers/ticketOverlay';
 import { AzureTicketSource as TicketSource } from '../providers/types';
 import { errorMessage } from '../util';
 
@@ -15,7 +16,8 @@ const REMOVE: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('trash'
  */
 export async function manageTicketSources(repos: RepoManager, secrets: vscode.SecretStorage): Promise<boolean> {
   const repo = await repos.activeRepo(false);
-  const provider = repo && (await getProvider(repo, secrets));
+  // The code host, also when the tickets come from Jira.
+  const provider = hostOf(repo && (await getProvider(repo, secrets)));
   const repoOrg = provider instanceof AzureDevOpsProvider ? provider.organization : undefined;
   let changed = false;
 

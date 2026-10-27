@@ -36,6 +36,7 @@ import { AzureDevOpsProvider, PAT_SECRET_KEY, patSecretKey, signInToAzureDevOps 
 import { GITHUB_SCOPES } from './providers/github';
 import { GitLabProvider, gitlabTokenKey, promptGitLabToken } from './providers/gitlab';
 import { normalizeHost } from './providers/gitlabMap.pure';
+import { hostOf } from './providers/ticketOverlay';
 import { jiraSites, jiraTokenKey, setJiraToken } from './providers/jira';
 import { AuthError } from './providers/types';
 import { initLog, log } from './log';
@@ -181,14 +182,14 @@ export function activate(context: vscode.ExtensionContext): void {
   /** Azure DevOps organization of the active repository, if any. */
   const activeAzureOrg = async (): Promise<string | undefined> => {
     const repo = await repos.activeRepo();
-    const provider = repo && (await getProvider(repo, secrets));
-    return provider instanceof AzureDevOpsProvider ? provider.organization : undefined;
+    const host = hostOf(repo && (await getProvider(repo, secrets)));
+    return host instanceof AzureDevOpsProvider ? host.organization : undefined;
   };
   /** GitLab host of the active repository, if any. */
   const activeGitLabHost = async (): Promise<string | undefined> => {
     const repo = await repos.activeRepo();
-    const provider = repo && (await getProvider(repo, secrets));
-    return provider instanceof GitLabProvider ? provider.host : undefined;
+    const host = hostOf(repo && (await getProvider(repo, secrets)));
+    return host instanceof GitLabProvider ? host.host : undefined;
   };
   const refreshViews = () => {
     tickets.refresh();
