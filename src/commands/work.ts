@@ -271,7 +271,7 @@ export async function startWork(repos: RepoManager, secrets: vscode.SecretStorag
     : `Working on #${ticket.id} in branch '${branch}'.`;
   vscode.window.showInformationMessage(msg, open).then((c) => {
     if (c === open) {
-      vscode.env.openExternal(vscode.Uri.parse(ticket!.url));
+      vscode.commands.executeCommand('gitland.tickets.show', { ticket });
     }
   });
   return true;
@@ -297,7 +297,7 @@ async function offerDraftPullRequest(repo: Repo, provider: Provider, ticket: Tic
     const open = 'Open';
     vscode.window.showInformationMessage(`Draft pull request ${pr.label} created.`, open).then((c) => {
       if (c === open) {
-        vscode.env.openExternal(vscode.Uri.parse(pr.url));
+        vscode.commands.executeCommand('gitland.prs.show', pr.id);
       }
     });
   } catch (e) {

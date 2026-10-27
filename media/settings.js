@@ -16,15 +16,15 @@
     const id = `s-${s.key}`;
     switch (s.type) {
       case 'boolean':
-        return `<label class="switch"><input id="${esc(id)}" type="checkbox" data-key="${esc(s.key)}"${v ? ' checked' : ''}><span class="track"><span class="knob"></span></span><span>${v ? 'On' : 'Off'}</span></label>`;
+        return `<label class="switch" title="${v ? 'On' : 'Off'}"><input id="${esc(id)}" type="checkbox" data-key="${esc(s.key)}" aria-label="${esc(s.title)}"${v ? ' checked' : ''}><span class="track"><span class="knob"></span></span></label>`;
       case 'enum':
         return `<select id="${esc(id)}" class="gl-input" data-key="${esc(s.key)}">${s.options.map((/** @type {string} */ o) => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
       case 'number':
         return `<input id="${esc(id)}" class="gl-input num" type="number" data-key="${esc(s.key)}" value="${esc(v ?? '')}">`;
       case 'text':
-        return `<div class="gl-composer"><textarea id="${esc(id)}" rows="2" data-key="${esc(s.key)}" placeholder="(none)">${esc(v ?? '')}</textarea></div>`;
+        return `<textarea id="${esc(id)}" class="gl-input" rows="2" data-key="${esc(s.key)}" placeholder="Not set">${esc(v ?? '')}</textarea>`;
       case 'string':
-        return `<input id="${esc(id)}" class="gl-input" type="text" data-key="${esc(s.key)}" value="${esc(v ?? '')}" spellcheck="false">`;
+        return `<input id="${esc(id)}" class="gl-input" type="text" data-key="${esc(s.key)}" value="${esc(v ?? '')}" placeholder="Not set" spellcheck="false">`;
       default:
         return `<button class="secondary" data-json="${esc(s.key)}">${icon('json')}Edit in settings.json</button>`;
     }
@@ -38,10 +38,9 @@
       .filter((/** @type {any} */ g) => g.settings.length);
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-story">${icon('settings-gear')}</span>
-  <div class="t-title"><div class="t-kind"><span>Gitland</span><span class="k">saved to your user settings</span></div><h1>Settings</h1></div>
+  <div class="t-title"><div class="t-kind"><span class="glyph big g-story">${icon('settings-gear')}</span><span>Gitland</span><span class="k">saved to your user settings</span></div><h1>Settings</h1></div>
 </header>
-<div class="t-actions"><label class="search set-filter"><i class="codicon codicon-filter"></i><input id="setFilter" type="search" placeholder="Filter settings" value="${esc(filter)}" spellcheck="false"></label></div>
+<div class="set-bar"><label class="search set-filter"><i class="codicon codicon-filter"></i><input id="setFilter" type="search" placeholder="Filter settings" value="${esc(filter)}" spellcheck="false"></label></div>
 ${groups
   .map(
     (/** @type {any} */ g) => `<section class="set-group"><h3>${esc(g.title)} <span class="n">${g.settings.length}</span></h3>${g.settings
@@ -49,14 +48,14 @@ ${groups
         const v = data.values[s.key];
         const changed = !same(v, s.default);
         return `<div class="set-row${changed ? ' changed' : ''}">
-  <div class="set-text"><div class="set-title">${esc(s.title)}${changed ? `<span class="link" data-reset="${esc(s.key)}" title="Back to the default (${esc(JSON.stringify(s.default))})">${icon('discard')}Reset</span>` : ''}<span class="link key" data-json="${esc(s.key)}" title="Open in VS Code's settings">gitland.${esc(s.key)}</span></div>
+  <div class="set-text"><div class="set-title">${esc(s.title)}${changed ? `<span class="link" data-reset="${esc(s.key)}" title="Back to the default (${esc(JSON.stringify(s.default))})">${icon('discard')}Reset</span>` : ''}<span class="link key" data-json="${esc(s.key)}" title="gitland.${esc(s.key)} · open in VS Code's settings">gitland.${esc(s.key)}</span></div>
     <div class="set-desc rich">${markdown(s.description || '')}</div></div>
   <div class="set-ctl">${control(s, v)}</div>
 </div>`;
       })
       .join('')}</section>`,
   )
-  .join('') || '<div class="state">No setting matches.</div>'}`;
+  .join('') || '<div class="gl-empty">No setting matches.</div>'}`;
     const f = /** @type {HTMLInputElement | null} */ (document.getElementById('setFilter'));
     if (f && filter) {
       f.focus();

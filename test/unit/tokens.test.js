@@ -74,16 +74,19 @@ test('graph theme watcher ignores the graph writing its own <html style> vars', 
 });
 
 test('every tinted chip shows the high-contrast border', () => {
-  const rules = [
-    ['graph.css', '.rel-chip'], ['graph.css', '.ci-label'], ['graph.css', '.sig-chip'],
-    ['history.css', '.hchip'], ['compare.css', '.pr-chip'], ['pr.css', '.rev .req'], ['ticket.css', '.cur-chip.big'],
-  ];
-  for (const [file, sel] of rules) {
-    const css = read(path.join(media, file));
-    const esc = sel.replace(/[.]/g, '\\.').replace(/ /g, '\\s+');
-    const rule = css.match(new RegExp(`(^|\\n)${esc}\\s*\\{[^}]*\\}`));
-    assert.ok(rule, `${file} ${sel} exists`);
-    assert.match(rule[0], /--gl-border/, `${file} ${sel} uses --gl-border`);
+  // All chips share one shape rule in base.css (it carries the border); views only colour them.
+  const shared = rules(base()).find(([s]) => s.split(',').map((x) => x.trim()).includes('.gl-chip'));
+  assert.ok(shared, 'base.css shared chip rule exists');
+  assert.match(shared[1], /border:\s*1px solid var\(--gl-border\)/, 'the shared chip rule uses --gl-border');
+  const names = shared[0].split(',').map((x) => x.trim());
+  for (const sel of ['.rel-chip', '.ci-label', '.sig-chip', '.hchip', '.pr-chip', '.ref', '.pill', '.tag', '.chip', '.link-chip', '.pr-badge', '.merged-chip', '.hook-chip']) {
+    assert.ok(names.includes(sel), `${sel} uses the shared chip shape`);
+  }
+  // No view rule takes the border away from a chip.
+  for (const f of files(media, '.css')) {
+    for (const [sel, body] of rules(read(f))) {
+      if (names.includes(sel.trim()) && /border:\s*(0|none)\b/.test(body)) assert.fail(`${path.basename(f)} ${sel} drops the chip border`);
+    }
   }
 });
 
@@ -130,7 +133,7 @@ test('filled surfaces are rare (one card per screen)', () => {
 });
 
 test('chips are square-ish (no round pills)', () => {
-  const ok = /switch|knob|track|avatar|bubble|dot|legend i|scrollbar|gl-seg|gl-skeleton|loading/;
+  const ok = /switch|knob|track|avatar|\.av\b|bubble|dot|legend i|scrollbar|gl-seg|gl-skeleton|loading/;
   const bad = [];
   for (const f of files(media, '.css')) {
     for (const [sel, body] of rules(read(f))) {

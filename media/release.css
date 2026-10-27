@@ -1,0 +1,24 @@
+/* Release page. Layout, header card and sections: ticket.css; rows: base.css. */
+
+.t-head h1 .r-sub { font-weight: normal; color: var(--muted); }
+.r-src { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11px; color: var(--faint); }
+.r-src .codicon { font-size: 12px; }
+
+.pr-row .codicon { color: var(--gl-feature); font-size: 13px; }
+.pr-row .id { flex: none; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.pr-row .s { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.commit-row .who { flex: none; max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted); }
+.t-main .more { margin-top: 4px; }
+
+.t-side .link { cursor: pointer; color: var(--vscode-textLink-foreground); }
+.t-side .link:hover { text-decoration: underline; }
+.t-side .add { color: var(--gl-add, var(--vscode-gitDecoration-addedResourceForeground)); }
+.t-side .del { color: var(--gl-del, var(--vscode-gitDecoration-deletedResourceForeground)); }
+.t-side .link-row .k { margin-left: auto; font-size: 11px; color: var(--faint); }
+.t-side .link-row.on { cursor: default; }
+
+.r-person { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.r-person .av { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.r-person .s { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-person .k { flex: none; font-size: 11px; color: var(--faint); }

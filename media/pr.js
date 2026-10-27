@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relTime } = /** @type {any} */ (window).gl;
+  const { esc, icon, relTime, listDate, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // @ts-ignore
@@ -83,7 +83,7 @@
         ? d.reviewers
             .map((x) => {
               const v = VOTE[x.vote] || VOTE.none;
-              return `<div class="rev"><span class="glyph small g-${v[0]}">${icon(v[1])}</span><span class="nm">${esc(x.name)}</span>${x.required ? '<span class="req">required</span>' : ''}<span class="k">${v[2]}</span></div>`;
+              return `<div class="rev"><span class="glyph small g-${v[0]}">${icon(v[1])}</span><span class="nm">${esc(x.name)}${x.required ? '<span class="req"> · required</span>' : ''}</span><span class="k">${v[2]}</span></div>`;
             })
             .join('')
         : '<div class="none">No reviewers.</div>'
@@ -99,7 +99,7 @@
     side.push(`<section><h3>Commits <span class="n">${d.commits.length}</span></h3>${
       d.commits.length
         ? d.commits
-            .map((c) => `<div class="commit-row" data-sha="${esc(c.sha)}" title="${esc(c.subject)}\n${esc(c.author)}\nShow in the Commit Graph"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span><span class="k">${esc(relTime(c.date))}</span></div>`)
+            .map((c) => `<div class="commit-row" data-sha="${esc(c.sha)}" title="${esc(c.subject)}\n${esc(c.author)}\nShow in the Commit Graph"><span class="sha">${esc(c.sha.slice(0, 7))}</span><span class="s">${esc(c.subject)}</span>${listDate(c.date)}</div>`)
             .join('')
         : '<div class="none">No commits.</div>'
     }</section>`);
@@ -115,9 +115,8 @@
       : '<div class="none">No comments.</div>';
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-${r[0]}">${icon(r[1])}</span>
   <div class="t-title">
-    <div class="t-kind"><span class="id">${esc(p.label)}</span><span class="pill p-${r[0]}">${esc(r[2])}</span>${conflicts ? `<span class="pill p-changes">${icon('warning')} conflicts</span>` : ''}<span class="br">${icon('git-branch')} ${esc(p.sourceBranch)} ${icon('arrow-right')} ${esc(p.targetBranch)}</span></div>
+    <div class="t-kind"><span class="glyph big g-${r[0]}">${icon(r[1])}</span><span class="id">${esc(p.label)}</span><span class="pill p-${r[0]}">${esc(r[2])}</span>${conflicts ? `<span class="pill p-changes">${icon('warning')} conflicts</span>` : ''}<span class="br">${icon('git-branch')} ${esc(p.sourceBranch)} ${icon('arrow-right')} ${esc(p.targetBranch)}</span></div>
     <h1>${esc(p.title)}</h1>
   </div>
 </header>
@@ -184,8 +183,8 @@ ${reviewHtml(d, can)}
       const el = document.getElementById('checks');
       if (el) el.innerHTML = checksHtml();
     }
-    else if (m.type === 'loading' && !page.firstChild) page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div><div></div></div>';
-    else if (m.type === 'error') page.innerHTML = `<div class="state error">${icon('warning')}<b>Could not load the pull request</b><span>${esc(m.message)}</span><button data-act="refresh">${icon('refresh')}Retry</button></div>`;
+    else if (m.type === 'loading' && !page.firstChild) page.innerHTML = loadingHtml('Loading the pull request…');
+    else if (m.type === 'error') page.innerHTML = `<div class="gl-empty error">${icon('warning')}<b>Could not load the pull request</b><span>${esc(m.message)}</span><button data-act="refresh">${icon('refresh')}Retry</button></div>`;
   });
   vscode.postMessage({ type: 'ready' });
 })();

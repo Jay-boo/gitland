@@ -225,9 +225,7 @@ export class PrPanel {
           }
           return;
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url);
           return;
         case 'showCommit':
           await vscode.commands.executeCommand('gitland.showGraph', { repoRoot: repo?.root, sha: m.sha });

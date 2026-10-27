@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon } = /** @type {any} */ (window).gl;
+  const { esc, icon, middleName } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -11,6 +11,7 @@
   /** Persisted: draft message, collapsed groups, tree/list. */
   const state = Object.assign({ draft: '', collapsed: {} }, vscode.getState() || {});
   const save = () => vscode.setState(state);
+  const SYNC_IDS = ['btnSync', 'btnPush', 'btnPull', 'btnFetch'];
   /** @type {any} */
   let data = null;
   let draftBeforeAmend = '';
@@ -29,13 +30,16 @@
 
   function render() {
     const s = data.status;
-    $('branch').innerHTML = `${icon('git-branch')}<span>${esc(s.branch || 'detached HEAD')}</span>`;
-    $('branch').title = s.upstream ? `${s.branch} → ${s.upstream}` : 'No upstream: the first push will publish this branch';
+    $('branch').innerHTML = `${icon('git-branch')}<span class="bn">${esc(s.branch || 'detached HEAD')}</span>`;
+    $('branch').title = s.upstream ? `${s.branch} → ${s.upstream}` : `${s.branch} · no upstream: the first push will publish this branch`;
     $('ab').innerHTML = s.upstream
       ? `${s.ahead ? `<span class="up" title="${s.ahead} commit(s) to push">${icon('arrow-up')}${s.ahead}</span>` : ''}${s.behind ? `<span class="down" title="${s.behind} commit(s) to pull">${icon('arrow-down')}${s.behind}</span>` : ''}${!s.ahead && !s.behind ? `<span class="ok" title="Up to date with ${esc(s.upstream)}">${icon('check')}</span>` : ''}`
-      : `<span class="pub" title="Not published yet">${icon('cloud-upload')} unpublished</span>`;
+      : `<span class="pub" title="Not published yet">${icon('cloud-upload')}<span class="pub-t">unpublished</span></span>`;
     $('btnPush').classList.toggle('hot', s.ahead > 0 || !s.upstream);
     $('btnPull').classList.toggle('hot', s.behind > 0);
+    // One sync action stays visible (the one the branch needs); the others are under "…".
+    const primary = s.upstream && s.ahead && s.behind ? 'btnSync' : s.ahead || !s.upstream ? 'btnPush' : s.behind ? 'btnPull' : 'btnSync';
+    for (const id of SYNC_IDS) $(id).hidden = id !== primary;
 
     // Ticket linked to the branch: click to add its reference to the message.
     const t = data.ticket;
@@ -45,7 +49,7 @@
       const ref = `${data.ticketPrefix}${t.id}`;
       const inMsg = msgEl.value.includes(ref);
       ticketEl.className = `ticket${inMsg ? ' on' : ''}`;
-      ticketEl.innerHTML = `${icon(inMsg ? 'pass-filled' : 'add')}${esc(ref)}${t.title ? `<span class="tt">${esc(t.title)}</span>` : ''}`;
+      ticketEl.innerHTML = `${icon(inMsg ? 'pass-filled' : 'link')}<span class="ref-id">${esc(ref)}</span>${t.title ? `<span class="tt">${esc(t.title)}</span>` : ''}`;
       ticketEl.title = inMsg ? `${ref} is in the message` : `Add ${ref} to the message (links the commit to the ticket)`;
     }
 
@@ -60,11 +64,11 @@
     sel = new Set([...sel].filter((k) => live.has(k)));
     groupsEl.innerHTML = operationHtml(data.operation, s) + (total
       ? groups.map(groupHtml).join('')
-      : `<div class="empty">${icon('check-all')}<b>Working tree clean</b><span>Nothing to commit${s.ahead ? ` · ${s.ahead} commit${s.ahead > 1 ? 's' : ''} to push` : ''}</span></div>`);
+      : `<div class="gl-empty done">${icon('check-all')}<b>Working tree clean</b><span><span class="nw">Nothing to commit</span>${s.ahead ? `<span class="sep"> · </span><span class="nw">${s.ahead} commit${s.ahead > 1 ? 's' : ''} to push</span>` : ''}</span></div>`);
     updateCommitButton();
     // Hooks and signing, next to Amend.
     const hooks = data.hooks || [];
-    $('hooks').innerHTML = hooks.length ? `<span class="hook-chip" title="These hooks run on commit: ${esc(hooks.join(', '))}">${icon('shield')}${esc(hooks[0])}${hooks.length > 1 ? ` +${hooks.length - 1}` : ''}</span>` : '';
+    $('hooks').innerHTML = hooks.length ? `<span class="hook-chip" title="These hooks run on commit: ${esc(hooks.join(', '))}">${icon('shield')}<span class="hk-name">${esc(hooks[0])}</span>${hooks.length > 1 ? `<span class="hk-more">+${hooks.length - 1}</span>` : ''}</span>` : '';
     const sg = data.signing || {};
     const signEl = $('signBox');
     signEl.hidden = !sg.available && !sg.always;
@@ -152,6 +156,7 @@
     const sync = s.behind > 0 && !amend;
     $('pushIcon').className = `codicon codicon-${sync ? 'sync' : s.upstream ? 'arrow-up' : 'cloud-upload'}`;
     $('pushLabel').textContent = sync ? 'Sync' : s.upstream ? 'Push' : 'Publish';
+    $('btnCommitPush').setAttribute('aria-label', `Commit and ${sync ? 'sync' : s.upstream ? 'push' : 'publish'}`);
     $('btnCommitPush').title = sync
       ? `Commit, pull the ${s.behind} new commit${s.behind > 1 ? 's' : ''}, then push (Ctrl+Shift+Enter)`
       : s.upstream
@@ -263,6 +268,47 @@
     $(id).addEventListener('click', () => vscode.postMessage({ type: 'git', action }));
   }
 
+  // "…" of the branch card: the sync actions that are not shown, in the shared menu style (base.css .gl-pop.menu).
+  const syncMenu = $('syncMenu');
+  const closeSyncMenu = () => (syncMenu.hidden = true);
+  $('btnSyncMore').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!syncMenu.hidden) return closeSyncMenu();
+    syncMenu.innerHTML = SYNC_IDS.filter((id) => $(id).hidden)
+      .map((id) => `<div class="gl-mi" role="menuitem" tabindex="-1" data-btn="${id}">${$(id).innerHTML}<span>${esc($(id).title)}</span></div>`)
+      .join('');
+    syncMenu.hidden = false;
+    const r = $('btnSyncMore').getBoundingClientRect();
+    syncMenu.style.top = `${r.bottom + 4}px`;
+    syncMenu.style.left = `${Math.max(6, Math.min(r.right - syncMenu.offsetWidth, window.innerWidth - syncMenu.offsetWidth - 6))}px`;
+    if (e.detail === 0) /** @type {HTMLElement | null} */ (syncMenu.querySelector('.gl-mi'))?.focus();
+  });
+  syncMenu.addEventListener('click', (e) => {
+    const it = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-btn]'));
+    if (!it) return;
+    closeSyncMenu();
+    $(/** @type {string} */ (it.dataset.btn)).click();
+  });
+  syncMenu.addEventListener('keydown', (e) => {
+    const its = /** @type {HTMLElement[]} */ ([...syncMenu.querySelectorAll('.gl-mi')]);
+    const i = its.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      its[(i + (e.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length]?.focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (i >= 0) its[i].click();
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeSyncMenu();
+      $('btnSyncMore').focus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!syncMenu.contains(/** @type {Node} */ (e.target))) closeSyncMenu();
+  });
+  window.addEventListener('blur', closeSyncMenu);
+
   groupsEl.addEventListener('click', (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
     const btn = /** @type {HTMLElement | null} */ (t.closest('[data-act]'));
@@ -348,6 +394,52 @@
     request: (row) => ({ path: row.dataset.path, oldPath: row.dataset.old || undefined, status: row.dataset.status, staged: row.dataset.staged === '1' }),
   });
 
+  // ---------- branch card fit (content-driven) ----------
+
+  /** Shorten a name in the middle (gl.middleName): keeps "feature/18342-" and as much of the tail as fits. */
+  function middleEllipsis(/** @type {HTMLElement} */ el, /** @type {string} */ full) {
+    el.textContent = full;
+    if (el.scrollWidth <= el.clientWidth) return;
+    let lo = 2;
+    let hi = full.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      el.textContent = middleName(full, mid);
+      if (el.scrollWidth <= el.clientWidth) lo = mid;
+      else hi = mid - 1;
+    }
+    el.textContent = middleName(full, lo);
+  }
+
+  /** The branch name wins: first the "unpublished" label goes icon-only, then counts and buttons drop to a
+   *  second row, and only then is the name shortened in the middle. Wraps only when the content needs it. */
+  function fitBranch() {
+    const card = /** @type {HTMLElement | null} */ (document.querySelector('.sync'));
+    const el = /** @type {HTMLElement | null} */ (document.querySelector('#branch .bn'));
+    if (!card || !el || !data) return;
+    const full = data.status.branch || 'detached HEAD';
+    card.classList.remove('ab-icon', 'stacked');
+    el.textContent = full;
+    const over = () => el.scrollWidth > el.clientWidth + 0.5;
+    if (over()) card.classList.add('ab-icon');
+    if (over()) {
+      card.classList.remove('ab-icon');
+      card.classList.add('stacked');
+    }
+    middleEllipsis(el, full);
+  }
+
+  /** A line above the composer only while the file list scrolls under it. */
+  function updateLift() {
+    const sc = document.body;
+    document.body.classList.toggle('lifted', sc.scrollHeight > sc.clientHeight + 1 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1);
+  }
+  new ResizeObserver(() => {
+    fitBranch();
+    updateLift();
+  }).observe(document.body);
+  document.body.addEventListener('scroll', updateLift, { passive: true });
+
   window.addEventListener('message', (e) => {
     const m = e.data;
     if (m.type === 'preview') return diffPreview.receive(m);
@@ -356,6 +448,8 @@
       $('error').hidden = true;
       data = m;
       render();
+      fitBranch();
+      updateLift();
       showBusy(m.busy ? '…' : '');
     } else if (m.type === 'busy') {
       showBusy(m.title);

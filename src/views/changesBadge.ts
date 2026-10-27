@@ -4,22 +4,23 @@ import { RepoManager } from '../git/repoManager';
 import { log } from '../log';
 
 /**
- * Bubble with the number of uncommitted changes on the Gitland activity bar icon.
- * VS Code adds up the badges of a container's views, and a webview view only exists once it has
- * been shown: the count goes on exactly one existing view, the first of `order` (Changes, else Graph).
+ * Bubble with the number of uncommitted changes on the Gitland activity bar icon, like Source Control's.
+ * VS Code adds up the badges of a container's views, but a webview view only exists once the
+ * container has been opened. A tree view exists from activation, even hidden (`when: false`),
+ * so the count goes on an empty, never shown tree view of the sidebar.
  */
 export class ChangesBadge implements vscode.Disposable {
-  private readonly views = new Map<string, vscode.WebviewView>();
-  private count = 0;
-  private last = '';
+  static readonly viewId = 'gitland.changesBadge';
+
+  private readonly view: vscode.TreeView<never>;
+  private count = -1;
   private timer?: NodeJS.Timeout;
   private readonly disposables: vscode.Disposable[] = [];
 
-  constructor(
-    private readonly repos: RepoManager,
-    private readonly order: string[],
-  ) {
+  constructor(private readonly repos: RepoManager) {
+    this.view = vscode.window.createTreeView<never>(ChangesBadge.viewId, { treeDataProvider: { getTreeItem: (e) => e, getChildren: () => [] } });
     this.disposables.push(
+      this.view,
       repos.onDidChangeRepo(() => this.schedule()),
       vscode.workspace.onDidSaveTextDocument(() => this.schedule()),
       vscode.window.onDidChangeActiveTextEditor(() => this.schedule()),
@@ -27,22 +28,14 @@ export class ChangesBadge implements vscode.Disposable {
     this.schedule();
   }
 
-  /** A sidebar view became available (resolveWebviewView). */
-  attach(viewId: string, view: vscode.WebviewView): void {
-    this.views.set(viewId, view);
-    view.onDidDispose(() => {
-      if (this.views.get(viewId) === view) {
-        this.views.delete(viewId);
-        this.apply();
-      }
-    });
-    this.apply();
-  }
-
   /** New count from a view that already computed the status. */
   set(count: number): void {
+    if (count === this.count) {
+      return;
+    }
     this.count = count;
-    this.apply();
+    this.view.badge = count ? { value: count, tooltip: `${count} uncommitted change${count === 1 ? '' : 's'}` } : undefined;
+    log.info(`Changes badge: ${count}`);
   }
 
   private schedule(): void {
@@ -61,19 +54,6 @@ export class ChangesBadge implements vscode.Disposable {
       this.set(new Set([...s.staged, ...s.unstaged, ...s.conflicts].map((f) => f.path)).size);
     } catch {
       /* not a repository any more */
-    }
-  }
-
-  private apply(): void {
-    const target = this.order.find((id) => this.views.has(id));
-    const badge = this.count ? { value: this.count, tooltip: `${this.count} uncommitted change${this.count === 1 ? '' : 's'}` } : undefined;
-    for (const [id, view] of this.views) {
-      view.badge = id === target ? badge : undefined;
-    }
-    const now = `${this.count} on ${target ?? 'no view yet'}`;
-    if (now !== this.last) {
-      this.last = now;
-      log.info(`Changes badge: ${now}`);
     }
   }
 

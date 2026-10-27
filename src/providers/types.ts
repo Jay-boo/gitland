@@ -154,6 +154,8 @@ export interface Provider {
   branchUrl(branch: string): string;
   ticketUrl(id: number | string): string;
   pullRequestUrl(id: number | string): string;
+  /** The release (GitHub) or the tag (Azure DevOps) on the web. */
+  releaseUrl(tag: string): string;
 }
 
 export class AuthError extends Error {

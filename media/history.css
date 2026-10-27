@@ -1,8 +1,5 @@
 /* File / line history: extends ticket.css. */
-.mono { font-family: var(--mono); }
-.t-head h1.mono { font-size: 15px; }
-.gen-btn { color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 15%, transparent); }
-.gen-btn:hover { background: color-mix(in srgb, var(--gl-ai) 25%, transparent); }
+.t-head h1.mono { font-family: var(--gl-font); font-weight: 600; }
 .t-actions button:disabled { opacity: 0.45; }
 .explain { margin: 0 0 16px; padding: 2px 0 2px 12px; border-left: 2px solid var(--gl-ai); }
 .explain[hidden] { display: none; }
@@ -19,18 +16,20 @@
 .tl-main { flex: 1; min-width: 0; padding-bottom: 4px; }
 .tl-head { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 8px; border-radius: 6px; cursor: pointer; }
 .tl-head:hover { background: var(--gl-hover); }
-.tl-head input { margin: 0; flex: none; accent-color: var(--vscode-button-background); }
-.tl-head .av { flex: none; width: 18px; height: 18px; border-radius: 4px; background: var(--gl-chip); }
+.tl-head input { margin: 0; flex: none; opacity: 0; }
+/* The compare checkbox shows on hover / focus, when checked, and on every row once one is checked. */
+.tl-head:hover input, .tl-head:focus-within input, .tl-head input:checked, .tl:has(input:checked) .tl-head input { opacity: 1; }
+.tl-head .av { flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--gl-chip); }
 .tl-head .s { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-head .a { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--muted); }
-.tl-head .k { flex: none; font-size: 11px; color: var(--faint); }
-.tl-head .sha { flex: none; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.tl-head .k { flex: none; width: 64px; text-align: right; font-size: 11px; color: var(--faint); }
+.tl-head .sha { flex: none; width: 56px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .tl-head .delta { flex: none; display: inline-flex; gap: 5px; font-family: var(--mono); font-size: 11px; }
 .tl-head > .codicon { flex: none; font-size: 12px; color: var(--faint); }
 .tl-head .acts { display: none; }
 .tl-head:hover .acts { display: inline-flex; }
 .tl-head:hover .a, .tl-head:hover .k { display: none; }
-.hchip { flex: none; display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px 0 5px; border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); font-size: 11px; cursor: pointer; }
+.hchip { padding: 0 7px 0 5px; cursor: pointer; }
 .hchip .codicon { font-size: 11px; }
 .hchip.pr { color: var(--gl-feature); }
 .hchip.tk { color: var(--gl-ok); }
@@ -38,9 +37,9 @@
 .renamed .codicon { font-size: 10px; }
 .tl-body { margin: 4px 0 10px 8px; }
 .tl-body .msg { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
-pre.diff { margin: 0; padding: 8px 0; overflow-x: auto; border-radius: var(--gl-radius-input); border: 1px solid var(--gl-border); background: var(--gl-inset); font-family: var(--mono); font-size: 11.5px; line-height: 1.5; }
+pre.diff { margin: 0; padding: 6px 0; overflow-x: auto; border-radius: var(--gl-radius-input); border: 1px solid var(--vscode-widget-border, var(--gl-line-strong)); background: transparent; font-family: var(--mono); font-size: 11.5px; line-height: 1.5; }
 pre.diff span { display: block; padding: 0 12px; white-space: pre; }
 pre.diff .a { background: color-mix(in srgb, var(--added) 14%, transparent); color: color-mix(in srgb, var(--added) 60%, var(--fg)); }
 pre.diff .d { background: color-mix(in srgb, var(--deleted) 14%, transparent); color: color-mix(in srgb, var(--deleted) 60%, var(--fg)); }
-pre.diff .h { color: var(--gl-main); background: color-mix(in srgb, var(--gl-main) 7%, transparent); margin-top: 4px; }
+pre.diff .h { color: var(--vscode-descriptionForeground, var(--gl-muted)); margin-top: 4px; }
 pre.diff .c { color: var(--muted); }

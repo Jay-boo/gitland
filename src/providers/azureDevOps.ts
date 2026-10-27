@@ -211,6 +211,10 @@ export class AzureDevOpsProvider implements Provider {
     return `${this.webUrl}/pullrequest/${id}`;
   }
 
+  releaseUrl(tag: string): string {
+    return `${this.webUrl}?version=GT${e(tag)}`;
+  }
+
   async isSignedIn(): Promise<boolean> {
     if ((await this.secrets.get(patSecretKey(this.org))) ?? (await this.secrets.get(PAT_SECRET_KEY))) {
       return true;

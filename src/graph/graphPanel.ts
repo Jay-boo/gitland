@@ -11,7 +11,6 @@ import { computeGraph } from './layout';
 import { branchColor, conventionalType, mergedBranchName } from './colors';
 import { commitMatcher, filterCommits, GraphFilters, hasFilters, insertStashes } from './filter';
 import { PipelineRun, PullRequest } from '../providers/types';
-import { ChangesBadge } from '../views/changesBadge';
 import { ComparePanel } from '../views/comparePanel';
 import { explainHistory } from '../commitMessage';
 import { mentionedContext } from '../views/historyPanel';
@@ -66,7 +65,6 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
     private readonly context: vscode.ExtensionContext,
     private readonly repos: RepoManager,
     private readonly avatars: AvatarService,
-    private readonly badge?: ChangesBadge,
   ) {}
 
   async show(repo: Repo, sha?: string, where?: GraphPlace): Promise<void> {
@@ -121,9 +119,6 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
   /** Same provider for both views (sidebar and bottom panel); each gets its own controller. */
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     const viewId = view.viewType;
-    if (viewId === GraphManager.sidebarViewId) {
-      this.badge?.attach(viewId, view);
-    }
     const media = vscode.Uri.joinPath(this.context.extensionUri, 'media');
     view.webview.options = { enableScripts: true, localResourceRoots: [media] };
     const visible = new vscode.EventEmitter<void>();
@@ -134,7 +129,7 @@ export class GraphManager implements vscode.WebviewViewProvider, vscode.Disposab
         return view.visible;
       },
       setTitle: (t) => (view.description = t),
-      // VS Code adds up the badges of a container's views: in the sidebar the Changes view has it.
+      // VS Code adds up the badges of a container's views: the sidebar's is on ChangesBadge's hidden view.
       setBadge:
         viewId === GraphManager.bottomViewId
           ? (n) => (view.badge = n ? { value: n, tooltip: `${n} uncommitted change${n === 1 ? '' : 's'}` } : undefined)
@@ -398,9 +393,7 @@ export class GraphController implements vscode.Disposable {
           break;
         }
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url, this.repo?.root);
           break;
         case 'openDiff':
           await this.openDiff(m.sha, m.path, m.oldPath, m.status);
@@ -661,6 +654,9 @@ export class GraphController implements vscode.Disposable {
       case 'copyRef':
         await vscode.env.clipboard.writeText(ref ?? '');
         return;
+      case 'showRelease':
+        await vscode.commands.executeCommand('gitland.releases.show', ref, repo.root);
+        return;
       case 'openRemote':
       case 'openBranchRemote': {
         const provider = await getProvider(repo, this.context.secrets);
@@ -870,7 +866,7 @@ export class GraphController implements vscode.Disposable {
 export const GRAPH_BODY = `<header id="toolbar">
   <div class="title">
     <span class="repo"><i class="codicon codicon-repo"></i><span id="repoName"></span></span>
-    <span id="branchName" class="branch"></span>
+    <button id="branchName" class="branch" title="Pick a branch to focus on" aria-haspopup="listbox"></button>
     <span id="remoteName" class="remote"></span>
   </div>
   <div class="tools">
@@ -879,17 +875,21 @@ export const GRAPH_BODY = `<header id="toolbar">
       <button data-scope="branch" title="Only the history of one branch (the current one, or the one you focus)"><i class="codicon codicon-git-branch"></i><span class="label">Branch</span></button>
       <button data-scope="timeline" title="Timeline: the main line of the branch, one row per merged branch / pull request"><i class="codicon codicon-history"></i><span class="label">Timeline</span></button>
     </span>
-    <button id="btnCompare" class="icon" title="Compare branches or tags…"><i class="codicon codicon-git-compare"></i></button>
     <button id="btnBranches" class="branches" title="Pick a branch to focus on"><i class="codicon codicon-git-branch"></i><span class="label" id="branchesLabel">Branches</span><i class="codicon codicon-chevron-down"></i></button>
     <label class="search"><i class="codicon codicon-search"></i><input id="search" type="search" placeholder="Search commits, authors, SHAs, branches" spellcheck="false" /><span id="searchCount"></span><kbd>Enter</kbd></label>
     <button id="btnFilter" class="icon" title="Filter commits"><i class="codicon codicon-filter"></i><span id="filterCount" class="count"></span></button>
-    <button id="btnMinimap" class="icon" title="Toggle activity minimap"><i class="codicon codicon-pulse"></i></button>
     <button id="btnFetch" class="icon" title="Fetch from remotes"><i class="codicon codicon-cloud-download"></i><span class="label">Fetch</span></button>
-    <button id="btnRefresh" class="icon" title="Refresh"><i class="codicon codicon-refresh"></i></button>
-    <button id="btnKeys" class="icon" title="Keyboard shortcuts (?)"><i class="codicon codicon-keyboard"></i></button>
+    <button id="btnOverflow" class="icon" title="More actions" aria-haspopup="menu"><i class="codicon codicon-ellipsis"></i></button>
+    <span class="tb-overflow" hidden>
+      <button id="btnCompare" title="Compare branches or tags…"></button>
+      <button id="btnMinimap" title="Toggle activity minimap"></button>
+      <button id="btnRefresh" title="Refresh"></button>
+      <button id="btnKeys" title="Keyboard shortcuts (?)"></button>
+    </span>
   </div>
 </header>
 <div id="minimap" hidden></div>
+<div id="state" class="gl-empty is-loading" role="status"><i class="codicon codicon-loading codicon-modifier-spin"></i><span>Loading commits…</span></div>
 <main id="main">
   <div id="list" tabindex="0">
     <div id="header" class="row header">
@@ -907,7 +907,6 @@ export const GRAPH_BODY = `<header id="toolbar">
 <div id="card" class="card gl-pop" hidden></div>
 <div id="picker" class="picker gl-pop" hidden><label class="search"><i class="codicon codicon-filter"></i><input id="pickerInput" type="text" placeholder="Filter branches and tags" spellcheck="false" /></label><div id="pickerList"></div></div>
 <div id="menu" class="menu gl-pop" hidden></div>
-<div id="error" hidden></div>
 <div id="notice" class="gl-pill c-link" hidden></div>
 <div id="keysCard" class="gl-pop" hidden>
   <div class="kc-h"><i class="codicon codicon-keyboard"></i>Keyboard</div>

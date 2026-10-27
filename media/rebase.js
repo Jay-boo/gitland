@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon } = /** @type {any} */ (window).gl;
+  const { esc, icon, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -26,9 +26,8 @@
     const count = (a) => steps.filter((s) => s.action === a).length;
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-story">${icon('git-compare')}</span>
   <div class="t-title">
-    <div class="t-kind"><span>Interactive rebase</span><span class="id">${esc(init.branch || 'HEAD')}</span></div>
+    <div class="t-kind"><span class="glyph big g-story">${icon('git-compare')}</span><span>Interactive rebase</span><span class="id">${esc(init.branch || 'HEAD')}</span></div>
     <h1>${steps.length} commit${steps.length === 1 ? '' : 's'} after <span class="mono">${esc(init.base.short)}</span> <span class="muted small">${esc(init.base.subject)}</span></h1>
   </div>
 </header>
@@ -46,7 +45,7 @@ ${warn.map((w) => `<div class="rb-warn">${icon('warning')}<span>${w}</span></div
       ? `<textarea data-msg="${i}" rows="${Math.min(8, Math.max(2, s.message.split('\n').length + 1))}">${esc(s.message)}</textarea>`
       : `<span class="s">${esc(s.message.split('\n')[0])}</span>`
   }</div>
-  ${s.pushed ? `<span class="pushed" title="Already pushed to ${esc(init.upstream)}">${icon('cloud')}</span>` : ''}
+  ${s.pushed && pushedTouched ? `<span class="pushed" title="Already on ${esc(init.upstream)}: rewriting it needs a force push" aria-label="Already pushed: rewriting it needs a force push">${icon('cloud')}</span>` : ''}
 </div>`,
       )
       .join('')}</div>
@@ -117,12 +116,12 @@ ${warn.map((w) => `<div class="rb-warn">${icon('warning')}<span>${w}</span></div
       init = m;
       steps = m.commits.map((c) => ({ ...c, action: 'pick' }));
       if (!steps.length) {
-        page.innerHTML = `<div class="state">${icon('info')}<b>No commit to rebase</b><span>after ${esc(m.base.short)}</span></div>`;
+        page.innerHTML = `<div class="gl-empty">${icon('info')}<b>No commit to rebase</b><span>after ${esc(m.base.short)}</span></div>`;
         return;
       }
       render();
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Loading commits…');
   vscode.postMessage({ type: 'ready' });
 })();

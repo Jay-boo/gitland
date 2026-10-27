@@ -70,10 +70,6 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
-    // The bottom panel's count is on its Commit Graph view (VS Code adds up a container's badges).
-    if (this.viewId === ChangesView.viewId) {
-      this.badge.attach(this.viewId, view);
-    }
     view.webview.options = webviewOptions(this.context.extensionUri);
     view.webview.html = this.html(view.webview);
     view.webview.onDidReceiveMessage((m: Message) => this.onMessage(m), undefined, this.disposables);
@@ -270,9 +266,7 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
           await this.resolve(repo, m.path, m.side);
           break;
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url);
           return;
       }
     } catch (e) {
@@ -542,7 +536,9 @@ export const CHANGES_BODY = `<header class="sync">
   <button id="btnPull" class="icon" title="Pull"><i class="codicon codicon-arrow-down"></i></button>
   <button id="btnPush" class="icon" title="Push"><i class="codicon codicon-arrow-up"></i></button>
   <button id="btnSync" class="icon" title="Sync (pull then push)"><i class="codicon codicon-sync"></i></button>
+  <button id="btnSyncMore" class="icon" title="More: fetch, pull, push, sync" aria-haspopup="menu"><i class="codicon codicon-ellipsis"></i></button>
 </header>
+<div id="syncMenu" class="gl-pop menu sync-menu" role="menu" hidden></div>
 <div id="busy" class="busy" hidden></div>
 
 <main id="groups"></main>

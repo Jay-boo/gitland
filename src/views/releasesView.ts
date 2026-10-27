@@ -13,7 +13,7 @@ type Message =
   | { type: 'ready' | 'refresh' | 'newRelease' | 'compareUnreleased' }
   | { type: 'compare' | 'notes' | 'checkout' | 'copy' | 'delete'; tag: string };
 
-/** "Releases": the tags, newest version first, with what each one added. Click one to compare it with the previous. */
+/** "Releases": the tags, newest version first, with what each one added. Click one to open its release page. */
 export class ReleasesView implements vscode.WebviewViewProvider, vscode.Disposable {
   static readonly viewId = 'gitland.releases';
   private view?: vscode.WebviewView;
@@ -102,13 +102,15 @@ export class ReleasesView implements vscode.WebviewViewProvider, vscode.Disposab
           return;
         }
         case 'compare':
+          await vscode.commands.executeCommand('gitland.releases.show', m.tag, repo.root);
+          return;
         case 'notes': {
           const previous = await repo.previousTag(m.tag);
           if (!previous) {
             vscode.window.showInformationMessage(`Gitland: ${m.tag} is the first release.`);
             return;
           }
-          await ComparePanel.show(this.context, this.repos, this.avatars, repo, previous, m.tag, m.type === 'notes');
+          await ComparePanel.show(this.context, this.repos, this.avatars, repo, previous, m.tag, true, { title: `Release ${m.tag}`, release: m.tag });
           return;
         }
         case 'checkout':
@@ -146,12 +148,24 @@ export class ReleasesView implements vscode.WebviewViewProvider, vscode.Disposab
 }
 
 /** Next versions after the latest tag, from the commits since it (feat → minor, breaking → major). */
-export async function suggestVersions(repo: Repo): Promise<{ latest?: string; bump: 'major' | 'minor' | 'patch'; options: { version: string; kind: string }[]; commits: string[] }> {
+export async function suggestVersions(repo: Repo): Promise<{
+  latest?: string;
+  bump: 'major' | 'minor' | 'patch';
+  options: { version: string; kind: string }[];
+  commits: string[];
+  /** The same commits with their sha and author date (ms), for the list in the New release form. */
+  log: { sha: string; date: number; subject: string }[];
+}> {
   const latest = (await repo.releases(200).catch(() => [])).map((r) => r.name).filter((n) => /^v?\d+\.\d+/.test(n)).sort((a, b) => compareVersions(b, a))[0];
-  const commits = (await repo.exec(['log', '--no-merges', '--format=%s%n%b%x00', latest ? `${latest}..HEAD` : 'HEAD']).catch(() => ''))
+  const entries = (await repo.exec(['log', '--no-merges', '--format=%H%x1f%at%x1f%s%n%b%x00', latest ? `${latest}..HEAD` : 'HEAD']).catch(() => ''))
     .split('\0')
     .map((c) => c.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((c) => {
+      const [sha, at, message] = c.split('\x1f');
+      return { sha, date: Number(at) * 1000, message: message ?? '' };
+    });
+  const commits = entries.map((e) => e.message);
   const breaking = commits.some((c) => /^\w+(\([^)]*\))?!:|BREAKING[ -]CHANGE/m.test(c));
   const feat = commits.some((c) => /^feat(\([^)]*\))?:/i.test(c));
   const bump = breaking ? 'major' : feat ? 'minor' : 'patch';
@@ -165,5 +179,5 @@ export async function suggestVersions(repo: Repo): Promise<{ latest?: string; bu
     { version: `${prefix}${major}.${minor + 1}.0`, kind: 'minor' },
     { version: `${prefix}${major + 1}.0.0`, kind: 'major' },
   ].filter((o, i, all) => all.findIndex((x) => x.version === o.version) === i);
-  return { latest, bump, options, commits: commits.map((c) => c.split('\n')[0]) };
+  return { latest, bump, options, commits: commits.map((c) => c.split('\n')[0]), log: entries.map((e) => ({ sha: e.sha, date: e.date, subject: e.message.split('\n')[0] })) };
 }

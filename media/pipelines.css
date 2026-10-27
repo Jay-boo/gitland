@@ -1,25 +1,28 @@
 /* Pipelines view: list.css items + the expanded jobs of a run. */
 
-.run.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-style: dashed; margin-bottom: 0; }
-.jobs { margin-bottom: 6px; padding: 6px 10px 10px 43px; border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); border-top: 0; border-radius: 0 0 8px 8px; }
+.run.open, .run.open:hover, .run.expanded { margin-bottom: 2px; background: transparent; }
+/* Expanded run: unfilled, indented under the run's icon with a left rule. */
+.jobs { margin: 0 0 8px 17px; padding: 2px 4px 4px 12px; border-left: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong)); }
 .jobs .job { display: flex; align-items: center; gap: 7px; min-height: 22px; font-size: 12px; }
 .jobs .job.step { padding-left: 18px; color: var(--muted); }
-.jobs .job.failed { color: var(--gl-err); font-weight: 600; }
+.jobs .job.failed { color: var(--gl-err); }
 .jobs .job .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.jobs .glyph.small { width: 18px; height: 18px; border-radius: 5px; }
-.jobs .glyph.small .codicon { font-size: 11px; }
+.jobs .glyph.small { width: 14px; height: 14px; }
+.jobs .glyph.small .codicon { font-size: 12px; }
 .jobs .log {
   max-height: 240px;
   overflow: auto;
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  border-radius: var(--gl-radius-input);
-  border: 1px solid var(--gl-border);
-  background: var(--gl-inset);
+  margin: 6px 0 0;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--gl-err) 60%, transparent);
+  color: var(--gl-muted);
   font-family: var(--gl-mono);
-  font-size: 11px;
+  font-size: min(var(--vscode-editor-font-size, 12px), 12px);
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .jobs .none { padding: 4px 0; }
+
+/* The branch header keeps its Refresh action visible (it replaces the old bottom row). */
+.gh .ga.always { display: inline-flex; }

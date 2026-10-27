@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, listDate, displayName, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const page = /** @type {HTMLElement} */ (document.getElementById('page'));
@@ -24,8 +24,7 @@
     const total = gs.reduce((n, g) => n + g.list.length, 0);
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-approved">${icon('trash')}</span>
-  <div class="t-title"><div class="t-kind"><span>Branch cleanup</span></div><h1>${total ? `${total} branch${total > 1 ? 'es' : ''} could go` : 'Nothing to clean up'}</h1></div>
+  <div class="t-title"><div class="t-kind"><span class="glyph big g-approved">${icon('trash')}</span><span>Branch cleanup</span></div><h1>${total ? `${total} branch${total > 1 ? 'es' : ''} could go` : 'Nothing to clean up'}</h1></div>
 </header>
 <div class="t-actions"><button data-act="prune" title="git fetch --all --prune: forget the remote branches deleted on the server">${icon('cloud-download')}Fetch &amp; prune</button>
   <span class="grow"></span><span class="k">main, dev, release/* and the current branch are never listed</span></div>
@@ -33,20 +32,20 @@ ${gs
   .filter((g) => g.list.length)
   .map(
     (g) => `<section class="cl-group"><h3><span class="glyph small ${g.cls}">${icon(g.icon)}</span>${esc(g.title)} <span class="n">${g.list.length}</span><span class="grow"></span>
-      <button class="ghost" data-all="${g.key}">${g.list.every((b) => checked.has(b.name)) ? 'Unselect all' : 'Select all'}</button></h3>
+      <button class="ghost" data-all="${g.key}">${icon(g.list.every((b) => checked.has(b.name)) ? 'clear-all' : 'check-all')}${g.list.every((b) => checked.has(b.name)) ? 'Unselect all' : 'Select all'}</button></h3>
     <div class="hint">${esc(g.hint)}</div>
     ${g.list
       .map(
         (b) => `<label class="cl-row"><input type="checkbox" data-name="${esc(b.name)}"${checked.has(b.name) ? ' checked' : ''}>
       <span class="nm">${icon(b.remote ? 'cloud' : 'git-branch')}${esc(b.name)}</span>
       ${b.upstream && !b.remote ? `<span class="up">${b.gone ? `${esc(b.upstream)} (deleted)` : esc(b.upstream)}</span>` : ''}
-      <span class="grow"></span><span class="a">${esc(b.author)}</span><span class="k">${esc(relShort(b.date))}</span></label>`,
+      <span class="grow"></span><span class="a" title="${esc(b.author)}">${esc(displayName(b.author))}</span>${listDate(b.date)}</label>`,
       )
       .join('')}
   </section>`,
   )
   .join('')}
-${total ? `<div class="create-bar"><span class="k">${checked.size} selected</span><span class="grow"></span><button class="primary big danger-btn" data-act="delete"${checked.size ? '' : ' disabled'}>${icon('trash')}Delete ${checked.size || ''} branch${checked.size === 1 ? '' : 'es'}</button></div>` : `<div class="state done">${icon('check-all')}<b>All tidy</b><span>No merged, gone or stale branch.</span></div>`}`;
+${total ? `<div class="create-bar"><span class="k">${checked.size} selected</span><span class="grow"></span><button class="${checked.size ? 'primary big danger-btn' : 'big'}" data-act="delete"${checked.size ? '' : ' disabled'}>${icon('trash')}Delete ${checked.size || ''} branch${checked.size === 1 ? '' : 'es'}</button></div>` : `<div class="gl-empty done">${icon('check-all')}<b>All tidy</b><span>No merged, gone or stale branch.</span></div>`}`;
   }
 
   page.addEventListener('change', (e) => {
@@ -79,6 +78,6 @@ ${total ? `<div class="create-bar"><span class="k">${checked.size} selected</spa
       render();
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Looking for branches…');
   vscode.postMessage({ type: 'ready' });
 })();

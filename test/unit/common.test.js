@@ -28,6 +28,44 @@ test('relShort: compact form up to years', () => {
   assert.strictEqual(gl.relShort(Date.now() - 400 * 86400e3), '1y');
 });
 
+test('shortDate: relative within a week, then day + month, then month + year', () => {
+  const now = Date.UTC(2026, 9, 22, 12);
+  assert.strictEqual(gl.shortDate(now - 8 * 3600e3, now), gl.relShort(now - 8 * 3600e3));
+  assert.match(gl.shortDate(Date.UTC(2026, 7, 26, 12), now), /Aug/);
+  assert.match(gl.shortDate(Date.UTC(2026, 7, 26, 12), now), /26/);
+  assert.doesNotMatch(gl.shortDate(Date.UTC(2026, 7, 26, 12), now), /2026/);
+  assert.match(gl.shortDate(Date.UTC(2025, 1, 10, 12), now), /Feb/);
+  assert.match(gl.shortDate(Date.UTC(2025, 1, 10, 12), now), /2025/);
+  assert.doesNotMatch(gl.shortDate(Date.UTC(2025, 1, 10, 12), now), /\b10\b/);
+  assert.strictEqual(gl.shortDate(0), '');
+});
+
+test('listDate: short date with the full date as tooltip', () => {
+  const ts = Date.UTC(2025, 1, 10, 12);
+  const html = gl.listDate(ts);
+  assert.match(html, /^<span class="k" title="[^"]*2025[^"]*">/);
+  assert.ok(html.includes(`>${gl.shortDate(ts)}</span>`));
+});
+
+test('displayName: an e-mail shows its local part', () => {
+  assert.strictEqual(gl.displayName('ja.morel-ext@voltalia.com'), 'ja.morel-ext');
+  assert.strictEqual(gl.displayName('Jean-Alain MOREL (EXT)'), 'Jean-Alain MOREL');
+  assert.strictEqual(gl.displayName('Diogo FONTE'), 'Diogo FONTE');
+  assert.strictEqual(gl.displayName(''), '');
+});
+
+test('middleName keeps the type and ticket id, then the tail', () => {
+  const long = 'feature/18342-login-page-redesign-with-a-very-long-branch-name';
+  assert.strictEqual(gl.branchHead(long), 'feature/18342-');
+  assert.strictEqual(gl.middleName(long, 7), 'feature/18342-…ch-name');
+  assert.strictEqual(gl.branchHead('fix/88-token'), 'fix/88-');
+  assert.strictEqual(gl.middleName('fix/88-token-refresh-on-expiry', 6), 'fix/88-…expiry');
+  assert.strictEqual(gl.branchHead('release-candidate-2026'), 'release-');
+  assert.strictEqual(gl.middleName('release-candidate-2026', 4), 'release-…2026');
+  assert.strictEqual(gl.middleName('dev', 10), 'dev');
+  assert.strictEqual(gl.middleName('fix/88-token', 5), 'fix/88-token');
+});
+
 test('themeColors reads the 11 lane tokens', () => {
   const got = gl.themeColors((n) => n);
   assert.strictEqual(got.length, 11);

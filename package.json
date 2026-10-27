@@ -36,6 +36,7 @@
     "onWebviewPanel:gitland.pullRequest",
     "onWebviewPanel:gitland.ticket",
     "onWebviewPanel:gitland.compare",
+    "onWebviewPanel:gitland.release",
     "onWebviewPanel:gitland.history",
     "onWebviewPanel:gitland.dashboard",
     "onWebviewPanel:gitland.settings",
@@ -329,6 +330,11 @@
     },
     "views": {
       "gitlandSidebar": [
+        {
+          "id": "gitland.changesBadge",
+          "name": "Changes Count",
+          "when": "false"
+        },
         {
           "type": "webview",
           "id": "gitland.changesView",

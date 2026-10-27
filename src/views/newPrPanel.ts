@@ -140,7 +140,7 @@ export class NewPrPanel {
     const [commits, stat, template, ticket, ab] = await Promise.all([
       this.repo.exec(['log', '--no-merges', '--format=%H%x1f%s%x1f%an%x1f%at', `${base}..HEAD`]).catch(() => ''),
       this.repo.exec(['diff', '--numstat', `${base}...HEAD`]).catch(() => ''),
-      findPullRequestTemplate(this.repo, base, target),
+      findPullRequestTemplate(this.repo, remote, target),
       this.ticket(),
       this.repo.aheadBehind(this.branch).catch(() => ({ upstream: undefined, ahead: 0 })),
     ]);
@@ -218,7 +218,7 @@ export class NewPrPanel {
     const base = `${remote}/${target}`;
     this.post({ type: 'genStart' });
     try {
-      const [template, ticket] = await Promise.all([findPullRequestTemplate(this.repo, base, target), this.ticket()]);
+      const [template, ticket] = await Promise.all([findPullRequestTemplate(this.repo, remote, target), this.ticket()]);
       const out = await generatePullRequestText(
         this.repo,
         { base, head: 'HEAD', source: this.branch, target, template: template?.text, ticket },

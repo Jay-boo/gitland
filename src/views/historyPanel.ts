@@ -129,9 +129,7 @@ export class HistoryPanel {
         return;
       }
       case 'openUrl':
-        if (/^https:\/\//.test(m.url)) {
-          await vscode.env.openExternal(vscode.Uri.parse(m.url));
-        }
+        await vscode.commands.executeCommand('gitland.openLink', m.url);
         return;
       case 'explain':
         return this.explain();

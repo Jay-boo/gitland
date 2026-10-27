@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relTime } = /** @type {any} */ (window).gl;
+  const { esc, icon, listDate, displayName, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // @ts-ignore
@@ -47,9 +47,8 @@
     const authors = new Set(init.entries.map((e) => e.author)).size;
     page.innerHTML = `
 <header class="t-head">
-  <span class="glyph big g-story">${icon(lines ? 'list-selection' : 'history')}</span>
   <div class="t-title">
-    <div class="t-kind"><span>${lines ? 'Line history' : 'File history'}</span><span class="k">${init.entries.length} commit${init.entries.length === 1 ? '' : 's'} · ${authors} author${authors === 1 ? '' : 's'}</span></div>
+    <div class="t-kind"><span class="glyph big g-story">${icon(lines ? 'list-selection' : 'history')}</span><span>${lines ? 'Line history' : 'File history'}</span><span class="k">${init.entries.length} commit${init.entries.length === 1 ? '' : 's'} · ${authors} author${authors === 1 ? '' : 's'}</span></div>
     <h1 class="mono">${esc(title)}</h1>
   </div>
 </header>
@@ -57,12 +56,12 @@
   <button class="gen-btn" data-act="explain">${icon(explaining ? 'debug-stop' : 'sparkle')}${explaining ? 'Stop' : lines ? 'Why are these lines like this?' : 'Explain this file’s history'}</button>
   <button data-act="compare"${selected.length === 2 ? '' : ' disabled'} title="Tick two versions to compare them">${icon('git-compare')}Compare selected${selected.length ? ` (${selected.length}/2)` : ''}</button>
 </div>
-<section id="explain" class="explain"${explainText || explaining ? '' : ' hidden'}><div class="ex-h">${icon('sparkle')} Explanation</div><div class="rich" id="explainBody">${explainText ? markdown(explainText) : '<span class="loading"></span>'}</div></section>
+<section id="explain" class="explain"${explainText || explaining ? '' : ' hidden'}><div class="ex-h">${icon('sparkle')} Explanation</div><div class="rich" id="explainBody">${explainText ? markdown(explainText) : '<span class="gl-skel"></span>'}</div></section>
 <div class="tl">${init.entries
       .map((e, i) => {
         const av = (init.avatars || {})[String(e.email).toLowerCase()];
         const isOpen = open.has(e.sha);
-        const body = isOpen ? (lines ? diffHtml(e.patch) : patches.has(e.sha) ? diffHtml(patches.get(e.sha)) : '<span class="loading"></span>') : '';
+        const body = isOpen ? (lines ? diffHtml(e.patch) : patches.has(e.sha) ? diffHtml(patches.get(e.sha)) : '<span class="gl-skel"></span>') : '';
         return `<div class="tl-row${isOpen ? ' open' : ''}" data-sha="${esc(e.sha)}" data-path="${esc(e.path)}">
   <div class="tl-rail"><span class="dot"></span></div>
   <div class="tl-main">
@@ -72,7 +71,7 @@
       <span class="s">${esc(e.subject)}</span>${chips(e)}
       <span class="grow"></span>
       ${e.added !== undefined ? `<span class="delta">${e.added ? `<span class="plus">+${e.added}</span>` : ''}${e.deleted ? `<span class="minus">−${e.deleted}</span>` : ''}</span>` : ''}
-      <span class="a">${esc(e.author)}</span><span class="k">${esc(relTime(e.date))}</span><span class="sha">${esc(e.sha.slice(0, 7))}</span>
+      <span class="a" title="${esc(e.author)}">${esc(displayName(e.author))}</span>${listDate(e.date)}<span class="sha">${esc(e.sha.slice(0, 7))}</span>
       <span class="acts">
         <button class="icon" data-do="diffPrevious" title="Diff with the previous version">${icon('diff')}</button>
         <button class="icon" data-do="diffWorking" title="Diff with the working tree">${icon('file')}</button>
@@ -138,7 +137,7 @@
     if (m.type === 'init') {
       init = m;
       if (!m.entries.length) {
-        page.innerHTML = `<div class="state">${icon('history')}<b>No history</b><span>${esc(m.rel)} has no commit yet.</span></div>`;
+        page.innerHTML = `<div class="gl-empty">${icon('history')}<b>No history</b><span>${esc(m.rel)} has no commit yet.</span></div>`;
         return;
       }
       if (m.entries[0]) {
@@ -168,6 +167,6 @@
       render();
     }
   });
-  page.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+  page.innerHTML = loadingHtml('Loading history…');
   vscode.postMessage({ type: 'ready' });
 })();

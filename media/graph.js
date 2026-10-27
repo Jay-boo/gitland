@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon } = /** @type {any} */ (window).gl;
+  const { esc, icon, relShort, shortDate, fullDate, displayName, stateHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   // Report webview errors to the "Gitland" output channel.
@@ -270,16 +270,13 @@
     return avatarImg(commit.email, commit.author, AVATAR, 'node', `left:${left}px;top:${top}px;--c:${color(commit.graph.color)}`, commit.graph.color);
   }
 
-  /** "● 4" bubble + "2 modified · 1 added · 1 untracked" on the uncommitted changes row. */
+  /** "Uncommitted · 4" on the uncommitted changes row; the breakdown ("2 modified · 1 added") is its tooltip. */
   function changesBubble() {
     const n = data.changes || 0;
     const st = data.changeStats || {};
     const names = { M: 'modified', A: 'added', D: 'deleted', R: 'renamed', U: 'untracked', C: 'copied' };
-    const detail = Object.keys(names)
-      .filter((k) => st[k])
-      .map((k) => `<span class="st-${k}">${st[k]} ${names[k]}</span>`)
-      .join(' · ');
-    return `<span class="bubble" title="${n} uncommitted change${n === 1 ? '' : 's'}">${n}</span><span class="wt-detail">${detail}</span>`;
+    const tip = Object.keys(names).filter((k) => st[k]).map((k) => `${st[k]} ${names[k]}`).join(' · ');
+    return `<span class="subject" title="${esc(tip || `${n} uncommitted change${n === 1 ? '' : 's'}`)}">Uncommitted</span><span class="gl-chip wt-n">${n}</span>`;
   }
 
   /** Signature of a commit (git %G?): verified, untrusted key, key not available, bad… */
@@ -386,20 +383,20 @@
     AVATAR = compact ? 14 : 16;
     LANE = data.showAvatars ? (compact ? 16 : 18) : compact ? 10 : 13;
     const h = rowH();
-    const graphPx = (data.width + 1) * LANE + 12;
+    const graphPx = (data.width + 1) * LANE + (compact ? 8 : 12);
     const autoW = Math.min(graphPx, compact ? Math.round(window.innerWidth * 0.4) : 420);
     document.documentElement.style.setProperty('--graph-w', `${!compact && state.cols.graph ? state.cols.graph : autoW}px`);
     $('repoName').textContent = data.repoName;
-    $('branchName').innerHTML = `${icon('git-branch')}${esc(data.branch || 'detached HEAD')}`;
+    $('branchName').innerHTML = `${icon('git-branch')}<span>${esc(data.branch || 'detached HEAD')}</span>${icon('chevron-down', 'chev')}`;
     const remote = String(data.remote || '');
     $('remoteName').innerHTML = remote ? `${icon(/github/i.test(remote) ? 'github' : 'azure-devops')}<span>${esc(remote)}</span>` : '';
     const html = data.commits
       .map(
         (c, i) => `<div class="row commit${c.sha === WORKTREE ? ' worktree' : ''}${c.parents.length > 1 ? ' merge' : ''}${isStash(c) ? ' stash' : ''}${c.sha === selected ? ' selected' : ''}" style="--lane:${color(c.graph.color)}" data-i="${i}" data-sha="${c.sha}">
   <div class="c-graph">${svgFor(c, h)}${graphAvatar(c, h)}</div>
-  <div class="c-msg">${c.sha === WORKTREE ? changesBubble() : refBadges(c, compact ? 1 : 0)}${c.mergedFrom ? `<span class="merged-chip" style="--c:${color(c.mergedColor ?? 6)}" data-merge="${c.sha}" title="Merge of ${esc(c.mergedFrom)} — click to see what it brought">${icon('git-merge')}${esc(c.mergedFrom)}</span>` : ''}<span class="subject${c.mergedTitle ? ' mtitle' : ''}">${mdInline(esc(c.mergedTitle || c.subject), false)}</span></div>
-  <div class="c-author">${c.sha === WORKTREE || !data.showAvatars ? '' : avatarImg(c.email, c.author, 16, 'small')}<span>${esc(c.author)}</span></div>
-  <div class="c-date">${esc(graphTime(c.ts))}</div>
+  <div class="c-msg">${c.sha === WORKTREE ? changesBubble() : `${refBadges(c, compact ? 1 : 0)}${c.mergedFrom ? `<span class="merged-chip" style="--c:${color(c.mergedColor ?? 6)}" data-merge="${c.sha}" title="Merge of ${esc(c.mergedFrom)} — click to see what it brought">${icon('git-merge')}${esc(c.mergedFrom)}</span>` : ''}<span class="subject${c.mergedTitle ? ' mtitle' : ''}">${mdInline(esc(c.mergedTitle || c.subject), false)}</span>`}</div>
+  <div class="c-author">${c.sha === WORKTREE || !data.showAvatars ? '' : avatarImg(c.email, c.author, 16, 'small')}<span title="${esc(c.author)}${c.email && c.email !== c.author ? ` <${esc(c.email)}>` : ''}">${esc(displayName(c.author))}</span></div>
+  <div class="c-date" title="${esc(fullDate(c.ts))}">${esc(shortDate(c.ts))}</div>
   <div class="c-sha">${ciDot(c.sha)}${esc(c.short)}</div>
 </div>`,
       )
@@ -454,13 +451,13 @@
 <div class="sel-line gl-ck"><span class="name">${icon('circle-filled')}${isWt ? 'Uncommitted changes' : `Selected · <span class="mono">${esc(d.sha.slice(0, 7))}</span>`}</span>${
     isWt
       ? ''
-      : `<button class="act" data-act="createBranch" title="Create a branch here">${icon('git-branch')}Branch here</button><button class="act" data-act="checkoutCommit" title="Check out this commit">${icon('target')}Checkout</button><button class="act" data-act="cherryPick" title="Cherry-pick onto the current branch">${icon('git-pull-request-go-to-changes')}Cherry-pick</button><button class="act" data-act="revert" title="Revert this commit">${icon('discard')}Revert</button><button class="act" data-act="openRemote" title="Open on remote">${icon('link-external')}</button><button class="act gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button>`
+      : `<button class="act" data-act="checkoutCommit" title="Check out this commit">${icon('target')}Checkout</button><button class="act" data-act="cherryPick" title="Cherry-pick onto the current branch">${icon('git-pull-request-go-to-changes')}Cherry-pick</button><button class="act gen-btn" data-act="explainCommit" title="What this commit does and why (AI)">${icon('sparkle')}Explain</button><button class="act" data-act="selMore" title="More: branch here, revert, open on remote" aria-haspopup="menu">${icon('ellipsis')}</button>`
   }<button class="act close" title="Close (Esc)">${icon('close')}</button></div>
 <div class="info">
   ${
     isWt
       ? ''
-      : `<div class="author">${data.showAvatars ? avatarImg(d.email, d.author, 26, '') : ''}<div class="who"><b>${esc(d.author)}</b><span>${esc(d.email)}</span></div></div>`
+      : `<div class="author">${data.showAvatars ? avatarImg(d.email, d.author, 26, '') : ''}<div class="who"><b title="${esc(d.author)}">${esc(displayName(d.author))}</b><span>${esc(d.email)}</span></div></div>`
   }
   <h2>${mdInline(esc(subject))}</h2>
   ${commit && commit.refs.length ? `<div class="refs">${refBadges(commit)}</div>` : ''}
@@ -471,10 +468,10 @@
       : `<div class="shas">
     <span><span class="k">commit</span><span class="chip" data-act="copySha" title="Copy ${esc(d.sha)}">${d.sha.slice(0, 10)}${icon('copy')}</span></span>
     ${parents ? `<span><span class="k">${d.parents.length > 1 ? 'parents' : 'parent'}</span>${parents}</span>` : ''}
-    <span title="${esc(d.authorDate)}">${esc(graphTime(d.authorTs))} · ${esc(d.authorDate)}</span>
+    <span title="${esc(graphTime(d.authorTs))}">${esc(d.authorDate)}</span>
     ${ci.has(d.sha) ? ci.get(d.sha).map((r) => `<span class="ci-label ci-${CI_ICON[r.state][1]}" data-url="${esc(r.url)}" title="Open the run">${icon(CI_ICON[r.state][0])}${esc(r.name)}</span>`).join('') : ''}
     ${sigChip(d.signature)}
-    <span class="rel-chip${d.release ? '' : ' none'}" title="${d.release ? `First release that contains this commit: ${esc(d.release)}` : 'Not in any release (tag) yet'}">${d.release ? `${icon('tag')}${esc(d.release)}` : 'not released yet'}</span>
+    <span class="rel-chip${d.release ? '' : ' none'}"${d.release ? ` data-release="${esc(d.release)}"` : ''} title="${d.release ? `First release that contains this commit: ${esc(d.release)} — open it` : 'Not in any release (tag) yet'}">${d.release ? `${icon('tag')}${esc(d.release)}` : 'not released yet'}</span>
     ${d.committer && d.committer !== d.author ? `<span>committed by ${esc(d.committer)}</span>` : ''}
   </div>`
   }
@@ -503,7 +500,7 @@
     const nl = msg.indexOf('\n');
     const subject = nl < 0 ? msg : msg.slice(0, nl);
     const body = nl < 0 ? '' : cleanBody(msg.slice(nl + 1));
-    let stats = '<span class="loading"></span>';
+    let stats = '<span class="gl-skel"></span>';
     if (d) {
       const files = d.files || [];
       const st = fileStats(files);
@@ -512,12 +509,12 @@
     cardEl.style.setProperty('--lane', lane);
     const head = isWt
       ? `<div class="hd"><div class="who"><b>${icon('edit')} Working tree</b><span>Changes not committed yet</span></div></div>`
-      : `<div class="hd">${data.showAvatars ? avatarImg(c.email, c.author, 28, '') : ''}<div class="who"><b>${esc(c.author)}</b><span>${esc(c.email)}</span></div><div class="when"><b>${esc(graphTime(c.ts))}</b><span>${esc(c.date)}</span></div></div>`;
+      : `<div class="hd">${data.showAvatars ? avatarImg(c.email, c.author, 28, '') : ''}<div class="who"><b title="${esc(c.author)}">${esc(displayName(c.author))}</b><span>${esc(c.email)}</span></div><div class="when"><b>${esc(graphTime(c.ts))}</b><span>${esc(c.date)}</span></div></div>`;
     return `${head}
 <div class="msg"><div class="s">${mdInline(esc(subject))}</div>${body ? `<div class="b md">${markdown(body)}</div>` : ''}</div>
 ${c.refs.length ? `<div class="refs">${refBadges(c)}</div>` : ''}
 ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(msg))}
-<div class="ft">${isWt ? '' : `<span class="sha-chip">${esc(c.short)}</span>`}${stats}${ci.has(c.sha) ? `<span class="ci-label ci-${CI_ICON[ciState(ci.get(c.sha))][1]}">${icon(CI_ICON[ciState(ci.get(c.sha))][0])}${ciState(ci.get(c.sha))}</span>` : ''}${d && !isWt && !isStash(c) ? (d.release ? `<span class="rel-chip">${icon('tag')}${esc(d.release)}</span>` : '<span class="rel-chip none">unreleased</span>') : ''}<span class="grow"></span><span class="hint">${c.parents.length > 1 ? 'merge' : ''}</span></div>`;
+<div class="ft">${isWt ? '' : `<span class="sha-chip">${esc(c.short)}</span>`}${stats}${ci.has(c.sha) ? `<span class="ci-label ci-${CI_ICON[ciState(ci.get(c.sha))][1]}">${icon(CI_ICON[ciState(ci.get(c.sha))][0])}${ciState(ci.get(c.sha))}</span>` : ''}${d && !isWt && !isStash(c) ? (d.release ? `<span class="rel-chip" data-release="${esc(d.release)}" title="Open release ${esc(d.release)}">${icon('tag')}${esc(d.release)}</span>` : '<span class="rel-chip none">unreleased</span>') : ''}<span class="grow"></span><span class="hint">${c.parents.length > 1 ? 'merge' : ''}</span></div>`;
   }
 
   function placeCard() {
@@ -610,7 +607,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
           ? '<div class="sep"></div>'
           : it.label && !it.act
             ? `<div class="label">${esc(it.label)}</div>`
-            : `<div class="item${it.danger ? ' danger' : ''}" data-act="${it.act}" data-sha="${it.sha || ''}" data-ref="${esc(it.ref || '')}" data-reftype="${it.refType || ''}">${icon(it.icon || 'blank')}${esc(it.label)}</div>`,
+            : `<div class="item${it.danger ? ' danger' : ''}" role="menuitem" tabindex="-1" data-act="${it.act}" data-sha="${it.sha || ''}" data-ref="${esc(it.ref || '')}" data-reftype="${it.refType || ''}">${icon(it.icon || 'blank')}${esc(it.label)}</div>`,
       )
       .join('');
     menuEl.hidden = false;
@@ -662,7 +659,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       { label: 'Compare with…', icon: 'git-compare', act: 'compareWith', ref },
     ];
     if (refType === 'tag') {
-      return [{ label: `tag ${ref}` }, focusItem, ...compare, '-', { label: 'Copy name', icon: 'copy', act: 'copyRef', ref }, { label: 'Delete tag', icon: 'trash', act: 'deleteTag', ref, danger: true }];
+      return [{ label: `tag ${ref}` }, { label: 'Show release', icon: 'tag', act: 'showRelease', ref }, focusItem, ...compare, '-', { label: 'Copy name', icon: 'copy', act: 'copyRef', ref }, { label: 'Delete tag', icon: 'trash', act: 'deleteTag', ref, danger: true }];
     }
     const isCurrent = ref === data.branch;
     const items = [{ label: `${refType === 'remote' ? 'remote branch' : 'branch'} ${ref}` }, focusItem, ...compare, '-'];
@@ -777,7 +774,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       const ic = r.type === 'tag' ? 'tag' : r.type === 'stash' ? 'archive' : r.type === 'remote' ? 'cloud' : 'git-branch';
       const on = focus && focus.name === r.name ? ' focused' : '';
       const off = r.loaded ? '' : ' unloaded';
-      html += `<div class="pick${on}${off}" data-i="${i}" data-ref="${esc(r.name)}" data-reftype="${r.type}" data-sha="${esc(r.sha)}" data-loaded="${r.loaded ? 1 : 0}" style="--c:${r.color}" title="${r.loaded ? '' : 'Older than the loaded commits: picking it loads more history'}">${icon(ic)}<span class="nm">${esc(r.name)}</span>${r.current ? '<span class="cur">current</span>' : ''}${r.loaded ? '' : `<span class="cur">${icon('cloud-download')}</span>`}<span class="k">${esc(graphTime(r.ts))}</span></div>`;
+      html += `<div class="pick${on}${off}" data-i="${i}" data-ref="${esc(r.name)}" data-reftype="${r.type}" data-sha="${esc(r.sha)}" data-loaded="${r.loaded ? 1 : 0}" style="--c:${r.color}" title="${r.loaded ? '' : 'Older than the loaded commits: picking it loads more history'}">${icon(ic)}<span class="nm">${esc(r.name)}</span>${r.current ? '<span class="cur">current</span>' : ''}${r.loaded ? '' : `<span class="cur">${icon('cloud-download')}</span>`}<span class="k" title="${esc(fullDate(r.ts))}">${esc(relShort(r.ts))}</span></div>`;
     });
     const legend = ['main', 'dev', 'feature', 'fix', 'hotfix', 'release', 'chore']
       .map((n, i) => `<span><i style="background:${COLORS[i]}"></i>${n}</span>`)
@@ -796,10 +793,12 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     items[pickIndex] && items[pickIndex].scrollIntoView({ block: 'nearest' });
   }
 
-  function openPicker() {
+  function openPicker(/** @type {HTMLElement | undefined} */ from) {
     hideCard();
     menuEl.hidden = true;
-    const r = $('btnBranches').getBoundingClientRect();
+    // Anchored to what opened it: the branch chip, the Branches button (shown while a branch is focused) or "…".
+    const anchor = from || ($('btnBranches').offsetParent ? $('btnBranches') : $('btnOverflow'));
+    const r = anchor.getBoundingClientRect();
     pickerEl.hidden = false;
     pickerEl.style.top = `${r.bottom + 4}px`;
     pickerEl.style.left = `${Math.max(6, Math.min(r.left, window.innerWidth - pickerEl.offsetWidth - 6))}px`;
@@ -827,6 +826,11 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
   $('btnBranches').addEventListener('click', (e) => {
     e.stopPropagation();
     pickerEl.hidden ? openPicker() : closePicker();
+  });
+  // The header branch chip opens the same picker.
+  $('branchName').addEventListener('click', (e) => {
+    e.stopPropagation();
+    pickerEl.hidden ? openPicker($('branchName')) : closePicker();
   });
   pickerInput.addEventListener('input', () => {
     pickIndex = 0;
@@ -863,7 +867,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     }
   });
   document.addEventListener('mousedown', (e) => {
-    if (!pickerEl.hidden && !pickerEl.contains(/** @type {Node} */ (e.target)) && !$('btnBranches').contains(/** @type {Node} */ (e.target))) closePicker();
+    if (!pickerEl.hidden && !pickerEl.contains(/** @type {Node} */ (e.target)) && !$('btnBranches').contains(/** @type {Node} */ (e.target)) && !$('branchName').contains(/** @type {Node} */ (e.target))) closePicker();
   });
 
   // ---------- scope: all branches / one branch / timeline ----------
@@ -1026,7 +1030,6 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     const btn = $('btnMinimap');
     const on = state.minimap && !isCompact();
     btn.classList.toggle('on', on);
-    btn.hidden = isCompact();
     minimapEl.hidden = !on;
     buckets = [];
     const commits = data.commits.filter((c) => c.sha !== WORKTREE && c.ts);
@@ -1239,6 +1242,8 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
   cardEl.addEventListener('mouseleave', hideCardSoon);
   cardEl.addEventListener('click', (e) => {
     if (onRefClick(e)) return hideCard();
+    const rel = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-release]'));
+    if (rel) return vscode.postMessage({ type: 'action', action: 'showRelease', ref: rel.dataset.release });
     const link = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-url]'));
     if (link) vscode.postMessage({ type: 'openUrl', url: link.dataset.url });
   });
@@ -1248,7 +1253,9 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
   rowsEl.addEventListener('dblclick', (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
     const ref = /** @type {HTMLElement | null} */ (t.closest('.ref'));
-    if (ref && ref.dataset.reftype !== 'tag') {
+    if (ref && ref.dataset.reftype === 'tag') {
+      vscode.postMessage({ type: 'action', action: 'showRelease', ref: ref.dataset.ref });
+    } else if (ref) {
       vscode.postMessage({ type: 'action', action: 'checkoutBranch', ref: ref.dataset.ref, refType: ref.dataset.reftype });
     }
   });
@@ -1278,6 +1285,11 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     const item = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('.item'));
     if (!item) return;
     menuEl.hidden = true;
+    // Toolbar overflow ("…"): press the hidden toolbar button, so every action keeps its one handler.
+    if (item.dataset.act && item.dataset.act.startsWith('tb:')) {
+      e.stopPropagation();
+      return $(item.dataset.act.slice(3)).click();
+    }
     if (item.dataset.act === 'focus') return focusRef(/** @type {string} */ (item.dataset.ref), /** @type {string} */ (item.dataset.reftype));
     if (item.dataset.act === 'unfocus') return clearFocus();
     if (item.dataset.act === 'compareRefs') return vscode.postMessage({ type: 'compareRefs', from: item.dataset.ref, to: item.dataset.sha });
@@ -1318,9 +1330,24 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     }
     const link = /** @type {HTMLElement | null} */ (t.closest('[data-url]'));
     if (link) return vscode.postMessage({ type: 'openUrl', url: link.dataset.url });
+    const rel = /** @type {HTMLElement | null} */ (t.closest('[data-release]'));
+    if (rel) return vscode.postMessage({ type: 'action', action: 'showRelease', ref: rel.dataset.release });
     const go = /** @type {HTMLElement | null} */ (t.closest('[data-goto]'))?.dataset.goto;
     if (go) return select(go, true);
     const act = /** @type {HTMLElement | null} */ (t.closest('[data-act]'));
+    if (act && act.dataset.act === 'selMore') {
+      // Less frequent commit actions: the same 'action' messages, from the shared menu.
+      e.stopPropagation();
+      const r = act.getBoundingClientRect();
+      showMenu(r.left, r.bottom + 4, [
+        { label: 'Create a branch here…', icon: 'git-branch', act: 'createBranch', sha: selected },
+        { label: 'Revert this commit', icon: 'discard', act: 'revert', sha: selected },
+        '-',
+        { label: 'Open on remote', icon: 'link-external', act: 'openRemote', sha: selected },
+      ]);
+      if (e.detail === 0) /** @type {HTMLElement | null} */ (menuEl.querySelector('.item'))?.focus();
+      return;
+    }
     if (act && act.dataset.act === 'explainCommit') return vscode.postMessage({ type: 'explain', sha: selected });
     if (act && act.dataset.act === 'stopExplain') return vscode.postMessage({ type: 'stopExplain' });
     if (act) vscode.postMessage({ type: 'action', action: act.dataset.act, sha: selected });
@@ -1457,6 +1484,45 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     card.hidden = !card.hidden;
   }
   $('btnKeys').addEventListener('click', toggleKeysCard);
+
+  // ---------- toolbar overflow ("…") ----------
+
+  function moreMenu() {
+    return [
+      { label: focus ? `Focus: ${focus.name}…` : 'Focus on a branch…', icon: 'git-branch', act: 'tb:btnBranches' },
+      { label: 'Compare branches or tags…', icon: 'git-compare', act: 'tb:btnCompare' },
+      ...(isCompact() ? [] : [{ label: state.minimap ? 'Hide activity chart' : 'Show activity chart', icon: 'pulse', act: 'tb:btnMinimap' }]),
+      '-',
+      { label: 'Refresh', icon: 'refresh', act: 'tb:btnRefresh' },
+      { label: 'Keyboard shortcuts (?)', icon: 'keyboard', act: 'tb:btnKeys' },
+    ];
+  }
+  $('btnOverflow').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!menuEl.hidden) return void (menuEl.hidden = true);
+    closePicker();
+    const r = $('btnOverflow').getBoundingClientRect();
+    showMenu(r.right - 220, r.bottom + 4, moreMenu());
+    // Opened from the keyboard: focus the first item (arrows move, Enter runs, Esc closes).
+    if (e.detail === 0) /** @type {HTMLElement | null} */ (menuEl.querySelector('.item'))?.focus();
+  });
+  menuEl.addEventListener('keydown', (e) => {
+    const its = /** @type {HTMLElement[]} */ ([...menuEl.querySelectorAll('.item')]);
+    const i = its.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      its[(i + (e.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length]?.focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (i >= 0) its[i].click();
+    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      menuEl.hidden = true;
+      $('btnOverflow').focus();
+    }
+  });
   $('keysCard').addEventListener('click', () => ($('keysCard').hidden = true));
 
   // Hover a changed file in the details pane: preview of its diff (in this commit, or between the compared commits).
@@ -1480,8 +1546,12 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       return;
     }
     if (m.type === 'data') {
+      document.body.classList.remove('no-data');
       diffPreview.clear();
-      $('error').hidden = true;
+      // No commit yet (new repository): one empty state instead of an empty list.
+      const empty = !m.commits.some((/** @type {any} */ c) => c.sha !== WORKTREE);
+      $('state').hidden = !empty;
+      if (empty) $('state').outerHTML = `<div id="state">${stateHtml({ state: 'empty', icon: 'git-commit', title: 'No commit yet', text: 'Make the first commit from the Changes view.' })}</div>`;
       const scroll = listEl.scrollTop;
       data = m;
       detailsCache.clear();
@@ -1522,7 +1592,7 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
       if (!card || !body) return;
       card.hidden = false;
       card.classList.toggle('busy', m.type !== 'explainDone');
-      if (m.type === 'explainStart') body.innerHTML = '<span class="loading"></span>';
+      if (m.type === 'explainStart') body.innerHTML = '<span class="gl-skel"></span>';
       else if (typeof m.text === 'string') body.innerHTML = markdown(m.text);
     } else if (m.type === 'ci') {
       ci = new Map();
@@ -1565,8 +1635,8 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
     } else if (m.type === 'notice') {
       notice(m.text);
     } else if (m.type === 'error') {
-      $('error').hidden = false;
-      $('error').textContent = m.message;
+      $('state').hidden = false;
+      $('state').outerHTML = `<div id="state">${stateHtml({ state: 'error', title: m.message })}</div>`;
     }
   });
 
@@ -1586,7 +1656,11 @@ ${((l) => (l.length ? `<div class="links">${linkChips(l)}</div>` : ''))(linksIn(
 
   let resizeTimer;
   let wasCompact = isCompact();
+  // The narrow layout follows the width from the start (loading, empty repository and error states too), not only data renders.
+  document.body.classList.toggle('compact', isCompact());
+  document.body.classList.add('no-data');
   window.addEventListener('resize', () => {
+    document.body.classList.toggle('compact', isCompact());
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       if (data) renderMinimap();

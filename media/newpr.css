@@ -1,9 +1,9 @@
 /* New pull request form: extends ticket.css. */
-.branches { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.branches { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .branches .src { display: inline-flex; align-items: center; gap: 5px; color: var(--fg); }
 .branches .codicon { font-size: 12px; }
 #target {
-  height: 26px;
+  height: 22px;
   padding: 0 8px;
   font: inherit;
   font-size: 12px;
@@ -13,39 +13,41 @@
   border-radius: var(--gl-radius-btn);
   outline: none;
 }
-#target:focus { border-color: var(--gl-accent); }
+#target:focus { border-color: var(--vscode-focusBorder, var(--gl-accent)); }
 
 .pr-title {
   width: 100%;
-  height: 38px;
+  height: 28px;
   margin: 0 0 10px;
-  padding: 0 12px;
+  padding: 0 8px;
   font: inherit;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--vscode-font-size, 13px);
+  font-weight: normal;
   color: var(--vscode-input-foreground, var(--fg));
   background: var(--vscode-input-background, var(--gl-inset));
-  border: 1px solid var(--vscode-input-border, var(--gl-line));
-  border-radius: var(--gl-radius-input);
+  border: 1px solid var(--vscode-input-border, var(--gl-line-strong));
+  border-radius: var(--gl-radius-btn);
   outline: none;
 }
-.pr-title:focus { border-color: var(--gl-accent); }
+.pr-title:focus { border-color: var(--vscode-focusBorder, var(--gl-accent)); }
 
 .ed-bar { display: flex; align-items: center; gap: 4px; }
 .ed-bar .tab { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; font-size: 12px; color: var(--muted); cursor: pointer; border-radius: var(--gl-radius-btn); }
 .ed-bar .tab:hover { color: var(--fg); }
-.ed-bar .tab.on { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+.ed-bar .tab.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBackground, color-mix(in srgb, var(--gl-fg) 12%, transparent)); outline: 1px solid var(--vscode-contrastActiveBorder, transparent); outline-offset: -1px; }
 .ed-bar .tpl { display: inline-flex; align-items: center; gap: 5px; margin-right: 6px; font-size: 11.5px; color: var(--faint); max-width: 45%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ed-bar .tpl .codicon { font-size: 11px; color: var(--gl-ai); }
-.gen-btn { height: 26px; color: var(--gl-ai); background: color-mix(in srgb, var(--gl-ai) 15%, transparent); }
-.gen-btn:hover { background: color-mix(in srgb, var(--gl-ai) 25%, transparent); }
-.gen-btn.on { color: var(--gl-err); background: color-mix(in srgb, var(--gl-err) 15%, transparent); }
+.gen-btn { height: 24px; padding: 0 8px; color: var(--gl-fg); background: transparent; border-color: transparent; }
+.gen-btn:hover { background: var(--vscode-toolbar-hoverBackground, var(--gl-hover)); border-color: var(--vscode-contrastActiveBorder, transparent); }
+.gen-btn.on, .gen-btn.on .codicon { color: var(--gl-err); }
 
 .ed-wrap { position: relative; }
 #desc {
   display: block;
   width: 100%;
   min-height: 260px;
+  max-height: 50vh;
+  overflow: auto;
   margin-top: 8px;
   padding: 10px 12px;
   resize: vertical;
@@ -58,8 +60,8 @@
   border-radius: var(--gl-radius-input);
   outline: none;
 }
-#desc:focus { border-color: var(--gl-accent); }
-.preview { margin-top: 8px; min-height: 260px; padding: 12px 14px; background: var(--gl-card); border: 1px solid var(--gl-border); border-radius: var(--gl-radius-input); }
+#desc:focus { border-color: var(--vscode-focusBorder, var(--gl-accent)); }
+.preview { margin-top: 8px; min-height: 260px; padding: 10px 12px; border: 1px dashed var(--vscode-contrastBorder, var(--gl-dash)); border-radius: var(--gl-radius-input); }
 body.is-generating #desc, body.is-generating .pr-title { color: var(--muted); }
 body.is-generating .ed-wrap::after {
   content: '';
@@ -89,5 +91,5 @@ body.is-generating .ed-wrap::after {
 .ver-chips .type { padding: 0 9px; height: 22px; line-height: 20px; border-radius: 5px; border: 1px solid var(--gl-border); background: var(--gl-chip); font-size: 11.5px; color: var(--muted); cursor: pointer; }
 .ver-chips .type em { font-style: normal; color: var(--faint); margin-left: 3px; }
 .ver-chips .type:hover { color: var(--fg); }
-.ver-chips .type.on { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+.ver-chips .type.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBackground, color-mix(in srgb, var(--gl-fg) 12%, transparent)); outline: 1px solid var(--vscode-focusBorder, var(--gl-accent)); outline-offset: -1px; }
 .branches .k { color: var(--faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

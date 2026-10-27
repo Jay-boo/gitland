@@ -56,6 +56,10 @@ export class GitHubProvider implements Provider {
     return `${this.webUrl}/pull/${id}`;
   }
 
+  releaseUrl(tag: string): string {
+    return `${this.webUrl}/releases/tag/${encodeURIComponent(tag)}`;
+  }
+
   async isSignedIn(): Promise<boolean> {
     return !!(await vscode.authentication.getSession('github', GITHUB_SCOPES, { silent: true }));
   }

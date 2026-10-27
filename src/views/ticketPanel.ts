@@ -155,9 +155,7 @@ export class TicketPanel {
           vscode.window.setStatusBarMessage(`Gitland: #${this.id} copied`, 2000);
           return;
         case 'openUrl':
-          if (/^https:\/\//.test(m.url)) {
-            await vscode.env.openExternal(vscode.Uri.parse(m.url));
-          }
+          await vscode.commands.executeCommand('gitland.openLink', m.url);
           return;
         case 'showCommit': {
           const repo = await this.repos.activeRepo(false);

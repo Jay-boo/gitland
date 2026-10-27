@@ -1,6 +1,6 @@
 // @ts-check
 (function () {
-  const { esc, icon, relShort } = /** @type {any} */ (window).gl;
+  const { esc, icon, relShort, loadingHtml } = /** @type {any} */ (window).gl;
   // @ts-ignore
   const vscode = acquireVsCodeApi();
   const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
@@ -27,13 +27,12 @@
     const q = filterEl.value.trim().toLowerCase();
     const runs = data.runs.filter((/** @type {any} */ r) => !q || `${r.name} ${r.sha || ''} ${r.state}`.toLowerCase().includes(q));
     if (!data.runs.length) {
-      listEl.innerHTML = `<div class="state done">${icon('rocket')}<b>No pipeline run</b><span>for ${esc(data.branch || 'this branch')}</span></div>`;
+      listEl.innerHTML = `<div class="gl-empty empty">${icon('rocket')}<b>No pipeline run</b><span>for ${esc(data.branch || 'this branch')}</span><button data-act="refresh">${icon('refresh')}Refresh</button></div>`;
       return;
     }
     listEl.innerHTML =
-      `<div class="grp"><div class="gh">${icon('git-branch')}<span class="gt">${esc(data.branch || 'detached HEAD')}</span><span class="n">${data.runs.length}</span></div>` +
-      `<div class="gb">${runs.length ? runs.map(item).join('') : '<div class="state"><span>No match</span></div>'}</div></div>` +
-      `<div class="foot"><button class="ghost" data-act="refresh">${icon('refresh')}Refresh</button></div>`;
+      `<div class="grp"><div class="gh">${icon('git-branch')}<span class="gt">${esc(data.branch || 'detached HEAD')}</span><span class="n">${data.runs.length}</span><span class="ga always"><button class="icon" data-act="refresh" title="Refresh">${icon('refresh')}</button></span></div>` +
+      `<div class="gb">${runs.length ? runs.map(item).join('') : '<div class="gl-empty"><span>No match</span></div>'}</div></div>`;
   }
 
   function item(/** @type {any} */ r) {
@@ -43,7 +42,7 @@
     return `<div class="item run${open ? ' open' : ''}" data-id="${esc(r.id)}" title="${esc(r.name)} — ${label}\nClick to see the jobs">
   <span class="glyph g-${cls}">${icon(ic)}</span>
   <div class="body"><div class="title">${esc(r.name)}</div>
-    <div class="meta"><span class="pill ${PILL[/** @type {keyof typeof PILL} */ (r.state)] || 'p-new'}">${label}</span>${r.sha ? `<span class="id">${esc(r.sha.slice(0, 7))}</span>` : ''}${r.duration ? `<span>${icon('watch')} ${esc(r.duration)}</span>` : ''}</div></div>
+    <div class="meta">${r.state === 'failed' || r.state === 'running' ? `<span class="pill ${PILL[/** @type {keyof typeof PILL} */ (r.state)] || 'p-new'}">${label}</span>` : ''}${r.sha ? `<span class="id">${esc(r.sha.slice(0, 7))}</span>` : ''}${r.duration ? `<span class="dur">${icon('watch')} ${esc(r.duration)}</span>` : ''}</div></div>
   <span class="acts">
     ${data.canRerun && !live ? `<button class="icon" data-act="rerun" title="Run again">${icon('debug-rerun')}</button>` : ''}
     ${data.canCancel && live ? `<button class="icon" data-act="cancel" title="Cancel">${icon('debug-stop')}</button>` : ''}
@@ -54,7 +53,7 @@
   }
 
   function jobsHtml(/** @type {any} */ m) {
-    if (m.loading) return '<div class="jobs"><div class="skeleton"><div></div></div></div>';
+    if (m.loading) return `<div class="jobs"><div class="none">${icon('loading', 'codicon-modifier-spin')} Loading jobs…</div></div>`;
     if (!m.jobs.length) return '<div class="jobs"><div class="none">No job details.</div></div>';
     const row = (/** @type {any} */ j, /** @type {boolean} */ step) => {
       const [cls, ic] = STATE[/** @type {keyof typeof STATE} */ (j.state)] || STATE.queued;
@@ -71,7 +70,7 @@
       m.state === 'signin' ? `<button class="primary" data-act="signIn">${icon('sign-in')}Sign in</button>`
       : m.state === 'error' ? `<button data-act="refresh">${icon('refresh')}Retry</button>`
       : '';
-    listEl.innerHTML = `<div class="state ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
+    listEl.innerHTML = `<div class="gl-empty ${m.state}">${icon(ic)}<b>${esc(m.title)}</b><span>${esc(m.text || '')}</span>${btn}</div>`;
   }
 
   listEl.addEventListener('click', (e) => {
@@ -108,11 +107,15 @@
         render();
       }
     } else if (m.type === 'loading' && !data) {
-      listEl.innerHTML = '<div class="skeleton"><div></div><div></div><div></div></div>';
+      listEl.innerHTML = loadingHtml('Loading pipelines…');
     } else if (m.type === 'state') {
       data = null;
       showState(m);
     }
   });
+  // No data yet (loading, empty, sign-in, error): hide the filter box above the state block.
+  const noData = () => document.body.classList.toggle('no-data', !!listEl.querySelector(':scope > .gl-empty') && !(/** @type {HTMLInputElement | null} */ (document.querySelector('.lv-head input'))?.value));
+  new MutationObserver(noData).observe(listEl, { childList: true });
+  noData();
   vscode.postMessage({ type: 'ready' });
 })();

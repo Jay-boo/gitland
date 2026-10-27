@@ -177,16 +177,17 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
 .gl-ck .act {
   order: 2;
   flex: none;
-  height: 18px;
-  padding: 0 6px;
+  height: 20px;
+  padding: 0 4px;
   gap: 4px;
   font-size: 11px;
+  font-weight: normal;
   color: var(--gl-muted);
   background: transparent;
-  border: 1px dashed var(--vscode-contrastBorder, var(--gl-dash));
+  border: 1px solid var(--vscode-contrastBorder, transparent);
   border-radius: 4px;
 }
-.gl-ck .act:hover { color: var(--gl-fg); border-style: solid; background: transparent; }
+.gl-ck .act:hover { color: var(--gl-fg); background: var(--vscode-toolbar-hoverBackground, var(--gl-hover)); border-color: var(--vscode-contrastActiveBorder, transparent); }
 .gl-ck .act .codicon { font-size: 12px; }
 
 /* ---------- outlined rows (short clickable lists) ---------- */
@@ -196,9 +197,9 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
   align-items: center;
   gap: 8px;
   min-width: 0;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   padding: 6px 10px;
-  border: 1px solid var(--vscode-contrastBorder, var(--gl-line-strong));
+  border: 1px solid var(--vscode-contrastBorder, var(--gl-line));
   border-radius: 8px;
   cursor: pointer;
 }
@@ -216,8 +217,9 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
 
 /* ---------- chips (small, square-ish, dark; meaning in the text colour) ---------- */
 
-.gl-chip, .gl-pill {
-  --c: var(--gl-muted);
+/* One chip shape for every chip in every view (base.css, graph.css and list.css load on every page):
+   view rules only add their colour, padding tweaks and behaviour. */
+.gl-chip, .gl-pill, .chip, .ref, .link-chip, .pr-badge, .merged-chip, .rel-chip, .ci-label, .sig-chip, .hchip, .pr-chip, .tag, .pill, .hook-chip, #toolbar .branch {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -229,9 +231,11 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
   font-size: 11px;
   line-height: 1;
   white-space: nowrap;
-  color: var(--c);
   background: var(--gl-chip);
 }
+.gl-chip, .gl-pill { --c: var(--gl-muted); color: var(--c); }
+/* AI actions: yellow on the icon only. */
+.gen-btn .codicon { color: var(--gl-ai); }
 .gl-chip .codicon, .gl-pill .codicon { font-size: 11px; vertical-align: 0; }
 .c-main { --c: var(--gl-main); }
 .c-dev { --c: var(--gl-dev); }
@@ -248,10 +252,10 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
 
 /* ---------- segmented switch ---------- */
 
-.gl-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--gl-radius-btn); background: var(--gl-inset); border: 1px solid var(--gl-border); }
+.gl-seg { display: inline-flex; gap: 2px; padding: 0; border-radius: var(--gl-radius-btn); background: transparent; border: 1px solid var(--gl-border); }
 .gl-seg > button { height: 20px; padding: 0 9px; border: none; border-radius: 4px; background: transparent; color: var(--gl-muted); font-size: 11.5px; }
 .gl-seg > button:hover { color: var(--gl-fg); background: transparent; }
-.gl-seg > button.on, .gl-seg > button[aria-pressed='true'] { color: var(--vscode-button-foreground, white); background: var(--vscode-button-background, #0078d4); outline: 1px solid var(--vscode-contrastActiveBorder, transparent); outline-offset: -1px; }
+.gl-seg > button.on, .gl-seg > button[aria-pressed='true'] { color: var(--gl-fg); background: var(--vscode-toolbar-activeBackground, color-mix(in srgb, var(--gl-fg) 12%, transparent)); outline: 1px solid var(--vscode-contrastActiveBorder, transparent); outline-offset: -1px; }
 
 /* ---------- floating: hover cards, menus, pickers ---------- */
 
@@ -275,21 +279,26 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
   border: 1px solid var(--vscode-input-border, var(--gl-line));
   border-radius: var(--gl-radius-input);
 }
-.gl-input:focus-within, .gl-composer:focus-within { border-color: var(--gl-accent); }
+.gl-input:focus-within, .gl-composer:focus-within { border-color: var(--vscode-focusBorder, var(--gl-accent)); }
 .gl-composer { position: relative; padding: 6px 10px; }
 .gl-composer textarea { display: block; width: 100%; resize: none; padding: 0; font: inherit; color: inherit; background: transparent; border: none; outline: none; }
 .gl-composer textarea::placeholder { color: var(--vscode-input-placeholderForeground, var(--gl-faint)); }
 
 /* ---------- states ---------- */
 
-.gl-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 16px; text-align: center; color: var(--gl-muted); }
-.gl-empty > .codicon { font-size: 22px; color: var(--gl-faint); }
-.gl-empty b { color: var(--gl-fg); font-weight: 600; }
+/* One empty / error / sign-in state for every view (class gl-empty): an icon, a title, a detail line, an optional button. */
+.gl-empty { display: block; margin: 8px; padding: 20px 16px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--gl-muted); word-break: break-word; }
+.gl-empty > .codicon { display: block; margin: 0 auto 6px; font-size: 20px; color: var(--gl-faint); }
+.gl-empty b { display: block; color: var(--gl-fg); font-weight: 600; }
+.gl-empty > span { display: block; }
+.gl-empty button { display: flex; max-width: 100%; margin: 10px auto 0; }
+.gl-empty button > span, .gl-empty button { overflow: hidden; text-overflow: ellipsis; }
+.gl-empty.done > .codicon { color: var(--gl-ok); }
+.gl-empty.error > .codicon { color: var(--gl-err); }
+.gl-empty.signin > .codicon { color: var(--gl-link); }
+/* Empty section inside a page: one faint line. */
+.none { color: var(--gl-faint); font-size: 12px; padding: 4px 0; }
 
-.gl-skeleton { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
-.gl-skeleton > div { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--gl-card), var(--gl-card-hover), var(--gl-card)); background-size: 200% 100%; animation: gl-shimmer 1.2s ease-in-out infinite; }
-.gl-skeleton > div:nth-child(2n) { width: 70%; }
-@keyframes gl-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 /* ---------- editor tab header ---------- */
 
@@ -297,3 +306,68 @@ button.icon.on { color: var(--gl-fg); background: var(--vscode-toolbar-activeBac
 .gl-tab-head .th-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; font-weight: 600; }
 .gl-tab-head .th-title .id { font-family: var(--gl-mono); font-weight: normal; color: var(--gl-muted); font-size: 12px; }
 .gl-tab-head .th-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+/* Tab pages scroll as a document (not a fixed 100vh box), so long pages never clip. */
+html:has(> body.ticket-page), html:has(> body.compare-page) { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; }
+body.ticket-page, body.compare-page { height: auto; min-height: 100%; overflow: visible; }
+
+/* One checkbox everywhere: VS Code's checkbox colours. */
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border-radius: 3px;
+  background: var(--vscode-checkbox-background, var(--gl-inset));
+  border: 1px solid var(--vscode-checkbox-border, var(--gl-line-strong));
+  cursor: pointer;
+}
+input[type='checkbox']::before { content: ''; width: 8px; height: 8px; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); background: var(--vscode-checkbox-foreground, var(--gl-fg)); transform: scale(0); }
+input[type='checkbox']:checked::before { transform: scale(1); }
+input[type='checkbox']:focus-visible { outline: 1px solid var(--gl-accent); outline-offset: 1px; }
+input[type='checkbox']:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- tab-page section heads (one definition for every page) ---------- */
+
+/* A section title is a dashed checkpoint line: name · count - - - - [small actions]. */
+.gl-sec, .t-main h3, .t-side h3, .dcard h3, .cl-group h3, .set-group h3, .tab-body h3 { display: flex; align-items: center; gap: 6px; height: 22px; margin: 4px 0 10px; font-size: 11px; font-weight: 600; color: var(--gl-muted); text-transform: none; }
+.gl-sec::after, .t-main h3::after, .t-side h3::after, .dcard h3::after, .cl-group h3::after, .set-group h3::after, .tab-body h3::after { content: ''; order: 1; flex: 1 1 12px; min-width: 12px; border-top: 1px dashed var(--gl-dash); }
+.gl-sec .n, .t-main h3 .n, .t-side h3 .n, .dcard h3 .n, .cl-group h3 .n, .set-group h3 .n, .tab-body h3 .n { font-size: 11px; font-weight: normal; color: var(--gl-faint); padding: 0; border: 0; background: none; }
+.gl-sec .n::before, .t-main h3 .n::before, .t-side h3 .n::before, .dcard h3 .n::before, .cl-group h3 .n::before, .set-group h3 .n::before, .tab-body h3 .n::before { content: '· '; }
+.gl-sec > .grow, .t-main h3 > .grow, .t-side h3 > .grow, .dcard h3 > .grow, .cl-group h3 > .grow, .set-group h3 > .grow, .tab-body h3 > .grow { display: none; }
+.gl-sec > :is(button, .switch, .k), .t-main h3 > :is(button, .switch, .k), .t-side h3 > :is(button, .switch, .k), .dcard h3 > :is(button, .switch, .k), .cl-group h3 > :is(button, .switch, .k), .set-group h3 > :is(button, .switch, .k), .tab-body h3 > :is(button, .switch, .k) { order: 2; font-weight: normal; }
+/* Their buttons are small toolbar actions, never filled boxes. */
+.gl-sec > button, .t-main h3 > button, .t-side h3 > button, .dcard h3 > button, .cl-group h3 > button, .set-group h3 > button, .tab-body h3 > button { height: 20px; padding: 0 4px; font-size: 11px; color: var(--gl-muted); background: transparent; border-color: var(--vscode-contrastBorder, transparent); }
+.gl-sec > button:hover, .t-main h3 > button:hover, .t-side h3 > button:hover, .dcard h3 > button:hover, .cl-group h3 > button:hover, .set-group h3 > button:hover, .tab-body h3 > button:hover { color: var(--gl-fg); background: var(--vscode-toolbar-hoverBackground, var(--gl-hover)); border-color: var(--vscode-contrastActiveBorder, transparent); }
+
+/* ---------- plain rows (lists inside a tab page: commits, links, files, branches) ---------- */
+
+.gl-prow, .link-row, .commit-row, .c-row, .pr-row, .cl-row, .f-row { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 0 8px; margin: 0 -8px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.gl-prow:hover, .link-row:hover, .commit-row:hover, .c-row:hover, .pr-row:hover, .cl-row:hover, .f-row:hover { background: var(--gl-hover); border-color: var(--vscode-contrastActiveBorder, transparent); }
+
+/* Loading: the same block, quieter (spinning codicon + one line). */
+.gl-empty.is-loading { padding: 16px; }
+.gl-empty.is-loading > .codicon { font-size: 16px; color: var(--gl-muted); }
+
+/* ---------- interaction: one focus ring, hover / active, calm transitions ---------- */
+
+/* Pressed: a slightly stronger background on quiet buttons and clickable rows. */
+button.icon:active:not(:disabled), button.ghost:active:not(:disabled), .gl-ck .act:active, .gl-sec > button:active,
+.item:active, .drow:active, .gl-orow:active, .gl-prow:active, .link-row:active, .commit-row:active, .c-row:active, .pr-row:active, .cl-row:active, .f-row:active, .gb .file:active, .tl-head:active, .gl-mi:active {
+  background: var(--vscode-toolbar-activeBackground, color-mix(in srgb, var(--gl-fg) 14%, transparent));
+}
+/* Colour changes fade in 100ms; nothing animates layout. */
+button, .item, .drow, .gl-orow, .gl-prow, .link-row, .commit-row, .c-row, .pr-row, .cl-row, .f-row, .file, .ref, .chip, .link-chip, .pr-badge, .merged-chip, .tl-head, .rb-row, .gl-mi, .menu .item, .pick, .tab, .switch .track, .ticket {
+  transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, opacity 0.1s ease;
+}
+/* Menus and pop-overs fade in (no slide). */
+.gl-pop:not([hidden]) { animation: gl-fade 0.1s ease-out; }
+@keyframes gl-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation-duration: 0s !important; }
+  .codicon-modifier-spin { animation-duration: 2s !important; }
+}
