@@ -2,7 +2,7 @@
   "name": "gitland",
   "displayName": "Gitland",
   "description": "Free Git superpowers built for Azure DevOps: a beautiful commit graph, blame that knows the pull request, tickets \u2192 branches \u2192 pull requests, pipelines and AI explanations. Also GitHub, GitLab and Jira.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "publisher": "jay-boo",
   "license": "MIT",
   "icon": "media/icon.png",
