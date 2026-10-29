@@ -10,3 +10,5 @@ test/**
 .vscode-test/**
 docs/**
 .superpowers/**
+media/readme/**
+docs/**
