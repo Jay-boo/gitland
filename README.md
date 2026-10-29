@@ -1,50 +1,86 @@
 # Gitland
 
-A free, GitLens-style toolkit for VS Code, built for **Azure DevOps** (and GitHub, GitLab).
+**Git superpowers for VS Code, built for Azure DevOps.** A beautiful commit graph, blame that knows which pull request brought each line, and your tickets, pull requests and pipelines right next to the code. Works with GitHub, GitLab and Jira too. Free, no account, no subscription.
 
-Every Gitland view follows your VS Code theme (colours and font): rounded cards, pills and compact lists that look at home in dark, light and high-contrast themes.
+![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85-007ACC?logo=visualstudiocode&logoColor=white)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-first--class-0078D7?logo=azuredevops&logoColor=white)
+![GitHub · GitLab · Jira](https://img.shields.io/badge/also-GitHub%20%C2%B7%20GitLab%20%C2%B7%20Jira-555)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-## Features
+![The Gitland commit graph: hover card, branch focus, timeline of merged pull requests, commit details](media/readme/graph.gif)
 
-| | |
-|---|---|
-| **Commit Graph** | Placed like GitLens: the **Graph** view at the top of the **Gitland sidebar** (activity bar), the **Graph** button in the status bar, and the first button of the Source Control title bar. *Show Commit Graph in Editor* for a full tab (`gitland.graph.layout`: `panel` | `editor`). Also a **Commit Graph** tab in the **bottom panel** (Gitland), and *Show Commit Graph in Editor* for a full tab. Compact layout when narrow. Author pictures on each commit (Azure DevOps profile photo, GitHub avatar, Gravatar photo, else a picture drawn locally in the graph colors — *Gitland: Choose Author Picture Style* to preview and pick: pixel, geometric, marble, rings, initials (drawn locally), all 30 [DiceBear](https://www.dicebear.com) styles, with their *neutral* face-only versions (notionists, lorelei, avataaars, adventurer, bottts, pixel-art…) (downloaded once and cached), or Gravatar's robots…). *Open Commit Graph in Editor* for a full tab. Lanes colored by branch kind (main blue, dev green, feature violet, fix rose, hotfix red, release amber, chore slate; other names keep a stable color), branch/tag badges (local + remote merged into one when in sync), commit details with changed files → click to diff. Right-click a commit to branch, tag, cherry-pick, revert, reset or open it on the remote. Right-click a branch badge to checkout, push, create a PR, merge, rebase or delete it. Double-click a badge to check it out. `Ctrl+F` to search. Hover a commit for a card with the full message, stats and links to the pull requests / work items it mentions. A bubble on the Gitland views shows the number of uncommitted changes. Activity minimap above the list (click a bar to jump to that day). Drag column edges to resize them (double-click to reset). Click a branch/tag badge (or pick one from **Branches** in the toolbar, with filtering) to focus on it: its history stays bright, the rest fades — `Esc` shows everything again. Commit messages are rendered as markdown. **View mode** (toolbar): *All* branches, one *Branch* history, or its *Timeline* — the main line only, one row per merged branch / pull request (click the chip to see what it brought). **Compare** branches or tags (toolbar, or right-click a badge → *Compare with…* / *Compare with the previous tag*): commits on each side, pull requests merged, files changed with their diffs, where they diverged, and *Copy release notes* as markdown. **Branches** lists every branch and tag of the repo, even older than the loaded commits (picking one loads enough history). Open pull requests show as a badge next to their branch (in review / approved / changes requested / draft). **Filter** (toolbar): only my commits, hide merges, last 7/30/90/365 days, by author — the graph stays connected. **Compare**: select a commit, then `Ctrl+click` another (or right-click → Compare) to list the files changed between them and open each diff. **Drag** a branch badge onto another to merge or rebase. **Stashes** appear in the graph (right-click: apply, pop, branch, drop). **Keyboard**: `↑/↓` or `j/k` move, `Home`/`End`, `PgUp`/`PgDn`, `Enter`/`Space` show the details, `←`/`→` parent / child, `m` merge base with the current branch, `c` compare with the next commit you pick, `?` lists the shortcuts. |
-| **Inline blame** | Author, age and message at the end of the current line, plus in the status bar. Hover it (or a file blame block) for the author (in their color), age, nearest branch, **the pull request that brought the change**, the full commit message as markdown, files changed with +/− lines, links to the pull requests / work items it mentions, and actions: show in graph, changes, file history, open on remote, copy SHA. |
-| **CodeLens** | Above the file and each class/function: *Author, 3 days ago* (click → graph) and *N authors (X and others)* (click → file blame). |
-| **File blame** (on demand) | `Ctrl+Alt+B` or the editor title button. GitLens-style annotations (message + age, heat bar: orange = recent, blue = old); lines from the same commit as the cursor are highlighted. `gitland.blame.toggleMode`: `file` or `window`. |
-| **History** | *Show File History* / *Show Line History* (right-click in an editor, or from a blame hover) opens a timeline: every commit that touched the file or the selected lines, with the diff of those lines (lines) or of the file (click to expand), PR / ticket chips, renames followed; diff with the previous version or the working tree, open the file at a version, tick two versions to compare them. ✨ **Explain** — *Why are these lines like this?* / *Explain this file's history*, on a commit (graph details) or from the blame hover (*Why?*): an AI summary from the commits, their diffs and the tickets / PRs they mention. |
-| **Changes** | Gitland sidebar → stage / unstage / discard files (hover buttons, double-click to stage), click a file for its diff. Commit box in the graph style: ✨ **generate the message with AI** from the diff (Copilot or any VS Code language model; follows your repo's style, adds the ticket; `Ctrl+Alt+G`; `gitland.changes.commitMessageInstructions` e.g. "Write in French"), subject length counter, the branch's ticket as a chip (click to add `AB#1234`), *Amend*, `Ctrl+Enter` to commit, `Ctrl+Shift+Enter` to commit & push. Ahead/behind with pull, push, sync and fetch. |
-| **My Tickets** | Gitland activity bar → your open Azure Boards work items (or GitHub / GitLab issues). Click one to **see it in a tab**: description, acceptance criteria, comments, linked PRs, and the branches / commits of the repo that mention it. *Start work* (hover button) creates a branch `feature/1234-title` from the base you pick. The branch remembers its ticket. Tickets in another project than the code (a shared backlog)? ⚙ **Ticket Sources…** in the view adds Azure DevOps projects (even from other organizations), or **Jira** projects (see below). The ticket of your branch shows in the status bar (click to see it). From the ticket tab: change its **state**, **assign it to you**, **comment**. *Start work* can also push the branch and open a **draft pull request** linked to the ticket. Committing on a branch with no ticket? Gitland offers to link one (`gitland.changes.ticketReminder`). |
-| **Pull Requests** | *Create Pull Request* opens a form: target branch, title, and the description pre-filled with **the repository's PR template** (`.azuredevops/` / `.github/pull_request_template.md`, read from the target branch). ✨ *Generate* writes the title and description with AI (Copilot or any VS Code language model) from the commits and the diff, **following the template** (sections filled in, checkboxes ticked only when they apply); preview the markdown, link the branch's ticket, create as draft. It pushes the branch and opens the new PR. The view lists PRs by *mine / to review / others* with their review state; click one to **see it in a tab** (description, reviewers and votes, work items, commits, discussion, *Checkout*, *Files changed*). The PR of your branch shows in the status bar. |
-| **Releases** | Gitland sidebar → your tags, newest version first, with the commits and PRs each one added and what is *not released yet*. Click one to compare it with the previous release; ✨ **release notes** written with AI in the style of your `CHANGELOG.md` (copy, or insert into CHANGELOG.md for review). **New release…** suggests the next version from the commits (feat → minor, breaking → major), writes the notes, creates an annotated tag (optionally after committing the CHANGELOG) and pushes it. Commit hovers and details say which release first shipped a commit (*3.7.1* / *not released yet*). |
-| **Rebase, conflicts, cleanup, worktrees** | *Interactive rebase* (right-click a commit → *from here*, or the command): reorder by drag and drop, pick / reword (edit the message inline) / squash / fixup / edit / drop, with a warning when pushed commits get rewritten. A merge / rebase / cherry-pick in progress shows in the **Changes** view with *Continue / Skip / Abort*, and each conflicted file can keep a side, open the merge editor or be marked resolved. *Clean up branches* lists merged, gone (remote deleted) and stale branches, local and remote, to delete in bulk (main, dev, release/* and the current branch are protected). *Open in a new worktree* (right-click a branch) checks it out in its own folder and window. |
-| **CI & reviews** | CI status (Azure Pipelines / GitHub Actions / GitLab CI) next to each commit of the graph (✓ / ✗ / ⟳, click to open the run), in the commit card and details, on the pull request page (*Checks*), and for the current branch in the status bar. Review from the PR page: approve / approve with suggestions / wait for author / reject / reset, comment, reply to and resolve threads, publish a draft, complete (squash, merge, rebase…, optionally deleting the branch) or abandon. |
-| **Pipelines** | Gitland sidebar → the CI runs (Azure Pipelines / GitHub Actions / GitLab CI) of your branch: state, commit, duration. **Rerun**, **cancel**, open in the browser; click a run to see its jobs and steps and the end of the failed step's log. Refreshes every 30 s while something runs. |
-| **Settings** | *Gitland: Settings* (or the gear in the Changes view): every Gitland setting grouped by feature, with switches and lists, saved to your user settings. |
-| **Search & dashboard** | *Search Everywhere* (`Ctrl+Alt+Shift+F`, or 🔍 on the Graph view): branches and tags, commits (message, author, SHA), commits that added or removed some text (`git log -S`), pull requests and tickets; prefixes `b:` `c:` `s:` `pr:` `t:`. *Dashboard*: what needs you — PRs to review, your PRs with their votes and CI, tickets in progress, your branches (not pushed, ahead / behind, merged) with one-click checkout, push, PR or delete. |
-| **Signing & hooks** | Signed commits show in the commit details (verified, untrusted key, key not available, bad signature). The Changes view has a *Sign* switch when a signing key is configured, shows the commit hooks the repo runs, and when a hook refuses the commit, its output with *Retry* / *Commit anyway (skip hooks)*. |
+## Why Gitland
 
-## Authentication
+- **Azure DevOps is a first-class citizen**, not an afterthought: work items, pull requests with votes and threads, Azure Pipelines, profile photos, `AB#1234` links.
+- **Everything is free.** The commit graph, the PR review, the dashboard: no paid tier, no sign-up.
+- **Your tickets drive your branches.** Pick a work item, and Gitland creates the branch, links the ticket and opens the draft pull request.
+- **Looks at home in VS Code.** Every view follows your theme (dark, light, high contrast) and your font.
 
-- **Azure DevOps**: uses your Microsoft work account through VS Code's built-in sign-in, **in the browser** by default (`gitland.azureDevOps.browserSignIn`): the Windows account dialog is often blocked on laptops the organization doesn't manage. The token is requested for the organization's own tenant, so the right account is used when several are signed in.
-  If your organization blocks that, run **Gitland: Set Azure DevOps Personal Access Token** (scopes: *Work Items R/W*, *Code R/W*).
-- **GitHub**: VS Code's built-in GitHub sign-in.
-- **GitLab** (gitlab.com and self-hosted): a personal access token with the *api* scope, per host. Gitland asks for it the first time it needs it, or run **Gitland: Set GitLab Token**. Remotes on `gitlab.com` and on hosts named `gitlab.*` are recognized; add other self-hosted instances to `gitland.gitlab.hosts` (e.g. `["git.mycompany.com"]`). Issues are the tickets, merge requests the pull requests (`!42`), GitLab CI the pipelines (one row per stage, its jobs inside).
-- **Jira** (Cloud and Server / Data Center), for tickets only, on any code host: ⚙ **Ticket Sources…** in the Tickets view → **Add a Jira project…**, enter the site (`https://your-company.atlassian.net`, or your Jira Server address with its path, e.g. `https://jira.mycompany.com/jira`) and pick the project. Jira Cloud asks for your Atlassian email and an [API token](https://id.atlassian.com/manage-profile/security/api-tokens); Server / Data Center asks for a personal access token (**Gitland: Set Jira Token** changes it). Jira issues then replace the host's tickets (Tickets view, *Start work*, ticket tab, search); pull requests and pipelines stay on Azure DevOps / GitHub / GitLab. Branches are named after the key (`feature/DATA-12-fix-login`), keys of the configured projects in commit messages link to the ticket tab, and a pull request created from such a branch starts its title with the key, so Jira's own integrations link it. `gitland.jira.transitionOnStartWork` moves the issue to *In Progress* on *Start work*.
+## Tour
 
-Tokens are stored in VS Code's secret storage.
+### A commit graph you can read
 
-## Settings
+Lanes colored by branch kind, PR and CI badges on each branch, author pictures, an activity minimap. Click a branch to focus on it, switch to **Timeline** to see one row per merged pull request, drag a branch onto another to merge it.
 
-- `gitland.branch.template`: default `${prefix}/${id}-${title}`
-- `gitland.branch.prefixByType`: e.g. `Bug → fix`
-- `gitland.azureDevOps.wiql`: the query behind *My Tickets*
-- `gitland.azureDevOps.activateOnStartWork`: move the work item to *Active* when you start it
-- `gitland.blame.inline.format`: `${author}, ${ago} • ${message}`
-- `gitland.codeLens.enabled`, `gitland.codeLens.scopes` (`document`, `containers`, `blocks`)
-- `gitland.graph.layout` (`panel` | `editor`), `gitland.graph.statusBar.enabled`, `gitland.graph.avatars`, `gitland.graph.showStashes`, `gitland.blame.avatars`, `gitland.avatars.defaultStyle`
-- `gitland.graph.maxCommits`, `gitland.pr.draftByDefault`
-- `gitland.changes.ticketReminder`: offer to link a ticket before committing on a branch without one
+### Blame that knows the pull request
+
+![Inline blame, its hover with the pull request that brought the change, and the file blame heat bar](media/readme/blame.gif)
+
+Author, age and message on the current line. Hover it for **the pull request that brought the change**, the tickets it mentions, the files it touched, and one-click actions. `Ctrl+Alt+B` shows the whole file's blame with a heat bar.
+
+### ✨ Why is this code like this?
+
+![Explain these lines: line history with an AI summary of the commits, pull requests and tickets behind it](media/readme/explain.gif)
+
+Select some lines, run **Explain These Lines**, and get their history: every commit that touched them, with diffs, PR and ticket chips, and an AI summary of how they got there. Uses the language models already in your VS Code (GitHub Copilot or any other provider).
+
+### From ticket to pull request in one step
+
+![Start work on an Azure DevOps work item: branch named after the ticket and a draft pull request linked to it](media/readme/tickets.gif)
+
+**My Tickets** lists your Azure Boards work items (or GitHub / GitLab issues, or Jira). *Start work* names the branch after the ticket (`feature/1262-show-the-estimated-delivery-date`), creates it from the base you pick, and can push it and open a **draft pull request** linked to the ticket.
+
+### Compare, then write the release notes for you
+
+![Compare two tags: pull requests merged, commits on each side, and AI release notes in the style of the CHANGELOG](media/readme/compare.gif)
+
+Compare two tags, branches or commits: the pull requests merged, the commits on each side, the files changed. ✨ **Release notes** are written in the style of your `CHANGELOG.md`, ready to copy or insert.
+
+### What needs you, and the review right there
+
+![The dashboard: pull requests to review, failing CI, tickets and branches; then a pull request page with reviewers, checks and threads](media/readme/dashboard.gif)
+
+The **Dashboard** shows the pull requests waiting for your review, failing CI, your tickets and the state of your branches. Open a pull request to read it, check out its branch, see its CI, vote, comment and resolve threads, without leaving VS Code.
+
+### And also
+
+- **Changes view** with ✨ commit messages written from the diff, the branch's ticket as a chip, amend, commit & push.
+- **Interactive rebase** by drag and drop, a conflict assistant, **branch cleanup** (merged, gone, stale), **worktrees**.
+- **Pipelines**: runs of your branch, jobs, steps and the failing log; rerun or cancel.
+- **Search Everywhere** (`Ctrl+Alt+Shift+F`): branches, tags, commits, code added or removed, pull requests and tickets.
+- **Releases**: tags with what each one shipped, the next version suggested, annotated tag + notes in one step.
+- Signed commits, commit hooks, CodeLens, file and line history, and a settings page with every option.
+
+The complete list, view by view: **[docs/features.md](docs/features.md)**.
+
+## Works with
+
+| | Azure DevOps | GitHub | GitLab | Jira |
+|---|:---:|:---:|:---:|:---:|
+| Commit graph, blame, history, compare | ✓ | ✓ | ✓ | n/a |
+| Pull requests: list, create, review | ✓ | ✓ | ✓ (merge requests) | n/a |
+| Tickets and *Start work* | ✓ Azure Boards | ✓ Issues | ✓ Issues | ✓ Cloud and Server |
+| CI status and pipelines | ✓ Azure Pipelines | ✓ Actions | ✓ GitLab CI | n/a |
+
+Jira replaces the host's tickets; pull requests and pipelines stay on your code host.
+
+## Get started
+
+1. Install **Gitland** and open a Git repository.
+2. Click the **Gitland** icon in the activity bar, or **Graph** in the status bar.
+3. The first time Gitland needs your host, it asks you to sign in: your Microsoft work account for Azure DevOps, VS Code's GitHub sign-in, a token for GitLab or Jira. Tokens are kept in VS Code's secret storage.
+
+Sign-in details, personal access tokens and settings: **[docs/setup.md](docs/setup.md)**.
 
 ## Develop
 
@@ -54,3 +90,5 @@ npm run watch        # then F5 in VS Code ("Run Gitland")
 npm run package      # builds gitland-x.y.z.vsix
 code --install-extension gitland-0.1.0.vsix   # version from package.json
 ```
+
+The GIFs above are recorded from a real VS Code on a fictional repository, with a stand-in Azure DevOps (`test/demo/`). After a UI change, `npm run demo` records them again (`npm run demo -- graph blame` for some of them).

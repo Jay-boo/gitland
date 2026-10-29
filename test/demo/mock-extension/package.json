@@ -1,0 +1,14 @@
+{
+  "name": "gitland-demo-mock",
+  "displayName": "Gitland demo mock",
+  "description": "Recording only: answers Gitland's Azure DevOps calls for the fictional contoso/Atlas project and provides a canned language model.",
+  "version": "0.0.1",
+  "publisher": "jay-boo",
+  "private": true,
+  "engines": { "vscode": "^1.104.0" },
+  "main": "./extension.js",
+  "activationEvents": ["*"],
+  "contributes": {
+    "languageModelChatProviders": [{ "vendor": "gitland-demo", "displayName": "Demo model" }]
+  }
+}

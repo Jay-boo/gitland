@@ -1,7 +1,7 @@
 {
   "name": "gitland",
   "displayName": "Gitland",
-  "description": "Free git superpowers: beautiful commit graph, inline blame, tickets \u2192 branches and pull requests for Azure DevOps, GitHub & GitLab, with Jira tickets.",
+  "description": "Free Git superpowers built for Azure DevOps: a beautiful commit graph, blame that knows the pull request, tickets \u2192 branches \u2192 pull requests, pipelines and AI explanations. Also GitHub, GitLab and Jira.",
   "version": "0.3.1",
   "publisher": "jay-boo",
   "license": "MIT",
@@ -14,23 +14,37 @@
     "type": "git",
     "url": "https://github.com/Jay-boo/gitland.git"
   },
+  "homepage": "https://github.com/Jay-boo/gitland#readme",
+  "bugs": {
+    "url": "https://github.com/Jay-boo/gitland/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "SCM Providers",
     "Visualization",
-    "Other"
+    "AI"
   ],
   "keywords": [
     "git",
-    "graph",
+    "git graph",
+    "commit graph",
     "blame",
+    "git history",
     "azure devops",
+    "azure boards",
+    "azure pipelines",
+    "work items",
+    "pull request",
+    "code review",
+    "github",
     "gitlab",
     "jira",
-    "pull request",
-    "work items"
+    "release notes",
+    "interactive rebase",
+    "worktree",
+    "ai"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -986,7 +1000,8 @@
     "vscode:prepublish": "node esbuild.mjs --production",
     "test": "npm run build && node test/runTest.js",
     "render": "node test/render/render.mjs",
-    "test:unit": "node test/unit/build.mjs && node --test test/unit/"
+    "test:unit": "node test/unit/build.mjs && node --test test/unit/",
+    "demo": "node test/demo/record.mjs"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
