@@ -1,17 +1,16 @@
 # Gitland
 
-**Git superpowers for VS Code, built for Azure DevOps.** A beautiful commit graph, blame that knows which pull request brought each line, and your tickets, pull requests and pipelines right next to the code. Works with GitHub, GitLab and Jira too. Free, no account, no subscription.
+**Git for VS Code, connected to where your code lives.** A commit graph, blame that shows which pull request brought each line, and your tickets, pull requests and pipelines right next to the code. Works with GitHub, GitLab, Azure DevOps and Jira. Free, no account, no subscription.
 
 ![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85-007ACC?logo=visualstudiocode&logoColor=white)
-![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-first--class-0078D7?logo=azuredevops&logoColor=white)
-![GitHub · GitLab · Jira](https://img.shields.io/badge/also-GitHub%20%C2%B7%20GitLab%20%C2%B7%20Jira-555)
+![GitHub · GitLab · Azure DevOps · Jira](https://img.shields.io/badge/works%20with-GitHub%20%C2%B7%20GitLab%20%C2%B7%20Azure%20DevOps%20%C2%B7%20Jira-555)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
 ![The Gitland commit graph: hover card, branch focus, timeline of merged pull requests, commit details](media/readme/graph.gif)
 
 ## Why Gitland
 
-- **Azure DevOps is a first-class citizen**, not an afterthought: work items, pull requests with votes and threads, Azure Pipelines, profile photos, `AB#1234` links.
+- **Your host, not just Git.** GitHub, GitLab and Azure DevOps pull requests, issues and pipelines, plus Jira tickets, in the same views.
 - **Everything is free.** The commit graph, the PR review, the dashboard: no paid tier, no sign-up.
 - **Your tickets drive your branches.** Pick a work item, and Gitland creates the branch, links the ticket and opens the draft pull request.
 - **Looks at home in VS Code.** Every view follows your theme (dark, light, high contrast) and your font.
