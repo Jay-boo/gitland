@@ -1,0 +1,9 @@
+{
+    "gitland.tickets.sources": [
+        {
+            "type": "jira",
+            "site": "https://failor-elfassi076.atlassian.net",
+            "project": "HIRE"
+        }
+    ]
+}

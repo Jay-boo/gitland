@@ -667,6 +667,19 @@
           "default": false,
           "description": "Commit all changes without asking when nothing is staged (Changes view)."
         },
+        "gitland.changes.clickOpens": {
+          "type": "string",
+          "enum": [
+            "changes",
+            "file"
+          ],
+          "enumDescriptions": [
+            "Open the diff of the file.",
+            "Open the file itself."
+          ],
+          "default": "changes",
+          "description": "What clicking a file in the Changes view opens. Alt+click opens the other one."
+        },
         "gitland.changes.commitMessageInstructions": {
           "type": "string",
           "default": "",

@@ -18,7 +18,7 @@ type Message =
   | { type: 'refresh' }
   | { type: 'stage' | 'unstage' | 'discard'; paths: string[] }
   | { type: 'stageAll' | 'unstageAll' | 'discardAll' }
-  | { type: 'open'; path: string; oldPath?: string; status: string; staged: boolean }
+  | { type: 'open'; path: string; oldPath?: string; status: string; staged: boolean; alt?: boolean }
   | { type: 'openFile'; path: string }
   | { type: 'preview'; key: string; path: string; oldPath?: string; status: string; staged: boolean }
   | { type: 'commit'; message: string; amend: boolean; push: boolean; sign?: boolean; noVerify?: boolean }
@@ -230,7 +230,10 @@ export class ChangesView implements vscode.WebviewViewProvider, vscode.Disposabl
           await this.discard(repo, (await repo.status()).unstaged.map((f) => f.path));
           break;
         case 'open':
-          await this.openChange(repo, m.path, m.oldPath, m.status, m.staged);
+          // gitland.changes.clickOpens picks the diff or the file; Alt+click opens the other one. A deleted file has only its diff.
+          if (m.status !== 'D' && (config<string>('changes.clickOpens', 'changes') === 'file') !== !!m.alt)
+            await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(path.join(repo.root, m.path)));
+          else await this.openChange(repo, m.path, m.oldPath, m.status, m.staged);
           return;
         case 'preview': {
           const paths = ['--', ...(m.oldPath ? [m.oldPath] : []), m.path];

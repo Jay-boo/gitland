@@ -390,4 +390,14 @@ export class GitHubProvider implements Provider {
     });
     return this.toPullRequest(p, p.user.login);
   }
+
+  async createRelease(o: { tag: string; name: string; notes: string; prerelease?: boolean }): Promise<string> {
+    const r = await this.request<{ html_url: string }>('POST', `/repos/${this.owner}/${this.repo}/releases`, {
+      tag_name: o.tag,
+      name: o.name,
+      body: o.notes,
+      prerelease: !!o.prerelease,
+    });
+    return r.html_url;
+  }
 }

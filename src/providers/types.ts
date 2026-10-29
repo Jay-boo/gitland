@@ -166,6 +166,8 @@ export interface Provider {
   /** Publish a draft, complete (merge) or abandon. transitionWorkItems: close the linked work items (Azure DevOps). */
   updatePullRequest?(id: string, change: { publish?: boolean; abandon?: boolean; complete?: { strategy: 'squash' | 'noFastForward' | 'rebase' | 'rebaseMerge'; deleteSourceBranch: boolean; lastSourceCommit: string; message?: string; transitionWorkItems?: boolean } }): Promise<void>;
   createPullRequest(options: CreatePullRequestOptions): Promise<PullRequest>;
+  /** Publish a release on the host for a tag already pushed (GitHub release object). Returns its web URL. */
+  createRelease?(o: { tag: string; name: string; notes: string; prerelease?: boolean }): Promise<string>;
   /** Profile picture of a commit author (URL or data URI), when the host has a real one. */
   avatarFor?(email: string, sha?: string): Promise<string | undefined>;
   commitUrl(sha: string): string;

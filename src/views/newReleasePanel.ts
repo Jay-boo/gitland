@@ -15,12 +15,12 @@ import { ticketPrefix } from '../providers/ticketPrefix.pure';
 type Message =
   | { type: 'ready' | 'stopGenerate' }
   | { type: 'generate'; version: string }
-  | { type: 'create'; version: string; notes: string; push: boolean; changelog: boolean };
+  | { type: 'create'; version: string; notes: string; push: boolean; changelog: boolean; hostRelease?: boolean };
 
 /**
  * "New release" form: the next version (suggested from the commits: feat → minor, breaking → major),
  * release notes (✨ in the CHANGELOG style), then an annotated tag — optionally the CHANGELOG commit
- * first — and push.
+ * first — and push, optionally with a release on the host (GitHub) carrying the notes.
  */
 export class NewReleasePanel {
   private static current?: NewReleasePanel;
@@ -69,13 +69,15 @@ export class NewReleasePanel {
   private async onMessage(m: Message): Promise<void> {
     switch (m.type) {
       case 'ready': {
-        const [s, head, branch] = await Promise.all([
+        const [s, head, branch, provider] = await Promise.all([
           suggestVersions(this.repo),
           this.repo.exec(['log', '-1', '--format=%H%x1f%s', this.target]),
           this.repo.currentBranch(),
+          getProvider(this.repo, this.context.secrets).catch(() => undefined),
         ]);
         const [sha, subject] = head.trim().split('\x1f');
-        this.post({ type: 'init', ...s, target: { ref: this.target === 'HEAD' ? branch ?? 'HEAD' : this.target, sha, subject } });
+        const host = provider?.createRelease ? provider.kind === 'github' ? 'GitHub' : provider.displayName : undefined;
+        this.post({ type: 'init', ...s, host, target: { ref: this.target === 'HEAD' ? branch ?? 'HEAD' : this.target, sha, subject } });
         return;
       }
       case 'generate':
@@ -123,7 +125,9 @@ export class NewReleasePanel {
       throw new Error(`The tag ${version} already exists.`);
     }
     const remote = (await this.repo.defaultRemote()) ?? 'origin';
+    const provider = m.push && m.hostRelease ? await getProvider(this.repo, this.context.secrets) : undefined;
     this.post({ type: 'creating', on: true });
+    let releaseUrl: string | undefined;
     try {
       await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Releasing ${version}…` }, async (progress) => {
         let target = this.target;
@@ -140,9 +144,25 @@ export class NewReleasePanel {
             await this.repo.exec(['push', remote, 'HEAD']);
           }
           await this.repo.exec(['push', remote, `refs/tags/${version}`]);
+          if (provider?.createRelease) {
+            progress.report({ message: `publishing the release on ${provider.displayName}…` });
+            try {
+              // A semver pre-release (1.2.0-rc.1) is marked as such, so it does not become the "latest" release.
+              releaseUrl = await provider.createRelease({ tag: version, name: version, notes: m.notes.trim() || `Release ${version}`, prerelease: /^v?\d+\.\d+\.\d+-/.test(version) });
+            } catch (e) {
+              // The tag is pushed already: report, but do not undo it (the release can be made on the web).
+              log.error('Release creation failed', e);
+              vscode.window.showWarningMessage(`Gitland: ${version} is tagged and pushed, but the release could not be created: ${errorMessage(e)}`);
+            }
+          }
         }
       });
-      vscode.window.showInformationMessage(`Gitland: released ${version}${m.push ? ` (pushed to ${remote})` : ''}.`);
+      const url = releaseUrl;
+      vscode.window.showInformationMessage(`Gitland: released ${version}${m.push ? ` (pushed to ${remote})` : ''}.`, ...(url ? ['Open release'] : [])).then((a) => {
+        if (a && url) {
+          vscode.env.openExternal(vscode.Uri.parse(url));
+        }
+      });
       this.panel.dispose();
       vscode.commands.executeCommand('gitland.releases.refresh');
     } catch (e) {

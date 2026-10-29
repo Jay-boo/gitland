@@ -140,7 +140,7 @@
     const delta =
       f.added === undefined ? '' : `<span class="delta">${f.added ? `<span class="plus">+${f.added}</span>` : ''}${f.deleted ? `<span class="minus">−${f.deleted}</span>` : ''}</span>`;
     return `<div class="file st-${f.status}${sel.has(selKey(g.key, f.path)) ? ' sel' : ''}" data-group="${g.key}" data-path="${esc(f.path)}" data-old="${esc(f.oldPath || '')}" data-status="${f.status}" data-staged="${g.staged ? 1 : 0}" title="${esc(f.path)} — ${STATUS[f.status] || f.status}${f.oldPath ? ` (from ${esc(f.oldPath)})` : ''}">
-  <span class="st ${f.status === '!' ? 'X' : f.status}">${f.status}</span><span class="name">${esc(name)}</span><span class="dir">${esc(dir)}</span>${delta}<span class="fa"><button class="icon" data-act="openFile" title="Open file">${icon('go-to-file')}</button>${actions}</span></div>`;
+  <span class="st ${f.status === '!' ? 'X' : f.status}">${f.status}</span><span class="name">${esc(name)}</span><span class="dir">${esc(dir)}</span>${delta}<span class="fa"><button class="icon" data-act="openFile" title="Open file (Alt+click the row)">${icon('go-to-file')}</button>${actions}</span></div>`;
   }
 
   function updateCommitButton() {
@@ -345,7 +345,7 @@
     if (file) {
       if (sel.size) clearSelection();
       anchor = selKey(file.dataset.group || '', file.dataset.path || '');
-      vscode.postMessage({ type: 'open', path: file.dataset.path, oldPath: file.dataset.old || undefined, status: file.dataset.status, staged: file.dataset.staged === '1' });
+      vscode.postMessage({ type: 'open', path: file.dataset.path, oldPath: file.dataset.old || undefined, status: file.dataset.status, staged: file.dataset.staged === '1', alt: e.altKey });
     }
   });
   /** Ctrl/Cmd-click: toggle the row. Shift-click: select from the last clicked row (same group). */

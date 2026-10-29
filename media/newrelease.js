@@ -45,6 +45,8 @@
       <label class="switch"><input id="push" type="checkbox" checked><span class="track"><span class="knob"></span></span><span>Push the tag</span></label>
       <div style="height:8px"></div>
       <label class="switch" title="Adds the notes to CHANGELOG.md, commits it (chore: release …), then tags that commit"><input id="changelog" type="checkbox"><span class="track"><span class="knob"></span></span><span>Add to CHANGELOG.md &amp; commit</span></label>
+      ${init.host ? `<div style="height:8px"></div>
+      <label class="switch" title="After pushing the tag, publish a release on ${esc(init.host)} with the notes (needs the tag pushed)"><input id="hostRelease" type="checkbox" checked><span class="track"><span class="knob"></span></span><span>Create ${esc(init.host)} release</span></label>` : ''}
     </section>
     <section><h3>Since ${esc(init.latest || 'the start')} <span class="n">${init.commits.length}</span></h3>
       ${(init.log || init.commits.map((/** @type {string} */ s) => ({ subject: s })))
@@ -74,6 +76,7 @@
     );
     $('btnGen').addEventListener('click', () => vscode.postMessage(generating ? { type: 'stopGenerate' } : { type: 'generate', version: $('version').value.trim() }));
     $('btnCreate').addEventListener('click', create);
+    $('push').addEventListener('change', update);
     $('desc').addEventListener('input', autosize);
     update();
   }
@@ -90,11 +93,12 @@
     $('createLabel').textContent = v ? `Create release ${v}` : 'Create release';
     $('relTitle').textContent = v ? `Release ${v}` : 'New release';
     $('btnCreate').disabled = !v || generating;
+    if ($('hostRelease')) $('hostRelease').disabled = !$('push').checked;
   }
 
   function create() {
     if ($('btnCreate').disabled) return;
-    vscode.postMessage({ type: 'create', version: $('version').value.trim(), notes: $('desc').value, push: $('push').checked, changelog: $('changelog').checked });
+    vscode.postMessage({ type: 'create', version: $('version').value.trim(), notes: $('desc').value, push: $('push').checked, changelog: $('changelog').checked, hostRelease: !!$('hostRelease')?.checked });
   }
 
   function setGenerating(on) {
